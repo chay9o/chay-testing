@@ -19,7 +19,7 @@ from .backup import AWSBackup
 from jinja2 import Template
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .tasks import generate_ppt_task, process_prompts1, process_prompts2, process_prompts3, process_prompts4
+from .tasks import generate_ppt_task, process_prompts1A, process_prompts2, process_prompts3, process_prompts4
 from celery.result import AsyncResult
 import re
 from together import Together
@@ -814,7 +814,7 @@ def stinsight_step6(request):
         # Trigger the appropriate Celery task based on the dropdown value
         if selected_option == 'option1':
             # Trigger process_prompts for option 1 (Strategic Analysis for Decision Makers)
-            task = process_prompts1.apply_async(args=[final_content, language])
+            task = process_prompts1A.apply_async(args=[final_content, language])
         elif selected_option == 'option2':
             # Trigger process_prompts2 for option 2 (Strategic Analysis for Organizational Architects)
             task = process_prompts2.apply_async(args=[final_content, language])

@@ -13,6 +13,7 @@ import re
 import psutil
 import base64
 from io import BytesIO
+from jinja2 import Template
 from django.http import JsonResponse
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -21,6 +22,99 @@ from langchain_openai import ChatOpenAI
 from together import Together
 import logging
 
+chat_template = (
+    "{{ bos_token }}{% for message in messages %}"
+    "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
+    "{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}"
+    "{% elif message['role'] == 'bot' %}{{ message['text'] + eos_token }}"
+    "{% endif %}{% endfor %}"
+)
+
+
+# Function to generate the chat history string
+def render_chat_history(messages):
+    template = Template(chat_template)
+    data = {
+        "bos_token": "<s>",
+        "eos_token": "</s>",
+        "messages": messages
+    }
+    return template.render(data)
+
+@shared_task
+def process_prompts1A(final_text, language):
+    # Maintain the chat history
+    chat_history = []
+
+    for i in range(11):
+        text_template = get_text_template(i)  # A function to return the corresponding template
+        user_input = text_template.format(final_text=final_text, language=language)
+
+        # Append user input to chat history
+        chat_history.append({"role": "user", "text": user_input})
+
+        # Render the chat history string using the template
+        chat_history_str = render_chat_history(chat_history)
+
+        # Call the process_user_input function to process the user input and chat history
+        answer = process_user_input(user_input, chat_history_str)
+
+        # Append the bot's answer to the chat history
+        chat_history.append({"role": "bot", "text": answer})
+
+        # Print or return the answer (to make sure it's passed back correctly)
+        print(f"Iteration {i+1}: {user_input}, Answer: {answer}")
+
+    return "All iterations completed"
+
+def get_text_template(iteration):
+    templates = [
+        "Template 1: {final_text} in {language}",
+        "Template 2: {final_text} in {language}",
+        # Add templates up to Template 11
+    ]
+    return templates[iteration]
+
+def process_user_input(combined_input, chat_history):
+    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+    client = Together(api_key=TOGETHER_API_KEY)
+    
+    #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    max_tokens = 8192
+
+    # This is the OpenAI chat completion client call
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "user", "content": combined_input},
+            {"role": "system", "content": chat_history}
+        ],
+        max_tokens=max_tokens,
+        temperature=0.4,
+        top_p=0.9,
+        top_k=50,
+        repetition_penalty=1,
+        stop=["<|eot_id|>", "<|eom_id|>"],
+        stream=True
+    )
+
+    # Process the streamed response
+    generated_text = ""
+    
+    for chunk in response:
+        if len(chunk.choices) > 0:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                if chunk.choices[0].delta.content:
+                    generated_text += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                if chunk.choices[0].message.content:
+                    generated_text += chunk.choices[0].message.content
+        else:
+            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+    # Return the generated text back to process_prompts1
+    return generated_text
 
 
 logger = logging.getLogger(__name__)
