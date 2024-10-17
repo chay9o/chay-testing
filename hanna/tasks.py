@@ -46,7 +46,7 @@ def process_prompts1A(self, final_text, language):
     # Maintain the chat history
     chat_history = []
 
-    for i in range(9):
+    for i in range(9):  # Assuming there are 11 iterations
         text_template = get_text_template(i)  # A function to return the corresponding template
         user_input = text_template.format(final_text=final_text, language=language)
 
@@ -56,8 +56,8 @@ def process_prompts1A(self, final_text, language):
         # Render the chat history string using the template
         chat_history_str = render_chat_history(chat_history)
 
-        # Call the process_user_input function to process the user input and chat history
-        answer = process_user_input(user_input, chat_history_str)
+        # Call the process_user_input function with the iteration number
+        answer = process_user_input(user_input, chat_history_str, i, language)
 
         # Append the bot's answer to the chat history
         chat_history.append({"role": "bot", "text": answer})
@@ -65,10 +65,11 @@ def process_prompts1A(self, final_text, language):
         # Update task state to send the result of the current iteration
         self.update_state(state='PROGRESS', meta={'iteration': i+1, 'user_input': user_input, 'answer': answer})
 
-        # Print or return the answer
+        # Log the answer for debugging
         logger.info(f"Iteration {i+1}: {user_input}, Answer: {answer}")
 
     return {'final_text': final_text}
+
 
 
 def get_text_template(iteration):
@@ -558,7 +559,7 @@ def get_text_template(iteration):
         """
 
 
-def process_user_input(combined_input, chat_history):
+def process_user_inpu(combined_input, chat_history):
     TOGETHER_API_KEY = settings.TOGETHER_API_KEY
     client = Together(api_key=TOGETHER_API_KEY)
     
@@ -598,6 +599,76 @@ def process_user_input(combined_input, chat_history):
 
     # Return the generated text back to process_prompts1
     return generated_text
+
+def process_user_input(combined_input, chat_history, iteration, language):
+    
+
+    # Check if we are on iteration 2 (DeepInfra model)
+    if iteration == 2:
+        # Initialize the DeepInfra model (as per your code)
+        llm = ChatOpenAI(
+            openai_api_key=settings.OPENAI_API_KEY,
+            model_name=settings.GPT_MODEL_3,  # Change to the appropriate model
+            openai_api_base=settings.BASE_URL,
+            max_tokens=4096,
+            streaming=True,
+            top_p=0.9
+        )
+        
+        # Prepare the message format for DeepInfra
+        messages = f"Language: {language}\n{chat_history}<INST>\n{combined_input.strip()}\n</INST>\n"
+        
+        # Get response from the DeepInfra model
+        response = llm.stream(messages)
+        generated_text = ""
+        
+        # Process the streamed response
+        for chunk in response:
+            if hasattr(chunk, 'content'):
+                generated_text += chunk.content
+            else:
+                generated_text += str(chunk)
+        
+        return generated_text  # Return DeepInfra result
+
+    else:
+        # Use default OpenAI model for other iterations
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        
+        #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        max_tokens = 8192
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": combined_input},
+                {"role": "system", "content": chat_history}
+            ],
+            max_tokens=max_tokens,
+            temperature=0.4,
+            top_p=0.9,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        # Process the streamed response
+        generated_text = ""
+        
+        for chunk in response:
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    if chunk.choices[0].message.content:
+                        generated_text += chunk.choices[0].message.content
+            else:
+                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+        return generated_text  # Return default OpenAI result
 
 
 logger = logging.getLogger(__name__)
