@@ -35,8 +35,8 @@ chat_template = (
 def render_chat_history(messages):
     template = Template(chat_template)
     data = {
-        "bos_token": "<s>",
-        "eos_token": "</s>",
+        "bos_token": "",
+        "eos_token": "",
         "messages": messages
     }
     return template.render(data)
