@@ -65,7 +65,7 @@ def process_prompts1A(final_text, language):
         # Print or return the answer (to make sure it's passed back correctly)
         print(f"Iteration {i+1}: {user_input}, Answer: {answer}")
 
-    return "All iterations completed"
+    return answer
 
 def get_text_template(iteration):
     if iteration == 0:
