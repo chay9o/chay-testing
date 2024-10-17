@@ -560,7 +560,7 @@ def get_text_template(iteration):
         """
 
 
-def process_user_inpu(combined_input, chat_history):
+#def process_user_inpu(combined_input, chat_history):
     TOGETHER_API_KEY = settings.TOGETHER_API_KEY
     client = Together(api_key=TOGETHER_API_KEY)
     

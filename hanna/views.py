@@ -882,7 +882,8 @@ def get_task_status1(request, task_id):
             return JsonResponse({
                 'task_id': task_id,
                 'status': result.status,
-                'final_text': result.result['final_text']
+                'final_text': result.result['final_text'],
+                'chat_history': result.result.get('chat_history')  # Include chat history in success response
             })
 
         elif result.state == 'PROGRESS':
@@ -891,7 +892,8 @@ def get_task_status1(request, task_id):
                 'status': result.status,
                 'iteration': result.info.get('iteration'),
                 'user_input': result.info.get('user_input'),
-                'answer': result.info.get('answer')
+                'answer': result.info.get('answer'),
+                'chat_history': result.info.get('chat_history')  # Include chat history in progress response
             })
 
         else:
