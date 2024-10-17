@@ -25,7 +25,7 @@ import logging
 chat_template = (
     "{{ bos_token }}{% for message in messages %}"
     "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
-    "{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}"
+    "{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}"#printing
     "{% elif message['role'] == 'bot' %}{{ message['text'] + eos_token }}"
     "{% endif %}{% endfor %}"
 )
@@ -63,12 +63,13 @@ def process_prompts1A(self, final_text, language):
         chat_history.append({"role": "bot", "text": answer})
 
         # Update task state to send the result of the current iteration
-        self.update_state(state='PROGRESS', meta={'iteration': i+1, 'user_input': user_input, 'answer': answer})
+        self.update_state(state='PROGRESS', meta={'iteration': i+1, 'user_input': user_input, 'answer': answer, 'chat_history': chat_history_str})
+
 
         # Log the answer for debugging
         logger.info(f"Iteration {i+1}: {user_input}, Answer: {answer}")
 
-    return {'final_text': final_text}
+    return {'final_text': final_text, 'chat_history': render_chat_history(chat_history)}  # Return final text and chat history
 
 
 
