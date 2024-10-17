@@ -849,7 +849,7 @@ def DA_tester(request):
         # Trigger the appropriate Celery task based on the dropdown value
         if selected_option == 'option1':
             # Trigger process_prompts1 for option 1 (e.g., Data Analysis Option 1)
-            task = process_prompts1.apply_async(args=[user_input, language])
+            task = process_prompts1A.apply_async(args=[user_input, language])
         elif selected_option == 'option2':
             # Trigger process_prompts2 for option 2 (e.g., Data Analysis Option 2)
             task = process_prompts2.apply_async(args=[user_input, language])
@@ -870,18 +870,30 @@ def DA_tester(request):
 def get_task_status1(request, task_id):
     try:
         result = AsyncResult(task_id)
+
         if result.state == 'FAILURE':
             return Response({
                 'task_id': task_id,
                 'status': result.status,
                 'result': str(result.result)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         elif result.state == 'SUCCESS':
             return JsonResponse({
                 'task_id': task_id,
                 'status': result.status,
                 'final_text': result.result['final_text']
             })
+
+        elif result.state == 'PROGRESS':
+            return JsonResponse({
+                'task_id': task_id,
+                'status': result.status,
+                'iteration': result.info.get('iteration'),
+                'user_input': result.info.get('user_input'),
+                'answer': result.info.get('answer')
+            })
+
         else:
             return JsonResponse({
                 'task_id': task_id,
@@ -889,9 +901,9 @@ def get_task_status1(request, task_id):
                 'result': str(result.result)
             })
     except Exception as e:
-        print("GET TASK STATUS:")
-        print(e)
+        logger.error(f"Error fetching task status: {e}")
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 @api_view(http_method_names=['POST'])

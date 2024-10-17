@@ -41,12 +41,12 @@ def render_chat_history(messages):
     }
     return template.render(data)
 
-@shared_task
-def process_prompts1A(final_text, language):
+@shared_task(bind=True)
+def process_prompts1A(self, final_text, language):
     # Maintain the chat history
     chat_history = []
 
-    for i in range(8):
+    for i in range(9):
         text_template = get_text_template(i)  # A function to return the corresponding template
         user_input = text_template.format(final_text=final_text, language=language)
 
@@ -62,10 +62,14 @@ def process_prompts1A(final_text, language):
         # Append the bot's answer to the chat history
         chat_history.append({"role": "bot", "text": answer})
 
-        # Print or return the answer (to make sure it's passed back correctly)
-        print(f"Iteration {i+1}: {user_input}, Answer: {answer}")
+        # Update task state to send the result of the current iteration
+        self.update_state(state='PROGRESS', meta={'iteration': i+1, 'user_input': user_input, 'answer': answer})
 
-    return answer
+        # Print or return the answer
+        logger.info(f"Iteration {i+1}: {user_input}, Answer: {answer}")
+
+    return {'final_text': final_text}
+
 
 def get_text_template(iteration):
     if iteration == 0:
