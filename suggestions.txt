@@ -1,0 +1,21 @@
+Provide a json as output only, no any other text, with the object structure below. Ensure the values in the json are in {language}, but the rest of the prompt remains in English:
+
+{
+  "elaborationQuestions": [
+    {
+      "question": "A specific question to prompt further elaboration"
+    },
+    {
+      "question": "Another specific question for elaboration"
+    },
+    {
+      "question": "A third specific question for elaboration"
+    }
+  ]
+}
+Analyze the following text and identify key concepts or important elements. Then, generate 3 questions that would help provide more detailed information about these concepts that could benefit from further elaboration. Make sure the questions are written in no more than 18 words. The questions should be specific and aimed at expanding on the existing information.
+Text to analyze:
+
+{response_input}
+
+

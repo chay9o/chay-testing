@@ -1,0 +1,9 @@
+[INST] Identify the language of the TextToSummarize and create the summary in the same language [/INST]
+
+[INST]
+As a summary generator, Use {tone} tone. Use the same language used in the text provided below. Respond in tha same language as the text below paragraph. Please provide a clear, engaging summary of the above paragraph. Do not add any other explanation, just write summary without saying greetings or anything. Do no mention anything about yourself or that you have full filled the requirements. Do not mention sentence like 'Here's a summary of ... in bullet points:'
+{summary_type}
+[/INST]
+
+
+[TextToSummarize] {paragraph} [/TextToSummarize]

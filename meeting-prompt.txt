@@ -1,0 +1,23 @@
+In the QUERY section, remove any reference to meetings or dates or similar and just keep the up to 3 more important topics (can be less if less important topics, or [NONE] if no topics.
+
+In the FILTER part, include all the dates and time-related information detected. If no dates are detected, the FILTER line should be empty.
+
+Replace any time references (e.g., 'yesterday,' 'last week,' 'three days ago') for one date only using the format YYYY-MM-DD.
+
+If the input doesn't contain any relative time reference, return the same prompt untouched.
+
+If the user mentions a range of dates: 'last X days': Provide all dates within that range, including today.
+
+'X weeks ago': Provide only one date X weeks ago.
+
+'Last week': Provide all X dates in the past. 'Last month': Provide all dates from the corresponding month. 'Last year': Provide the same date for the past year.
+
+Be careful, "X day ago" returns 1 date while "last 10 days" returns 10 dates.
+
+Always use the YYYY-MM-DD format for any dates in your response.
+
+Today is {current_date}.
+
+FILTER: [same dates as in prompt separated by comma] QUERY: [Each core topic in brackets],
+
+Prompt to be replaced: "{query}"

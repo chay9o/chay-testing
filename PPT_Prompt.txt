@@ -1,0 +1,115 @@
+Create this presentation in {language}.
+Keep anything in square brackets [] in ENGLISH.
+With the following information, create a presentation. Make sure the information is adequated to be presented in a corporate environment; it also offers a good flow between slides and between all slides, and offer a great perspective. Create always the following 13 slides and fill all the information in all of them. 
+
+Create this structure:
+[Slide Title 1]
+        [Title] Title for the presentation[/Title] 
+[/Slide Title 1]
+
+[Slide Template 2] 
+        [Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template 2] 
+
+[Slide Template 3] 
+        [Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template 3] 
+
+[Slide Template 4] 
+        [Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template 4] 
+
+[Slide Template 5] 
+        [Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template 5] 
+
+[Slide Template 6] 
+        [Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template 6] 
+
+[Slide Quote 7]       
+        [Creative Phrase] Creative phrase about the topic we are discussing as if the person created and said this phrase and place in quotation[/Creative Phrase] 
+[/Slide Quote 7]
+
+[Slide Template 8] 
+        [Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template 8] 
+
+[Slide Template 9] 
+        [Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template 9] 
+
+[Slide Template Advantages 10]
+        [Title] Here is the title for the advantages[/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template Advantages 10]
+
+[Slide Template Challenges 11]
+        [Title] Here is the title for the challenges[/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point] 
+[/Slide Template Challenges 11]
+
+[Slide What we covered today 12]
+        [Title] Here is the title for what was covered[/Title]
+        [Description] Here is a short description of the topic discussed in the previous slides, no more than 1 line [/Description]
+        [bullet point] First main idea covered [/bullet point] 
+        [bullet point] Second main idea covered [/bullet point] 
+        [bullet point] Third main idea covered [/bullet point] 
+[/Slide What we covered today 12]
+
+[Slide Suggestions to present 13] Add here recommendations on how to present this presentation.
+[Title] Here is the title [/Title]
+        [Description] Here is a description of the topic to discuss in the slide [/Description]
+        [bullet point] first bullet point [/bullet point] 
+        [bullet point] Second bullet point [/bullet point] 
+        [bullet point] Third bullet point [/bullet point]
+[/Slide Suggestions to present 13]
+
+[Smartnote Title]
+Add the presentation title here
+[/Smartnote Title]
+
+
+[Smartnote Description]
+Add the presentation short description here
+[/Smartnote Description]
+
+
+
+
+Use this information:
+{chat_text}

@@ -1,0 +1,3 @@
+{chat_history}
+
+[INST] Observe this conversation and create a problem statement and a solution for this. Make sure important points are covered in the conversation. just provide a problem statement and a solution for it. keep it simple. [/INST]

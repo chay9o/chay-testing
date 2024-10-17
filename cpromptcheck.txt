@@ -1,0 +1,127 @@
+
+[INST]
+Situation:
+{final_content}
+[/INST]
+
+[INST]
+Instructions:
+As a canvas creation expert, the goal is to design a canvas that will guide the team to better analyze the situation, think more deeply, improve problem-solving, and find solutions effectively. The canvas should be actionable, balanced, and creative. The goal is to enhance the team’s awareness of the situation and accelerate the resolution process.
+
+Steps:
+1. Analyze the situation described by the user or team.
+2. Consider the information provided below, along with any other relevant knowledge, to guide the team toward assessing and solving the situation.
+3. Choose the most suitable template from the options below, ensuring it will help the team assess, take action, and solve the problem.
+4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each.
+[/INST]
+
+Template Options:
+
+[INST]
+
+[INST]
+4. Hive Template (Hexagonal Canvas, Template 4):
+   - Composed of two rows of four hexagons each (8 hexagons total). The top row evaluates four main topics or categories, while the bottom row assesses subtopics of the ones above.
+   - It is ideal for evaluating multiple aspects of a situation in a connected, hive-like structure.
+
+   JSON Output:
+   {
+     "canvas": {
+       "template_type": 4,
+       "canvas_name": "",
+       "canvas_description": "",
+       "top_hexagons": [
+         {
+           "hexagon_number": 1,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         },
+         {
+           "hexagon_number": 2,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         },
+         {
+           "hexagon_number": 3,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         },
+         {
+           "hexagon_number": 4,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         }
+       ],
+       "bottom_hexagons": [
+         {
+           "hexagon_number": 1,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         },
+         {
+           "hexagon_number": 2,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         },
+         {
+           "hexagon_number": 3,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         },
+         {
+           "hexagon_number": 4,
+           "title": "",
+           "description": "",
+           "key_elements": ["", "", "", ""]
+         }
+       ]
+     }
+   }
+[/INST]
+
+[INST]
+For any template, consider these areas to influence the sections: Objectives to achieve, Stakeholders, Current & Desired States, Actions/Interventions, Timeline, Risks/Blockers, Success Metrics, Strategic Priorities, Resources, Communication Plan, Responsibility, Training. Always consider a balance between customer value, company value, and workforce well-being value (the Trivalue approach). You can also use a bifocal approach (0-12 months and 12-36 months) or consider psychological factors.
+
+Always keep a balance between workforce well-being value, company value, and client value, but don’t mention these values explicitly—just shape your thinking accordingly.
+[/INST]
+
+[INST]
+Prompt 2:
+Instructions:
+A canvas creation expert previously created a canvas based on the situation provided. Now, as a critical-thinking expert, the goal is to enhance the clarity, depth, and usefulness of the canvas. Reanalyze the canvas and either improve it or choose a more appropriate one.
+
+Steps:
+1. Analyze the previous canvas (in JSON format): Reevaluate the JSON structure, focusing on how well it helps the team understand and solve the situation.
+2. Identify improvement areas: Critically assess each part of the JSON. Are all sections clear, useful, and well-defined? Does the canvas fully capture the important aspects of the situation?
+3. Make enhancements: Improve the JSON by refining titles, descriptions, and content to ensure that the revised version is more effective.
+4. Provide the improved JSON: Return the enhanced canvas in JSON format, reflecting the critical analysis and improvements.
+[/INST]
+
+[INST]
+Additional Considerations:
+- Ensure the revised canvas allows for better problem-solving.
+- Keep the proposed format for the canvas.
+- If the original template (Progression, Grid, Circular, Hive) was not the best choice, switch and update the JSON accordingly.
+[/INST]
+
+[INST]
+Desired Output:
+Return an improved version of the canvas in JSON format.
+[/INST]
+
+[INST]
+Prompt 3:
+Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.
+[/INST]
+
+[INST]
+Prompt 4:
+Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
+[/INST]

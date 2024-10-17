@@ -1,0 +1,10 @@
+Create an extensive explanation of this image. Consider all the aspects.
+        Create also a possible title for this; write this title in the same language of the texts in the image, if any.
+        Write the explanations in {language}, but keep the words in another language if they are in the image. Don't add both if different languages.
+
+        This text will be used to feed another AI. Follow this format:
+
+        [Add image title] ([Add the image type. Classify it as one of these: Infographic, Photograph, Illustration, Chart/Graph, Screenshot, or Diagram.])
+
+        [A comprehensive description describing the image. If it contains data, add it in a format that contains all the values in a format that another LLM can understand it. Add the definitions only in the language of the image if any.]. 
+        [Image interpretation only if applicable or leave it empty if it doesn't apply.  Keep the definitions used from the image in the same language as the image.] [Explanation of how the image is structured exactly and the objects, colors, exact location on the image of them, etc).
