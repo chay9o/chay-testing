@@ -46,7 +46,7 @@ def process_prompts1A(final_text, language):
     # Maintain the chat history
     chat_history = []
 
-    for i in range(11):
+    for i in range(1):
         text_template = get_text_template(i)  # A function to return the corresponding template
         user_input = text_template.format(final_text=final_text, language=language)
 
@@ -68,12 +68,45 @@ def process_prompts1A(final_text, language):
     return "All iterations completed"
 
 def get_text_template(iteration):
-    templates = [
-        "Template 1: {final_text} in {language}",
-        "Template 2: {final_text} in {language}",
-        # Add templates up to Template 11
-    ]
-    return templates[iteration]
+    if iteration == 0:
+        return f"""
+        Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. 
+        You are a very strategic person. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Strategic Insights document) on the situation. 
+        The situation below is happening these days. The situation is happening in our company.
+
+        Follow these rules:
+
+        1. Sentence Structure: Use a mix of sentence lengths.
+           Short sentences: To emphasize points.
+           Longer sentences: To explain or elaborate.
+
+        2. Vocabulary: Use clear and straightforward language.
+           Avoid: Technical jargon or complex vocabulary unless necessary.
+           Use: Everyday language that is easy to understand.
+
+        3. All the following text is happening in our company.
+
+        4. Provide just the text, no what it was improved.
+
+        Remember this will be part of a report written by John.
+
+        Text to rewrite (keep a similar writing style but improved). Add a title for this Strategic Insight: 
+        {{final_text}}
+
+        Format:
+        Title
+        Description
+        """
+    elif iteration == 1:
+        return f"""
+        Template for iteration 2: Add your own text here.
+        """
+    # Add more templates for other iterations as needed
+    else:
+        return f"""
+        Default template for iteration {iteration}: Add your own text here.
+        """
+
 
 def process_user_input(combined_input, chat_history):
     TOGETHER_API_KEY = settings.TOGETHER_API_KEY
