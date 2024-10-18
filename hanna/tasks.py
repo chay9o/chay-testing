@@ -305,7 +305,7 @@ def process_user_input_1(combined_input, chat_history, iteration, language):
         client = Together(api_key=TOGETHER_API_KEY)
         
         #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-        model_name = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
         max_tokens = 8192
         response = client.chat.completions.create(
             model=model_name,
@@ -1283,7 +1283,7 @@ def process_user_input_3(combined_input, chat_history, iteration, language):
         client = Together(api_key=TOGETHER_API_KEY)
         
         #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-        model_name = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
         max_tokens = 8192
         response = client.chat.completions.create(
             model=model_name,
