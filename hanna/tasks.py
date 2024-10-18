@@ -89,6 +89,7 @@ def process_prompts1A(self, final_text, language):
 def get_text_template(iteration):
     if iteration == 0:
         return f"""
+        Language to be used : {{language}}
         Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. 
         You are a very strategic person. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Strategic Insights document) on the situation. 
         The situation below is happening these days. The situation is happening in our company.
@@ -118,10 +119,12 @@ def get_text_template(iteration):
         """
     elif iteration == 1:
         return f"""
+        Language to be used : {{language}}
         Write now why some things to consider about the previous situation from a strategic perspective. Minimize the use of bullet points and focus on the narrative. Make it comprehensive and try to reframe the situation too. Add a title to this text.
         """
     elif iteration == 2:
         return f"""
+        Language to be used : {{language}}
         Carefully analyze the models and frameworks provided in the #ModelsAndFrameworks area. 
 
         IF
@@ -530,19 +533,23 @@ def get_text_template(iteration):
         """
     elif iteration == 3:
         return f"""
+        Language to be used : {{language}}
         Analyze the primary pain points of the initially proposed situation and establish clear objectives that the previous framework can achieve. Provide a detailed explanation, including examples, of how to utilize the framework to resolve the situation. Emphasize a narrative style and minimize the use of bullet points.
         """
     elif iteration == 4:
         return f"""
+        Language to be used : {{language}}
         Explain the 3 possible scenarios that might happen when introducing the previous framework, from the most likely to the less likely. And some actionable ideas for dealing with each scenario. Minimize the use of bullet points. Also add ideas of how to overcome them and frame them in a positive way. Add a title.
         """
     elif iteration == 5:
         return f"""
+        Language to be used : {{language}}
         Add a new section where an analysis of anything else important and not covered about the framework when applied to the initial situation, is considered to achieve the objectives. Use other words to mention pain points. Make sure ideas are actionable and related to the initial problem or situation.
         Focus on the narrative. Minimize the use of bullet points. Add a title too. Don't add a conclusion.
         """
     elif iteration == 6:
         return f"""
+        Language to be used : {{language}}
         Please use a System Thinking analysis  to analyze the initial provided situation and focus on how to measure improvement in the initial scenario provided by the user.
 
         1. Explain why to measure improvement in the initial scenario.
@@ -559,10 +566,12 @@ def get_text_template(iteration):
         """
     elif iteration == 7:
         return f"""
+        Language to be used : {{language}}
         Add any other considerations not yet considered. Add a title. Explain them in an easy way with actionable ideas. Minimize the use of bullet points.
         """
     elif iteration == 8:
         return f"""
+        Language to be used : {{language}}
         Reassess the initial situation and critically. Examine the alternative ideas presented. Develop a set of final strategic considerations, emphasizing the future handling of similar situations. Ensure the response indirectly reflects the TriValue Company model, balancing customer value, company value, and workforce well-being. Prioritize a narrative-driven format rather than bullet points.
         """
     
