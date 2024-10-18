@@ -43,11 +43,9 @@ def render_chat_history(messages):
 
 @shared_task(bind=True)
 def process_prompts1A(self, final_text, language):
-    # Maintain the chat history
+    # Maintain the chat history and accumulated answers
     chat_history = []
-    
-    # Initialize a variable to store concatenated responses across iterations
-    concatenated_responses = ""
+    accumulated_answers = []  # List to accumulate answers for all iterations
 
     for i in range(9):  # Assuming there are 11 iterations
         text_template = get_text_template(i)  # A function to return the corresponding template
@@ -69,17 +67,14 @@ def process_prompts1A(self, final_text, language):
         # Append the bot's answer to the chat history
         chat_history.append({"role": "bot", "text": answer})
 
-        # Concatenate the current answer to the previous responses
-        concatenated_responses += f"Iteration {i+1} Response: {answer}\n"
-
-        # Update task state to send the result of the current iteration
-        self.update_state(state='PROGRESS', meta={'iteration': i+1, 'user_input': user_input, 'answer': answer, 'chat_history': chat_history_str})
+        # Accumulate the answers for this iteration
+        accumulated_answers.append({"iteration": i+1, "user_input": user_input, "answer": answer})
 
         # Log the answer for debugging
         logger.info(f"Iteration {i+1}: {user_input}, Answer: {answer}")
 
-    # Return the final concatenated response and chat history to views.py after all iterations
-    return {'final_text': final_text, 'chat_history': render_chat_history(chat_history), 'final_response': concatenated_responses}
+    # Return the final text and the accumulated answers after all iterations
+    return {'final_text': final_text, 'accumulated_answers': accumulated_answers, 'chat_history': render_chat_history(chat_history)}
 
 
 
