@@ -19,7 +19,7 @@ from .backup import AWSBackup
 from jinja2 import Template
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .tasks import generate_ppt_task, process_prompts1A, process_prompts2, process_prompts3, process_prompts4
+from .tasks import generate_ppt_task, process_prompts_1, process_prompts_2, process_prompts_3, process_prompts4
 from celery.result import AsyncResult
 import re
 from together import Together
@@ -814,13 +814,13 @@ def stinsight_step6(request):
         # Trigger the appropriate Celery task based on the dropdown value
         if selected_option == 'option1':
             # Trigger process_prompts for option 1 (Strategic Analysis for Decision Makers)
-            task = process_prompts1A.apply_async(args=[final_content, language])
+            task = process_prompts_1.apply_async(args=[final_content, language])
         elif selected_option == 'option2':
             # Trigger process_prompts2 for option 2 (Strategic Analysis for Organizational Architects)
-            task = process_prompts2.apply_async(args=[final_content, language])
+            task = process_prompts_2.apply_async(args=[final_content, language])
         elif selected_option == 'option3':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
-            task = process_prompts3.apply_async(args=[final_content, language])
+            task = process_prompts_3.apply_async(args=[final_content, language])
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
             task = process_prompts4.apply_async(args=[final_content, language])
@@ -849,13 +849,13 @@ def DA_tester(request):
         # Trigger the appropriate Celery task based on the dropdown value
         if selected_option == 'option1':
             # Trigger process_prompts1 for option 1 (e.g., Data Analysis Option 1)
-            task = process_prompts1A.apply_async(args=[user_input, language])
+            task = process_prompts_1.apply_async(args=[user_input, language])
         elif selected_option == 'option2':
             # Trigger process_prompts2 for option 2 (e.g., Data Analysis Option 2)
-            task = process_prompts2.apply_async(args=[user_input, language])
+            task = process_prompts_2.apply_async(args=[user_input, language])
         elif selected_option == 'option3':
             # Trigger process_prompts3 for option 3 (e.g., Data Analysis Option 3)
-            task = process_prompts3.apply_async(args=[user_input, language])
+            task = process_prompts_3.apply_async(args=[user_input, language])
         else:
             return JsonResponse({'error': 'Invalid option selected'}, status=status.HTTP_400_BAD_REQUEST)
 

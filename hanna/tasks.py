@@ -42,16 +42,16 @@ def render_chat_history(messages):
     return template.render(data)
 
 @shared_task(bind=True)
-def process_prompts1A(self, final_text, language):
+def process_prompts_1(self, final_text, language):
     # Maintain the chat history and accumulated answers
     chat_history = []
     accumulated_answers = []  # List to accumulate answers for all iterations
 
-    for i in range(9):  # Assuming there are 11 iterations
-        text_template = get_text_template(i)  # A function to return the corresponding template
+    for i in range(11):  # Assuming there are 11 iterations
+        text_template = get_text_template_1(i)  # A function to return the corresponding template
         user_input = text_template.format(final_text=final_text, language=language)
         
-        if i == 2:
+        if i == 1:
             # Add a single-line summary for iteration 2 instead of the full user input
             chat_history.append({"role": "user", "text": "Please, specify in the next answer the most suitable model or framework to solve this situation."})
         else:
@@ -62,7 +62,7 @@ def process_prompts1A(self, final_text, language):
         chat_history_str = render_chat_history(chat_history)
 
         # Call the process_user_input function with the iteration number
-        answer = process_user_input(user_input, chat_history_str, i, language)
+        answer = process_user_input_1(user_input, chat_history_str, i, language)
 
         # Append the bot's answer to the chat history
         chat_history.append({"role": "bot", "text": answer})
@@ -84,9 +84,345 @@ def process_prompts1A(self, final_text, language):
     }
 
 
+def get_text_template_1(iteration):
+    if iteration == 0:
+        return f"""
+        Language to be used : {{language}}
+        Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. You are a very strategic person and the report will be read mainly by Product Owners, so you can use their language. It can also be read by Leaders, CEOs or Managers. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Strategic Insights document) on the situation. The situation below is happening these days. The situation is happening in our company.
+
+        Follow these rules:
+
+        1. Sentence Structure: Use a mix of sentence lengths.
+        Short sentences: To emphasize points.
+        Longer sentences: To explain or elaborate.
+
+        2. Vocabulary: Use clear and straightforward language.
+
+        Avoid: Technical jargon or complex vocabulary unless necessary.
+        Use: Everyday language that is easy to understand.
+
+        3. All the following text is happening in our company.
+
+        4. Provide just the text, no what it was improved.
+
+        Rememeber this will be part of a report written by Jhon.
+
+        Text to rewrite (keep a similar writting style but improved). Add a title for this Strategic Insight:  
+
+        {{final_text}}
+
+        Format:
+        Title
+        Description
+        """
+    elif iteration == 1:
+        return f"""
+        Language to be used : {{language}}
+        Apply for this and the following prompts the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations.
+        Detail the key blockers or problems identified. How do these challenges affect the company’s ability to achieve its objectives.
+        Outline the opportunities available to the company. How can these be leveraged to overcome blockers or enhance the company's strategic position. Focus on the narrative and minimize the use of bullet points and focus on the narrative. Add title or titles.
+        Also consider for this and the next prompts if any of these definitions are of any help:
+        ----------
+        Some Definitions that might be useful for you in this or the following prompts to be used:
+
+        Always Ready outcome: always-ready outcome in enterprise agility means to cultivate a culture and people who are continuously prepared for disruption and change. it focuses on assessing situations, understanding what is happening, and having the collective capabilities and technologies available to gain insights into unexpected emerging realities. a culture of constant readiness fosters a proactive mindset where team members work together to reevaluate situations, analyze conditions from multiple perspectives, and constantly update their knowledge. this allows them to better deal with their emotions, remain proactive, and handle events with less stress. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/always-ready-outcome-c72rzcq0vh
+
+        always-responsive outcome in enterprise agility means to have the appropriate processes, mindset, innovation, and partnerships to consistently offer relevant products or services to the market while minimizing stress on organizational structures and employee wellbeing. achieving this state is integral to the enterprise agility way of thinking (eawt), applying to all functions, not just software. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/always-responsive-outcome-04bmxbd9pv
 
 
-def get_text_template(iteration):
+        Always-innovative outcome definition in enterprise agility means fostering a culture and mindset of constant innovation. This approach means reimagining offerings, business models, partnerships, and strategies to sustainably generate lasting value and meaning. Always-Innovative companies embrace different perspectives and diversity of thought to gain new insights. This includes involving external partners to bring new perspectives, knowledge, and information. It uses a bimodal approach and techniques such as questioning assumptions, Shared Progress Bets (SPBs), and Shared Progress Stock Exchange. Keep in mind that the concepts and ideas underlying the Always-Innovative outcome are rooted in the principles of Future Thinking. Read Chapter 9 to know more about it. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/always-innovative-outcome-6vsnmm25g9
+
+
+        Def: mobilizing purpose in enterprise agility is a reason for which something is done or for which something exists, that makes the person feel the compelling need to belong to the group and to mobilize. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/mobilizing-purpose-tpp3t728g1
+        
+
+
+        Def: neurodiversity in enterprise agility means the diversity of human minds, and the way people think, focus, learn, process and link information, as well as their distinctive way of connecting with the world. (enterprise agility university, 2022). If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/neurodiversity-ngtg7wlr9d
+
+        Def: organizational health in enterprise agility is psychological safety plus the creation of business value in perpetuity. In Enterprise Agility, business value means value for the customer, company, and workforce wellbeing (enterprise Agility university and leading exponential change, 2018). If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/organizational-health-x1ng3n9z4f
+
+
+        Def: adaptive trust in enterprise agility is the ability to retain confidence even after breaking previous commitments. during rapid change, leaders inevitably must abandon plans, strategies, or promises that no longer serve the needs of the situation. but failing to deliver on past assurances can seriously damage trust in the organization and willingness to follow new directions. with adaptive trust, leaders openly acknowledge broken promises, take ownership of the decision to change course, and involve others in creating better solutions. though promises may be broken, trust and commitment to mission-driven change endures. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/adaptive-trust-wv5lgtgq6q
+
+        Def: enterprise agility definition is: holistic organizational, social, and business model that enables your company to adapt to accelerated change and exponential market conditions while prioritizing workforce wellbeing, customer needs, and overall company value. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/what-is-enterprise-agility-19tdx0gst4
+
+        Def: Classic Agility: It refers to the original principles and practices from the Agile Manifesto 2001. It's a mindset and principles emphasizing adaptability, collaboration, and customer value in software development. The heart of ClassicAgility lies in its customer-focused nature. It prioritizes delivering value to customers by continuously seeking feedback, iterating on solutions, and adapting to changing requirements. While valuable, it's important to note that Classic Agility may have limitations when addressing the scale and complexity of today's challenges. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/classic-agility-cg7zc4b1p0
+
+
+        Def: Agile Evolutions: A mindset and ways of working that extends the principles of Classic Agility beyond software development. It enables organizations to be more adaptive and resilient to change in their ways of working. They recognize customer value and experience as the center of the organization's universe. We can find here frameworks such as the SAFe Framework or the Business Agility models from the Business Agility institute. They may not always be fully prepared for market acceleration, lack a comprehensive view of the AI (Accelerated Innovation) situation, or struggle with constant business model disruption. They are not based on Shared Progress.
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/agile-evolutions-tq0mzm4n5r
+
+        Def: Atom model is a framework in enterprise agility. The atom model has 4 quadrants. top left: increase revenue (increasing sales to new or existing customers. delighting or disrupting to increase market share and size), top right: protect revenue (improvements and incremental innovation to sustain current market share and revenue figures), bottom-left: reduce costs (costs that you are currently incurring that can be reduced. more efficient, improved margin or contribution), bottom-right: avoid-costs (improvements to sustain current cost base. costs you are not incurring but may do in the future). 
+        atom model is çused to align a company with a new situation. all decisions in the quadrants need to maintain or increase organizational health. it can be used by leaders, product owners, or others to make sustainable decisions and build shared progress.
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/atom-model-qxkkkws0b6
+
+        Def: Social Agility means connecting well with other employees or customers in rapidly changing environments, thereby achieving highly collective performance. The two main components of Social Agility are Enterprise Social Density and Enterprise Social Visibility. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/social-agility-0zt7w6mfm7
+
+        Def: Mental Agility means reframing challenges to find new solutions, even during stressful times.  If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/mental-agility-ngs3fcjx0d
+
+        Def: Outcomes agility means delivering results even during turbulent times to respond to changing market conditions. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/outcomes-agility-mgd5b772qm
+
+
+        Def: Technical Agility means changing software as quickly, cheaply (economically), and securely as possible. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/technical-agility-1d1gwt74sb
+
+        Def: Mobility or Strategic Mobility in Enterprise Agility is the organizational capacity to shift directions, align capabilities, and adapt to new understanding or events. It involves navigating uncertainty and change by proactively implementing countermeasures and leveraging mobility for competitive advantage. It is a critical skill for leaders.
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/mobility-hb00s2vhvw
+
+        Def: The Science of Accelerated Change has 3 pillars:
+        1. Behavioral Science
+        2. Strategic Mobility (or Mobility)
+        3. Neuroscience of Change.
+        The science of accelerated change help organizations understand more on how to deal with disruption and high uncertainty and the threats of AI.
+
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/sections-of-the-science-of-accelerated-change-gkklgnhslv
+
+        Def Exponential Markets: They are unpredictable and uncertain. Disruptive innovations can gain traction rapidly, new competitors can arise anywhere, and consumer expectations can change overnight. This makes long-term planning and roadmaps pointless. Strategies go out the window as soon as market conditions change. Leaders can't rely on experience - the past is no predictor of the future. In this environment, organizations need to embrace unpredictability. Rather than resisting or ignoring change, they must learn to sense, adapt and respond quickly. Mental agility and resilience are critical. Enterprise agility cultivates this mindset: The Enterprise Agility Way of Thinking (EAWT). It provides models and frameworks to continuously scan the environment, sense emerging trends and signals, and course-correct in real-time. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/exponential-markets-th1nz35bds
+
+        Def: Collective Capabilities is an Enterprise Agility person-centered organizational model that enables individuals to apply their skills where they're needed most, with a high degree of mobility and flexibility. This has to be done with low stress levels for the person. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/collective-capabilities-w6kp95gkmq
+
+        """
+    elif iteration == 2:
+        return f"""
+        Language to be used : {{language}}
+        Explain the ATOM Model and why it would be used for this case. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles. Provide the link to the atom model to the person: https://enterpriseagility.community/atom-model-qxkkkws0b6 
+        """
+    elif iteration == 3:
+        return f"""
+        Language to be used : {{language}}
+        We will use the atom model to do this strategic analysis. Lets focus on the 1st quadrant:  Increase Revenue. Apply for this and the following prompts the principles of the TriValue Company Model in your responses. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations.
+        Analyze how the company can increase revenue within this scenario, focusing on strategies to delight or disrupt the market and expand market share. Add some examples and actionable ideas to improve the proposed situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 4:
+        return f"""
+        Language to be used : {{language}}
+        Second Quadrant: Protect Revenue.
+        Discuss the steps needed to protect current revenue, including incremental innovations or improvements to sustain market share based on the initial situation. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 5:
+        return f"""
+        Language to be used : {{language}}
+        Third quadrant: Reduce Costs.
+        Prompt: Identify opportunities for cost reduction  based on the initial situation. What efficiencies can be implemented to improve margins. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative. Add title the most suitable title or titles.
+        """
+    elif iteration == 6:
+        return f"""
+        Language to be used : {{language}}
+        Four quadrant: Avoid Costs.
+        Evaluate potential future costs that the company can avoid based on the initial situation. What actions should be taken now to prevent these costs from materializing. Focus on the narrative and minimize the use of bullet points and focus on the narrative. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation. Add title the most suitable title or titles.
+
+        """
+    elif iteration == 7:
+        return f"""
+        Language to be used : {{language}}
+        Prioritization Equalization:
+        Present the prioritized list of actions, balancing the need to address blockers, seize opportunities, and manage risks based on the initial situation. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Add some examples and actionable ideas to improve the proposed situation. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. How were these priorities determined. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 8:
+        return f"""
+        Language to be used : {{language}}
+        Risk Management (Aversion + Appetite):
+        Detail the risk factors associated with the prioritized actions based on the initial situation. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. How will the company manage these risks, considering its level of risk aversion or appetite. Focus on the narrative and minimize the use of bullet points and focus on the narrative. Add some examples and actionable ideas to improve the proposed situation. Add title the most suitable title or titles.
+        """
+        
+    elif iteration == 9:
+        return f"""
+        Language to be used : {{language}}
+        Capacity or Capabilities Management:
+        Assess the company’s capacity to implement the prioritized strategies based on the initial situation. Are there sufficient resources and capabilities to execute the plan effectively. Focus on the narrative and minimize the use of bullet points and focus on the narrative. Add some examples and actionable ideas to improve the proposed situation. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Add title the most suitable title or titles.
+        """
+        
+    elif iteration == 10:
+        return f"""
+        Language to be used : {{language}}
+        Psychological aspects to keep high organizational health when taking any of the previous actions or ideas:
+        Assess the company’s needed psychological aspects to achieve this in a healthy way based on the initial situation and the previously mentioned ideas. You can also mention some of the previous ideas. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Focus on the narrative and minimize the use of bullet points and focus on the narrative. Add some examples and actionable ideas to improve the proposed situation. Add title the most suitable title or titles.
+        """
+    
+    elif iteration == 11:
+        return f"""
+        Language to be used : {{language}}
+        Reassess the initial situation and critically examine the alternative ideas presented. Develop a set of final strategic considerations, emphasizing the future handling of similar situations but make sure you connect these ideas with the initial situation. Ensure the response indirectly reflects the TriValue Company model (link with more information to the TriValue Company Model, or Modelo de Empresa Trivalor in Spanish: https://enterpriseagility.community/trivalue-company-model-bp7j59d0d4 ), balancing customer value, company value, and workforce well-being. 
+        Apply the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations.
+
+        Prioritize a narrative-driven format rather than bullet points.
+        If you think that writing about something other than the suggested topic for the closing will add more value or be more relevant, please do so. What are the next steps for the company to align itself with the new situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title or titles.
+        """
+    
+    # Add more templates for other iterations as needed
+    else:
+        return f"""
+        Default template for iteration {iteration}: Add your own text here.
+        """
+
+
+#def process_user_inpu(combined_input, chat_history):
+    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+    client = Together(api_key=TOGETHER_API_KEY)
+    
+    #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    max_tokens = 8192
+
+    # This is the OpenAI chat completion client call
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "user", "content": combined_input},
+            {"role": "system", "content": chat_history}
+        ],
+        max_tokens=max_tokens,
+        temperature=0.4,
+        top_p=0.9,
+        top_k=50,
+        repetition_penalty=1,
+        stop=["<|eot_id|>", "<|eom_id|>"],
+        stream=True
+    )
+
+    # Process the streamed response
+    generated_text = ""
+    
+    for chunk in response:
+        if len(chunk.choices) > 0:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                if chunk.choices[0].delta.content:
+                    generated_text += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                if chunk.choices[0].message.content:
+                    generated_text += chunk.choices[0].message.content
+        else:
+            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+    # Return the generated text back to process_prompts1
+    return generated_text
+
+def process_user_input_1(combined_input, chat_history, iteration, language):
+    
+
+    # Check if we are on iteration 2 (DeepInfra model)
+    if iteration == 1:
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        
+        #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
+        max_tokens = 8192
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": combined_input},
+                {"role": "system", "content": chat_history}
+            ],
+            max_tokens=max_tokens,
+            temperature=0.4,
+            top_p=0.9,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        # Process the streamed response
+        generated_text = ""
+        
+        for chunk in response:
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    if chunk.choices[0].message.content:
+                        generated_text += chunk.choices[0].message.content
+            else:
+                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+        return generated_text  # Return default OpenAI result
+
+
+    else:
+        # Use default OpenAI model for other iterations
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        
+        #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        max_tokens = 8192
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": combined_input},
+                {"role": "system", "content": chat_history}
+            ],
+            max_tokens=max_tokens,
+            temperature=0.4,
+            top_p=0.9,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        # Process the streamed response
+        generated_text = ""
+        
+        for chunk in response:
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    if chunk.choices[0].message.content:
+                        generated_text += chunk.choices[0].message.content
+            else:
+                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+        return generated_text  # Return default OpenAI result
+
+
+@shared_task(bind=True)
+def process_prompts_2(self, final_text, language):
+    # Maintain the chat history and accumulated answers
+    chat_history = []
+    accumulated_answers = []  # List to accumulate answers for all iterations
+
+    for i in range(9):  # Assuming there are 11 iterations
+        text_template = get_text_template_2(i)  # A function to return the corresponding template
+        user_input = text_template.format(final_text=final_text, language=language)
+        
+        if i == 2:
+            # Add a single-line summary for iteration 2 instead of the full user input
+            chat_history.append({"role": "user", "text": "Please, specify in the next answer the most suitable model or framework to solve this situation."})
+        else:
+            # Append user input to chat history for other iterations
+            chat_history.append({"role": "user", "text": user_input})
+
+        # Render the chat history string using the template
+        chat_history_str = render_chat_history(chat_history)
+
+        # Call the process_user_input function with the iteration number
+        answer = process_user_input_2(user_input, chat_history_str, i, language)
+
+        # Append the bot's answer to the chat history
+        chat_history.append({"role": "bot", "text": answer})
+
+        # Accumulate the answers for this iteration
+        accumulated_answers.append({ "answer": answer,"iteration": i+1})
+
+        # Log the accumulated answers for debugging
+        logger.info(f"Accumulated Answers so far: {accumulated_answers}")
+
+    # Final return (log before returning)
+    logger.info(f"Final accumulated_answers: {accumulated_answers}")
+    logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
+
+    return {
+        'final_text': final_text,
+        'accumulated_answers': accumulated_answers,  # List of all iterations and responses
+        'chat_history': render_chat_history(chat_history)  # Full chat history
+    }
+
+
+def get_text_template_2(iteration):
     if iteration == 0:
         return f"""
         Language to be used : {{language}}
@@ -623,11 +959,326 @@ def get_text_template(iteration):
     # Return the generated text back to process_prompts1
     return generated_text
 
-def process_user_input(combined_input, chat_history, iteration, language):
+def process_user_input_2(combined_input, chat_history, iteration, language):
     
 
     # Check if we are on iteration 2 (DeepInfra model)
     if iteration == 2:
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        
+        #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
+        max_tokens = 8192
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": combined_input},
+                {"role": "system", "content": chat_history}
+            ],
+            max_tokens=max_tokens,
+            temperature=0.4,
+            top_p=0.9,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        # Process the streamed response
+        generated_text = ""
+        
+        for chunk in response:
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    if chunk.choices[0].message.content:
+                        generated_text += chunk.choices[0].message.content
+            else:
+                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+        return generated_text  # Return default OpenAI result
+
+
+    else:
+        # Use default OpenAI model for other iterations
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        
+        #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        max_tokens = 8192
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": combined_input},
+                {"role": "system", "content": chat_history}
+            ],
+            max_tokens=max_tokens,
+            temperature=0.4,
+            top_p=0.9,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        # Process the streamed response
+        generated_text = ""
+        
+        for chunk in response:
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    if chunk.choices[0].message.content:
+                        generated_text += chunk.choices[0].message.content
+            else:
+                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+        return generated_text  # Return default OpenAI result
+
+
+@shared_task(bind=True)
+def process_prompts_3(self, final_text, language):
+    # Maintain the chat history and accumulated answers
+    chat_history = []
+    accumulated_answers = []  # List to accumulate answers for all iterations
+
+    for i in range(8):  # Assuming there are 11 iterations
+        text_template = get_text_template_3(i)  # A function to return the corresponding template
+        user_input = text_template.format(final_text=final_text, language=language)
+        
+        if i == 1:
+            # Add a single-line summary for iteration 2 instead of the full user input
+            chat_history.append({"role": "user", "text": "Please, specify in the next answer the most suitable model or framework to solve this situation."})
+        else:
+            # Append user input to chat history for other iterations
+            chat_history.append({"role": "user", "text": user_input})
+
+        # Render the chat history string using the template
+        chat_history_str = render_chat_history(chat_history)
+
+        # Call the process_user_input function with the iteration number
+        answer = process_user_input_3(user_input, chat_history_str, i, language)
+
+        # Append the bot's answer to the chat history
+        chat_history.append({"role": "bot", "text": answer})
+
+        # Accumulate the answers for this iteration
+        accumulated_answers.append({ "answer": answer,"iteration": i+1})
+
+        # Log the accumulated answers for debugging
+        logger.info(f"Accumulated Answers so far: {accumulated_answers}")
+
+    # Final return (log before returning)
+    logger.info(f"Final accumulated_answers: {accumulated_answers}")
+    logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
+
+    return {
+        'final_text': final_text,
+        'accumulated_answers': accumulated_answers,  # List of all iterations and responses
+        'chat_history': render_chat_history(chat_history)  # Full chat history
+    }
+
+
+
+
+def get_text_template_3(iteration):
+    if iteration == 0:
+        return f"""
+        Language to be used : {{language}}
+        Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. You are a very strategic person and the report will be read mainly by Product Owners, so you can use their language. It can also be read by Leaders, CEOs or Managers. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Strategic Insights document) on the situation. The situation below is happening these days. The situation is happening in our company.
+
+        Follow these rules:
+
+        1. Sentence Structure: Use a mix of sentence lengths.
+        Short sentences: To emphasize points.
+        Longer sentences: To explain or elaborate.
+
+        2. Vocabulary: Use clear and straightforward language.
+
+        Avoid: Technical jargon or complex vocabulary unless necessary.
+        Use: Everyday language that is easy to understand.
+
+        3. All the following text is happening in our company.
+
+        4. Provide just the text, no what it was improved.
+
+        Remember this will be part of a report written by Jhon.
+
+        Text to rewrite (keep a similar writing style but improved). Add a title for this Strategic Insight: 
+
+        {{final_text}}
+
+        Format:
+        Title
+        Description
+        """
+    elif iteration == 1:
+        return f"""
+        Language to be used : {{language}}
+        Apply for this and the following prompts the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. 
+        OBJECTIVE: List the 6 topics important to evaluate from the Psychological aspects and organizational health needed to know to improve the specific sitation initially provided.
+        We will also include in these 6 topics the pillar of Behavior from the science of accelerated change. We will also include in these 6 topics the pillar of Neuroscience of change from the science of accelerated change.
+        We will also include in these 6 topics the pillar of Startegic Mobility from the science of accelerated change.
+
+        Focus on the narrative and minimize the use of bullet points and focus on the narrative. Add title or titles.
+        Also consider for this and the next prompts if any of these definitions are of any help:
+        ----------
+        Some Definitions that might be useful for you in this or the following prompts to be used:
+
+        Always Ready outcome: always-ready outcome in enterprise agility means to cultivate a culture and people who are continuously prepared for disruption and change. it focuses on assessing situations, understanding what is happening, and having the collective capabilities and technologies available to gain insights into unexpected emerging realities. a culture of constant readiness fosters a proactive mindset where team members work together to reevaluate situations, analyze conditions from multiple perspectives, and constantly update their knowledge. this allows them to better deal with their emotions, remain proactive, and handle events with less stress. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/always-ready-outcome-c72rzcq0vh
+
+        always-responsive outcome in enterprise agility means to have the appropriate processes, mindset, innovation, and partnerships to consistently offer relevant products or services to the market while minimizing stress on organizational structures and employee wellbeing. achieving this state is integral to the enterprise agility way of thinking (eawt), applying to all functions, not just software. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/always-responsive-outcome-04bmxbd9pv
+
+
+        Always-innovative outcome definition in enterprise agility means fostering a culture and mindset of constant innovation. This approach means reimagining offerings, business models, partnerships, and strategies to sustainably generate lasting value and meaning. Always-Innovative companies embrace different perspectives and diversity of thought to gain new insights. This includes involving external partners to bring new perspectives, knowledge, and information. It uses a bimodal approach and techniques such as questioning assumptions, Shared Progress Bets (SPBs), and Shared Progress Stock Exchange. Keep in mind that the concepts and ideas underlying the Always-Innovative outcome are rooted in the principles of Future Thinking. Read Chapter 9 to know more about it. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/always-innovative-outcome-6vsnmm25g9
+
+
+        Def: mobilizing purpose in enterprise agility is a reason for which something is done or for which something exists, that makes the person feel the compelling need to belong to the group and to mobilize. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/mobilizing-purpose-tpp3t728g1
+        
+
+
+        Def: neurodiversity in enterprise agility means the diversity of human minds, and the way people think, focus, learn, process and link information, as well as their distinctive way of connecting with the world. (enterprise agility university, 2022). If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/neurodiversity-ngtg7wlr9d
+
+        Def: organizational health in enterprise agility is psychological safety plus the creation of business value in perpetuity. In Enterprise Agility, business value means value for the customer, company, and workforce wellbeing (enterprise Agility university and leading exponential change, 2018). If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/organizational-health-x1ng3n9z4f
+
+
+        Def: adaptive trust in enterprise agility is the ability to retain confidence even after breaking previous commitments. during rapid change, leaders inevitably must abandon plans, strategies, or promises that no longer serve the needs of the situation. but failing to deliver on past assurances can seriously damage trust in the organization and willingness to follow new directions. with adaptive trust, leaders openly acknowledge broken promises, take ownership of the decision to change course, and involve others in creating better solutions. though promises may be broken, trust and commitment to mission-driven change endures. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/adaptive-trust-wv5lgtgq6q
+
+        Def: enterprise agility definition is: holistic organizational, social, and business model that enables your company to adapt to accelerated change and exponential market conditions while prioritizing workforce wellbeing, customer needs, and overall company value. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/what-is-enterprise-agility-19tdx0gst4
+
+        Def: Classic Agility: It refers to the original principles and practices from the Agile Manifesto 2001. It's a mindset and principles emphasizing adaptability, collaboration, and customer value in software development. The heart of ClassicAgility lies in its customer-focused nature. It prioritizes delivering value to customers by continuously seeking feedback, iterating on solutions, and adapting to changing requirements. While valuable, it's important to note that Classic Agility may have limitations when addressing the scale and complexity of today's challenges. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/classic-agility-cg7zc4b1p0
+
+
+        Def: Agile Evolutions: A mindset and ways of working that extends the principles of Classic Agility beyond software development. It enables organizations to be more adaptive and resilient to change in their ways of working. They recognize customer value and experience as the center of the organization's universe. We can find here frameworks such as the SAFe Framework or the Business Agility models from the Business Agility institute. They may not always be fully prepared for market acceleration, lack a comprehensive view of the AI (Accelerated Innovation) situation, or struggle with constant business model disruption. They are not based on Shared Progress.
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/agile-evolutions-tq0mzm4n5r
+
+        Def: Atom model is a framework in enterprise agility. The atom model has 4 quadrants. top left: increase revenue (increasing sales to new or existing customers. delighting or disrupting to increase market share and size), top right: protect revenue (improvements and incremental innovation to sustain current market share and revenue figures), bottom-left: reduce costs (costs that you are currently incurring that can be reduced. more efficient, improved margin or contribution), bottom-right: avoid-costs (improvements to sustain current cost base. costs you are not incurring but may do in the future). 
+        atom model is çused to align a company with a new situation. all decisions in the quadrants need to maintain or increase organizational health. it can be used by leaders, product owners, or others to make sustainable decisions and build shared progress.
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/atom-model-qxkkkws0b6
+
+        Def: Social Agility means connecting well with other employees or customers in rapidly changing environments, thereby achieving highly collective performance. The two main components of Social Agility are Enterprise Social Density and Enterprise Social Visibility. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/social-agility-0zt7w6mfm7
+
+        Def: Mental Agility means reframing challenges to find new solutions, even during stressful times.  If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/mental-agility-ngs3fcjx0d
+
+        Def: Outcomes agility means delivering results even during turbulent times to respond to changing market conditions. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/outcomes-agility-mgd5b772qm
+
+
+        Def: Technical Agility means changing software as quickly, cheaply (economically), and securely as possible. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/technical-agility-1d1gwt74sb
+
+        Def: Mobility or Strategic Mobility in Enterprise Agility is the organizational capacity to shift directions, align capabilities, and adapt to new understanding or events. It involves navigating uncertainty and change by proactively implementing countermeasures and leveraging mobility for competitive advantage. It is a critical skill for leaders.
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/mobility-hb00s2vhvw
+
+        Def: The Science of Accelerated Change has 3 pillars:
+        1. Behavioral Science
+        2. Strategic Mobility (or Mobility)
+        3. Neuroscience of Change.
+        The science of accelerated change help organizations understand more on how to deal with disruption and high uncertainty and the threats of AI.
+
+        If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/sections-of-the-science-of-accelerated-change-gkklgnhslv
+
+        Def Exponential Markets: They are unpredictable and uncertain. Disruptive innovations can gain traction rapidly, new competitors can arise anywhere, and consumer expectations can change overnight. This makes long-term planning and roadmaps pointless. Strategies go out the window as soon as market conditions change. Leaders can't rely on experience - the past is no predictor of the future. In this environment, organizations need to embrace unpredictability. Rather than resisting or ignoring change, they must learn to sense, adapt and respond quickly. Mental agility and resilience are critical. Enterprise agility cultivates this mindset: The Enterprise Agility Way of Thinking (EAWT). It provides models and frameworks to continuously scan the environment, sense emerging trends and signals, and course-correct in real-time. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/exponential-markets-th1nz35bds
+
+        Def: Collective Capabilities is an Enterprise Agility person-centered organizational model that enables individuals to apply their skills where they're needed most, with a high degree of mobility and flexibility. This has to be done with low stress levels for the person. If this term or idea is used, please add the URL in brackets so the user can find more information about it:https://enterpriseagility.community/collective-capabilities-w6kp95gkmq
+
+        """
+    elif iteration == 2:
+        return f"""
+        Language to be used : {{language}}
+        Write about the point 1 considering the proposed specific situation or problem. Always start it in a different way than the previous point by doing a reframing. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Always use a different technique for this first line than the previous point. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation and explain how they connect to the proposed initial situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 3:
+        return f"""
+        Language to be used : {{language}}
+        Write about the point 2 considering the proposed specific situation or problem. Always start it in a different way than the previous point by doing a reframing. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Always use a different technique for this first line than the previous point. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation and explain how they connect to the proposed initial situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 4:
+        return f"""
+        Language to be used : {{language}}
+        Write about the point 3 considering the proposed specific situation or problem. Always start it in a different way than the previous point by doing a reframing. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Always use a different technique for this first line than the previous point. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation and explain how they connect to the proposed initial situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 5:
+        return f"""
+        Language to be used : {{language}}
+        Write about the point 4 considering the proposed specific situation or problem. Always start it in a different way than the previous point by doing a reframing. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Always use a different technique for this first line than the previous point. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation and explain how they connect to the proposed initial situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 6:
+        return f"""
+        Language to be used : {{language}}
+        Write about the point 5 considering the proposed specific situation or problem. Always start it in a different way than the previous point by doing a reframing. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Always use a different technique for this first line than the previous point. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation and explain how they connect to the proposed initial situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 7:
+        return f"""
+        Language to be used : {{language}}
+        Write about the point 6 considering the proposed specific situation or problem. Always start it in a different way than the previous point by doing a reframing. The 1st line after the title, use different techniques such as questions, ideas, reframing, etc for this initial first line. Always use a different technique for this first line than the previous point. Apply for this prompt if needed the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations. Add some examples and actionable ideas to improve the proposed situation and explain how they connect to the proposed initial situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title the most suitable title or titles.
+        """
+    elif iteration == 8:
+        return f"""
+        Language to be used : {{language}}
+        Reassess the initial situation and critically examine the alternative ideas presented on th 6 points evaluated and why are needed. Develop a set of final strategic considerations, emphasizing the future handling of similar situations but make sure you connect these ideas with the initial situation. Ensure the response indirectly reflects the TriValue Company model (link with more information to the TriValue Company Model, or Modelo de Empresa Trivalor in Spanish: https://enterpriseagility.community/trivalue-company-model-bp7j59d0d4 ), balancing customer value, company value, and workforce well-being. 
+        Apply the principles of the TriValue Company Model in your responses. You don’t need to mention the model explicitly; instead, subtly incorporate its guidelines—focusing on value for the customer, value for the company, and value for workforce well-being—into your explanations.
+
+        Prioritize a narrative-driven format rather than bullet points. If you think that writing about something other than the suggested topic for the closing will add more value or be more relevant, please do so. What are the next steps for the company to align itself with the new situation. Focus on the narrative and minimize the use of bullet points and focus on the narrative.  Add title or titles.
+        """
+    
+    # Add more templates for other iterations as needed
+    else:
+        return f"""
+        Default template for iteration {iteration}: Add your own text here.
+        """
+
+
+#def process_user_inpu(combined_input, chat_history):
+    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+    client = Together(api_key=TOGETHER_API_KEY)
+    
+    #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    max_tokens = 8192
+
+    # This is the OpenAI chat completion client call
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "user", "content": combined_input},
+            {"role": "system", "content": chat_history}
+        ],
+        max_tokens=max_tokens,
+        temperature=0.4,
+        top_p=0.9,
+        top_k=50,
+        repetition_penalty=1,
+        stop=["<|eot_id|>", "<|eom_id|>"],
+        stream=True
+    )
+
+    # Process the streamed response
+    generated_text = ""
+    
+    for chunk in response:
+        if len(chunk.choices) > 0:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                if chunk.choices[0].delta.content:
+                    generated_text += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                if chunk.choices[0].message.content:
+                    generated_text += chunk.choices[0].message.content
+        else:
+            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+    # Return the generated text back to process_prompts1
+    return generated_text
+
+def process_user_input_3(combined_input, chat_history, iteration, language):
+    
+
+    # Check if we are on iteration 2 (DeepInfra model)
+    if iteration == 1:
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
         
