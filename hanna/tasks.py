@@ -49,9 +49,15 @@ def process_prompts1A(self, final_text, language):
     for i in range(9):  # Assuming there are 11 iterations
         text_template = get_text_template(i)  # A function to return the corresponding template
         user_input = text_template.format(final_text=final_text, language=language)
+        if i == 2:
+            # Add a single-line summary for iteration 2 instead of the full user input
+            chat_history.append({"role": "user", "text": "Please, specify in the next answer the most suitable model or framework to solve this situation."})
+        else:
+            # Append user input to chat history for other iterations
+            chat_history.append({"role": "user", "text": user_input})
 
         # Append user input to chat history
-        chat_history.append({"role": "user", "text": user_input})
+        #chat_history.append({"role": "user", "text": user_input})
 
         # Render the chat history string using the template
         chat_history_str = render_chat_history(chat_history)
