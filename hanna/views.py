@@ -879,10 +879,12 @@ def get_task_status1(request, task_id):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         elif result.state == 'SUCCESS':
+            # Include accumulated_answers in the final response when task is successful
             return JsonResponse({
                 'task_id': task_id,
                 'status': result.status,
                 'final_text': result.result['final_text'],
+                'accumulated_answers': result.result.get('accumulated_answers', []),  # Add this line
                 'chat_history': result.result.get('chat_history')  # Include chat history in success response
             })
 
@@ -905,6 +907,7 @@ def get_task_status1(request, task_id):
     except Exception as e:
         logger.error(f"Error fetching task status: {e}")
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 
