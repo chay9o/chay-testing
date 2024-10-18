@@ -45,19 +45,20 @@ def render_chat_history(messages):
 def process_prompts1A(self, final_text, language):
     # Maintain the chat history
     chat_history = []
+    
+    # Initialize a variable to store concatenated responses across iterations
+    concatenated_responses = ""
 
     for i in range(9):  # Assuming there are 11 iterations
         text_template = get_text_template(i)  # A function to return the corresponding template
         user_input = text_template.format(final_text=final_text, language=language)
+        
         if i == 2:
             # Add a single-line summary for iteration 2 instead of the full user input
-            chat_history.append({"role": "user", "text": "Please, specify in the next answer the most suitable model or framework to solve this situation."})
+            chat_history.append({"role": "user", "text": "Please, specify in the next answer the most suitable model or framework to solve this situation."})
         else:
             # Append user input to chat history for other iterations
             chat_history.append({"role": "user", "text": user_input})
-
-        # Append user input to chat history
-        #chat_history.append({"role": "user", "text": user_input})
 
         # Render the chat history string using the template
         chat_history_str = render_chat_history(chat_history)
@@ -68,14 +69,17 @@ def process_prompts1A(self, final_text, language):
         # Append the bot's answer to the chat history
         chat_history.append({"role": "bot", "text": answer})
 
+        # Concatenate the current answer to the previous responses
+        concatenated_responses += f"Iteration {i+1} Response: {answer}\n"
+
         # Update task state to send the result of the current iteration
         self.update_state(state='PROGRESS', meta={'iteration': i+1, 'user_input': user_input, 'answer': answer, 'chat_history': chat_history_str})
-
 
         # Log the answer for debugging
         logger.info(f"Iteration {i+1}: {user_input}, Answer: {answer}")
 
-    return {'final_text': final_text, 'chat_history': render_chat_history(chat_history)}  # Return final text and chat history
+    # Return the final concatenated response and chat history to views.py after all iterations
+    return {'final_text': final_text, 'chat_history': render_chat_history(chat_history), 'final_response': concatenated_responses}
 
 
 
