@@ -70,10 +70,13 @@ def process_prompts1A(self, final_text, language):
         # Accumulate the answers for this iteration
         accumulated_answers.append({"iteration": i+1, "answer": answer})
 
-        # Log the answer for debugging
-        logger.info(f"Iteration {i+1}: {user_input}, Answer: {answer}")
+        # Log the accumulated answers for debugging
+        logger.info(f"Accumulated Answers so far: {accumulated_answers}")
 
-    # Return the final text and the accumulated answers after all iterations
+    # Final return (log before returning)
+    logger.info(f"Final accumulated_answers: {accumulated_answers}")
+    logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
+
     return {
         'final_text': final_text,
         'accumulated_answers': accumulated_answers,  # List of all iterations and responses
