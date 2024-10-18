@@ -619,31 +619,43 @@ def process_user_input(combined_input, chat_history, iteration, language):
 
     # Check if we are on iteration 2 (DeepInfra model)
     if iteration == 2:
-        # Initialize the DeepInfra model (as per your code)
-        llm = ChatOpenAI(
-            openai_api_key=settings.OPENAI_API_KEY,
-            model_name=settings.GPT_MODEL_3,  # Change to the appropriate model
-            openai_api_base=settings.BASE_URL,
-            max_tokens=4096,
-            streaming=True,
-            top_p=0.9
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        
+        #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        model_name = "meta-llama/Meta-Llama-3.1-405B-Instruct"
+        max_tokens = 8192
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": combined_input},
+                {"role": "system", "content": chat_history}
+            ],
+            max_tokens=max_tokens,
+            temperature=0.4,
+            top_p=0.9,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
         )
-        
-        # Prepare the message format for DeepInfra
-        messages = f"Language: {language}\n{chat_history}<INST>\n{combined_input.strip()}\n</INST>\n"
-        
-        # Get response from the DeepInfra model
-        response = llm.stream(messages)
+
+        # Process the streamed response
         generated_text = ""
         
-        # Process the streamed response
         for chunk in response:
-            if hasattr(chunk, 'content'):
-                generated_text += chunk.content
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    if chunk.choices[0].message.content:
+                        generated_text += chunk.choices[0].message.content
             else:
-                generated_text += str(chunk)
-        
-        return generated_text  # Return DeepInfra result
+                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
+
+        return generated_text  # Return default OpenAI result
+
 
     else:
         # Use default OpenAI model for other iterations
