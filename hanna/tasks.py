@@ -68,7 +68,7 @@ def process_prompts1A(self, final_text, language):
         chat_history.append({"role": "bot", "text": answer})
 
         # Accumulate the answers for this iteration
-        accumulated_answers.append({"iteration": i+1, "answer": answer})
+        accumulated_answers.append({ "answer": answer,"iteration": i+1})
 
         # Log the accumulated answers for debugging
         logger.info(f"Accumulated Answers so far: {accumulated_answers}")
