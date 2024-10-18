@@ -881,7 +881,7 @@ def get_task_status1(request, task_id):
         elif result.state == 'SUCCESS':
             # Concatenate all accumulated answers into a single text without iteration numbers or subheadings
             accumulated_answers = result.result.get('accumulated_answers', [])
-            concatenated_answers = " \n ".join([item['answer'] for item in accumulated_answers])
+            concatenated_answers = " \n\n ".join([item['answer'] for item in accumulated_answers])
 
             return JsonResponse({
                 'task_id': task_id,
