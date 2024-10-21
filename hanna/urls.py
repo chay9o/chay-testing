@@ -31,6 +31,7 @@ urlpatterns = [
     path('add-object/file/', views.add_vectors_file),
     path('add-object/all/', views.add_vectors_all),
     path('chat-summary/', views.chat_summary),
+    path('chat-view/', views.chat_view),
 
     path('update-object/text/', views.update_chunk_text),
     path('update-object/file/', views.update_chunk_file),

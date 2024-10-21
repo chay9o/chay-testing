@@ -88,7 +88,7 @@ def get_text_template_1(iteration):
     if iteration == 0:
         return f"""
         Language to be used : {{language}}
-        Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. You are a very strategic person and the report will be read mainly by Product Owners, so you can use their language. It can also be read by Leaders, CEOs or Managers. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Strategic Insights document) on the situation. The situation below is happening these days. The situation is happening in our company.
+        Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. You are a very strategic person and the report will be read mainly by Product Owners, so you can use their language. It can also be read by Leaders, CEOs or Managers. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Deep Analysis document) on the situation. The situation below is happening these days. The situation is happening in our company.
 
         Follow these rules:
 
@@ -107,7 +107,7 @@ def get_text_template_1(iteration):
 
         Rememeber this will be part of a report written by Jhon.
 
-        Text to rewrite (keep a similar writting style but improved). Add a title for this Strategic Insight:  
+        Text to rewrite (keep a similar writting style but improved). Add a title for this Deep Analysis:  
 
         {{final_text}}
 
@@ -427,7 +427,7 @@ def get_text_template_2(iteration):
         return f"""
         Language to be used : {{language}}
         Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. 
-        You are a very strategic person. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Strategic Insights document) on the situation. 
+        You are a very strategic person. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Deep Analysis document) on the situation. 
         The situation below is happening these days. The situation is happening in our company.
 
         Follow these rules:
@@ -446,7 +446,7 @@ def get_text_template_2(iteration):
 
         Remember this will be part of a report written by John.
 
-        Text to rewrite (keep a similar writing style but improved). Add a title for this Strategic Insight: 
+        Text to rewrite (keep a similar writing style but improved). Add a title for this Deep Analysis: 
         {{final_text}}
 
         Format:
@@ -1091,7 +1091,7 @@ def get_text_template_3(iteration):
     if iteration == 0:
         return f"""
         Language to be used : {{language}}
-        Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. You are a very strategic person and the report will be read mainly by Product Owners, so you can use their language. It can also be read by Leaders, CEOs or Managers. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Strategic Insights document) on the situation. The situation below is happening these days. The situation is happening in our company.
+        Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. You are a very strategic person and the report will be read mainly by Product Owners, so you can use their language. It can also be read by Leaders, CEOs or Managers. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Deep Analysis document) on the situation. The situation below is happening these days. The situation is happening in our company.
 
         Follow these rules:
 
@@ -1110,7 +1110,7 @@ def get_text_template_3(iteration):
 
         Remember this will be part of a report written by Jhon.
 
-        Text to rewrite (keep a similar writing style but improved). Add a title for this Strategic Insight: 
+        Text to rewrite (keep a similar writing style but improved). Add a title for this Deep Analysis: 
 
         {{final_text}}
 

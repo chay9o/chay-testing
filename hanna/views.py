@@ -13,6 +13,7 @@ from .retriever import LLMHybridRetriever
 from .master_vectors.MV import MasterVectors
 from .chunker import ChunkText
 from dotenv import load_dotenv
+from langchain.chains.llm import LLMChain
 import json
 from .credentials import ClientCredentials
 from .backup import AWSBackup
@@ -31,6 +32,117 @@ load_dotenv()
 
 
 logger = logging.getLogger(__name__)
+
+
+
+
+logging.basicConfig(level=logging.INFO)
+
+job_done = "STOP"
+
+def log_info_async(message):
+    logger.info(message)
+
+
+if not settings.configured:
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'main.settings')
+load_dotenv()
+
+# Load prompt templates
+with open("system-prompt.txt", "r") as file:
+    SYSPROMPT = file.read()
+
+with open("chatnote-prompt.txt", "r") as file:
+    CHATNOTE_PROMPT = file.read()
+
+prompt = PromptTemplate.from_template(SYSPROMPT)
+chat_note_prompt = PromptTemplate.from_template(CHATNOTE_PROMPT)
+
+llm = ChatOpenAI(
+    openai_api_key=settings.OPENAI_API_KEY,
+    model_name=settings.GPT_MODEL_2,
+    openai_api_base=settings.BASE_URL,
+    max_tokens=1000
+)
+
+mv = MasterVectors()
+slice_document = ChunkText()
+chat_template = (
+    "{{ bos_token }}{% for message in messages %}"
+    "{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}{% elif message['role'] == 'bot' %}{{ message['text'] + eos_token}}{% endif %}{% endfor %}"
+)
+
+@csrf_exempt
+def chat_view(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        collection = "C" + str(data['collection'])
+        query = str(data['query']).lower()
+        user_id = str(data['user_id'])
+        chat_history = data.get('chatHistory', [])
+        language = data.get('language', 'en')
+        current_date = data.get('current_date', '')
+
+        log_info_async(f"data: {data}")
+
+        # Check if collection exists
+        if not llm_hybrid.collection_exists(collection):
+            return JsonResponse({'error': 'This collection does not exist!'}, status=400)
+
+        master_vector = mv.search_master_vectors(query=query, class_="MV001")
+
+        key = llm_hybrid.important_words(query=query)
+
+        keyword_pattern = r'KEYWORD:\s*\["(.*?)"\]'
+        keyword_match = re.search(keyword_pattern, key)
+
+        if keyword_match:
+            keywords_str = keyword_match.group(1)
+            keywords_list = [keyword.strip().strip("'") for keyword in keywords_str.split(",")]
+        else:
+            keywords_list = []
+
+        if 2 <= len(keywords_list) <= 3:
+            for keyword in keywords_list:
+                r1 = mv.search_master_vectors(query=keyword, class_="MV001")
+                master_vector.extend(r1)
+
+        final_query = f"{query}, {' '.join(keywords_list)}"
+        top_master_vec = mv.reranker(query=final_query, batch=master_vector, return_type=str)
+
+        retriever = f"{top_master_vec}"
+
+        # If there's no chat history, initialize it
+        if not chat_history:
+            chat_history_str = ""
+        else:
+            template = Template(chat_template)
+            data = {
+                "bos_token": "<s>",
+                "eos_token": "</s>",
+                "messages": [
+                    {"role": msg['role'], "text": msg['text']} for msg in chat_history
+                ]
+            }
+            chat_history_str = template.render(data)
+
+        # LLMChain for generating a response
+        chain = prompt | llm
+
+        # Prepare input for LLM
+        response = chain({
+            'matching_model': retriever,
+            'question': query,
+            'username': data.get('user', 'Unknown User'),
+            'chat_history': chat_history_str,
+            'language_to_use': language,
+            'current_date': current_date,
+        })
+
+        return JsonResponse({"message": response}, status=200)
+
+    return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
+
 
 credentials = ClientCredentials()
 
