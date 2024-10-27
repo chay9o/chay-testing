@@ -22,6 +22,14 @@ from langchain_openai import ChatOpenAI
 from together import Together
 import logging
 
+@shared_task
+def send_data_to_webhook(payload):
+    webhook_url = "https://chay-testing-192912d0328c.herokuapp.com/webhook_handling"
+    try:
+        requests.post(webhook_url, json=payload, timeout=5)
+    except requests.RequestException as e:
+        print(f"Webhook error: {e}")
+
 chat_template = (
     "{{ bos_token }}{% for message in messages %}"
     "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
