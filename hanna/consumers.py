@@ -201,7 +201,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         initiative_prompt = data.get('initiativePrompt', '')
         command_stop = data.get('command_stop', False)
         
-        payload = {"query": query, "source": "HANA chatbot"}
+        payload = {"query": query,"collection":collection,"entity":entity,"current_date":current_date, "source": "HANA chatbot"}
         send_data_to_webhook.delay(payload)  # Send to Celery queue
         
         log_info_async(f"data: {data}")
