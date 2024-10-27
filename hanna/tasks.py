@@ -10,6 +10,7 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 import os
 import re
+import requests
 import psutil
 import base64
 from io import BytesIO
