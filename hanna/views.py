@@ -55,6 +55,9 @@ with open("system-prompt.txt", "r") as file:
 with open("chatnote-prompt.txt", "r") as file:
     CHATNOTE_PROMPT = file.read()
 
+with open("analytics-prompt.txt", "r") as file:
+    ANYPROMPT = file.read()
+
 prompt = PromptTemplate.from_template(SYSPROMPT)
 chat_note_prompt = PromptTemplate.from_template(CHATNOTE_PROMPT)
 
@@ -144,6 +147,44 @@ def chat_view(request):
     return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
 
 
+def classify_text_with_llm_together(query_text):
+    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+    client = Together(api_key=TOGETHER_API_KEY)
+    
+    model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+    max_tokens = 2048
+
+    # Insert the user query into the system prompt
+    prompt = f"{ANYPROMPT}\nClassify the following text:\n\n{query_text}"
+
+    # LLM response
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=max_tokens,
+        temperature=0.4,
+        top_p=0.9,
+        top_k=50,
+        repetition_penalty=1,
+        stop=["<|eot_id|>", "<|eom_id|>"],
+        stream=True
+    )
+
+    # Process the streamed response
+    generated_text = ""
+    for chunk in response:
+        if len(chunk.choices) > 0:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                if chunk.choices[0].delta.content:
+                    generated_text += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                if chunk.choices[0].message.content:
+                    generated_text += chunk.choices[0].message.content
+
+    return generated_text
+    
 @csrf_exempt
 def webhook_handler(request):
     if request.method == "POST":
@@ -153,9 +194,13 @@ def webhook_handler(request):
             source = data.get("source")
             # Perform classification or analytics logging
             print(f"Received query from {source}: {query}")
-            return JsonResponse({"status": "success"}, status=200)
+            classification_result = classify_text_with_llm_together(query)
+            print(f"classification:{classification_result}")
+            return JsonResponse({"classification": classification_result}, status=200)
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Invalid request"}, status=400)
 
 credentials = ClientCredentials()
