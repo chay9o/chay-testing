@@ -144,6 +144,20 @@ def chat_view(request):
     return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
 
 
+@csrf_exempt
+def webhook_handler(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            query = data.get("query")
+            source = data.get("source")
+            # Perform classification or analytics logging
+            print(f"Received query from {source}: {query}")
+            return JsonResponse({"status": "success"}, status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
 credentials = ClientCredentials()
 
 awsb = AWSBackup(bucket_name=settings.FILE_BUCKET_NAME)
