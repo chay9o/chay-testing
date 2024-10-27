@@ -198,6 +198,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         company_prompt = data.get('companyPrompt', '')
         initiative_prompt = data.get('initiativePrompt', '')
         command_stop = data.get('command_stop', False)
+        webhook_url = "https://chay-testing-192912d0328c.herokuapp.com/webhook_handler"
+        payload = {"query": user_query, "source": "HANA chatbot"}
+        try:
+            requests.post(webhook_url, json=payload)  # Send data to webhook
+        except requests.RequestException as e:
+            print(f"Failed to send data to webhook: {e}")
 
         log_info_async(f"data: {data}")
 
