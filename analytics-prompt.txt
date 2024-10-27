@@ -17,7 +17,7 @@ Sustainability – Is the text about environmental, social, or governance (ESG) 
 Technology – Does the text involve digital transformation, automation, or the use of technology tools?
 Classify the following text:
 
-{user_query}
+{query_text}
 
 Return the classification in this format:
 {
