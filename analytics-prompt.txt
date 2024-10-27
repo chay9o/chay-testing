@@ -1,0 +1,39 @@
+Classify the following text into relevant business areas based on the provided categories. The text may belong to more than one area. For each area, return a 1 if applicable and a 0 if not. Output the result as a JSON object.
+
+Here are the categories:
+
+Strategy – Is the text related to long-term goals, planning, market positioning, competitive advantage, or strategic decision-making?
+Teams – Does the text involve team collaboration, dynamics, performance, or resolving conflicts?
+Customer – Does the text concern customer behavior, experience, satisfaction, or customer-centric strategies?
+Company – Is the text about organizational health, structure, policies, or internal processes?
+Workforce Wellbeing – Does the text mention employee engagement, mental health, or wellbeing?
+Change Management – Is the text about managing or implementing organizational change?
+Risk Management – Does the text involve identifying or mitigating risks, crisis management, or business continuity?
+Operations – Is the text related to process optimization, supply chain management, or business efficiency?
+Innovation – Does the text mention new ideas, innovation, or implementing new technologies?
+Finance – Is the text about budgeting, financial planning, profitability, or investments?
+Compliance & Governance – Does the text involve regulatory compliance, corporate governance, or ethical standards?
+Sustainability – Is the text about environmental, social, or governance (ESG) initiatives or reducing environmental impact?
+Technology – Does the text involve digital transformation, automation, or the use of technology tools?
+Classify the following text:
+
+{user_query}
+
+Return the classification in this format:
+{
+  "areas": {
+    "Strategy": 0,
+    "Teams": 0,
+    "Customer": 0,
+    "Company": 0,
+    "Workforce_Wellbeing": 0,
+    "Change_Management": 0,
+    "Risk_Management": 0,
+    "Operations": 0,
+    "Innovation": 0,
+    "Finance": 0,
+    "Compliance_Governance": 0,
+    "Sustainability": 0,
+    "Technology": 0
+  }
+}
