@@ -182,6 +182,8 @@ def classify_text_with_llm_together(query_text):
             elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
                 if chunk.choices[0].message.content:
                     generated_text += chunk.choices[0].message.content
+                    
+    print("Generated text:", generated_text)
 
     return generated_text
     
