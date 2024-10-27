@@ -15,6 +15,7 @@ from langchain_openai import ChatOpenAI
 from .retriever import LLMHybridRetriever
 from .master_vectors.MV import MasterVectors
 from .chunker import ChunkText
+from .tasks import send_data_to_webhook
 from jinja2 import Template
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
@@ -199,15 +200,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         company_prompt = data.get('companyPrompt', '')
         initiative_prompt = data.get('initiativePrompt', '')
         command_stop = data.get('command_stop', False)
-        webhook_url = "https://chay-testing-192912d0328c.herokuapp.com/webhook_handler"
+        
         payload = {"query": query, "source": "HANA chatbot"}
-        async with aiohttp.ClientSession() as session:
-        try:
-            await session.post(webhook_url, json=payload)  # Send webhook asynchronously
-        except aiohttp.ClientError as e:
-            print(f"Failed to send data to webhook: {e}")
-
-
+        send_data_to_webhook.delay(payload)  # Send to Celery queue
+        
         log_info_async(f"data: {data}")
 
         if not llm_hybrid.collection_exists(collection):
