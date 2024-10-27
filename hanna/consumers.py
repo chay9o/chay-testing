@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 import asyncio
 from langchain.callbacks.base import BaseCallbackHandler
 import re
+import aiohttp
 
 
 # Set up logging
@@ -200,10 +201,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         command_stop = data.get('command_stop', False)
         webhook_url = "https://chay-testing-192912d0328c.herokuapp.com/webhook_handler"
         payload = {"query": query, "source": "HANA chatbot"}
+        async with aiohttp.ClientSession() as session:
         try:
-            requests.post(webhook_url, json=payload)  # Send data to webhook
-        except requests.RequestException as e:
+            await session.post(webhook_url, json=payload)  # Send webhook asynchronously
+        except aiohttp.ClientError as e:
             print(f"Failed to send data to webhook: {e}")
+
 
         log_info_async(f"data: {data}")
 
