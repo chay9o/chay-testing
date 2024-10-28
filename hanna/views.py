@@ -158,20 +158,12 @@ def insert_classification_data(data):
         classification = data.get("areas", {})
         print("Extracted Values - Company ID:", company_id, ", Initiative ID:", initiative_id)
 
-        # Establish connection to the database
-        try:
-            connection = psycopg2.connect(
-                host="ccpa7stkruda3o.cluster-czrs8k4jsg7.us-east-1.rds.amazonaws.com",
-                database="d63vm551mklv8i",
-                user="u8r6pme042epfk",
-                password="p34b0e70dc22c535c7cbdc96f74ed4755638b87cdfd68713fbbd726bb0d5ab75b",
-                port=5432
-            )
-            cursor = connection.cursor()
-            print("Database connection established successfully")
-        except psycopg2.OperationalError as db_conn_error:
-            print(f"Failed to connect to database: {db_conn_error}")
-            return {"status": "error", "message": "Database connection failed"}
+        db_uri = "postgres://u8r6pme042epfk:p34b0e70dc22c535c7cbdc96f74ed4755638b87cdfd68713fbbd726bb0d5ab75b@ccpa7stkruda3o.cluster-czrs8k4jsg7.us-east-1.rds.amazonaws.com:5432/d63vm551mklv8i"
+
+        connection = psycopg2.connect(db_uri, sslmode='require')
+        cursor = connection.cursor()
+        print("Database connection established successfully using URI")
+
 
         # Insert or update logic
         sql = """
