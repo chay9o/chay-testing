@@ -28,6 +28,7 @@ import fasttext
 import psycopg2
 import logging
 import asyncio
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -273,6 +274,45 @@ def webhook_handler(request):
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Invalid request"}, status=400)
 
+@csrf_exempt
+def view_classifications(request):
+    try:
+        # Get filter parameters from the request
+        filter_type = request.GET.get("filter_type")  # 'company_initiative' or 'company'
+        company_id = request.GET.get("company_id")
+        initiative_id = request.GET.get("initiative_id")
+        area_condition = request.GET.get("area", "Strategy")
+        days_interval = int(request.GET.get("days_interval", 30))
+
+        # Get the current date and calculate the past interval
+        current_date = datetime.now()
+        past_date = current_date - timedelta(days=days_interval)
+
+        # Prepare filtered results
+        filtered_results = {}
+
+        if filter_type == "company_initiative" and company_id and initiative_id:
+            # Filter by Company ID, Initiative ID, and a condition (e.g., Strategy > 0)
+            for key, value in classification_store.items():
+                if (key[0] == company_id and key[1] == initiative_id and
+                        value["areas"].get(area_condition, 0) > 0 and
+                        datetime.strptime(key[2], "%Y-%m-%d") >= past_date):
+                    filtered_results[key] = value
+
+        elif filter_type == "company" and company_id:
+            # Filter by Company ID and a condition (e.g., Strategy = 1)
+            for key, value in classification_store.items():
+                if (key[0] == company_id and
+                        value["areas"].get(area_condition, 0) == 1 and
+                        datetime.strptime(key[2], "%Y-%m-%d") >= past_date):
+                    filtered_results[key] = value
+
+        # Return the filtered results
+        return JsonResponse(filtered_results, safe=False)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+        
 credentials = ClientCredentials()
 
 awsb = AWSBackup(bucket_name=settings.FILE_BUCKET_NAME)
