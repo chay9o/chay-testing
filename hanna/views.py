@@ -299,11 +299,8 @@ def webhook_handler(request):
                 "areas": areas  # Parse classification JSON
             }
             print(payload)
-            response = requests.post("https://chay-testing-192912d0328c.herokuapp.com/insert-classification", json=payload)
-            if response.status_code == 200:
-                return JsonResponse({"status": "success"}, status=200)
-            else:
-                return JsonResponse({"error": "Failed to insert data"}, status=response.status_code)
+            insert_classification(payload)
+            return JsonResponse({"status": "success"}, status=200)
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
