@@ -25,6 +25,7 @@ from celery.result import AsyncResult
 import re
 from together import Together
 import fasttext
+import psycopg2
 import logging
 import asyncio
 
@@ -146,6 +147,90 @@ def chat_view(request):
 
     return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
 
+@csrf_exempt
+def insert_classification(request):
+    # Check request method
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method"}, status=400)
+
+    try:
+        # Parse JSON data from request
+        data = json.loads(request.body)
+        company_id = data.get("Company_ID")
+        initiative_id = data.get("Initiative_ID")
+        date = data.get("Date")
+        month = date[:7] + "-01"  # Assume month format as 'YYYY-MM-01'
+        classification = data.get("areas", {})
+
+        # Manually establish connection for temporary use
+        connection = psycopg2.connect(
+            host="ccpa7stkruda3o.cluster-czrs8k4jsg7.us-east-1.rds.amazonaws.com",
+            database="d63vm551mklv8i",
+            user="u8r6pme042epfk",
+            password="p34b0e70dc22c535c7cbdc96f74ed4755638b87cdfd68713fbbd726bb0d5ab75b"
+        )
+        cursor = connection.cursor()
+
+        # Insert or update logic
+        sql = """
+            INSERT INTO Initiative_Area_Impact (
+                Company_ID, Initiative_ID, Date, Month, Strategy, Teams, Customer, Company, Workforce_Wellbeing,
+                Change_Management, Risk_Management, Operations, Innovation, Finance, Compliance_Governance,
+                Sustainability, Technology
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (Company_ID, Initiative_ID, Date) DO UPDATE
+            SET Strategy = Initiative_Area_Impact.Strategy + EXCLUDED.Strategy,
+                Teams = Initiative_Area_Impact.Teams + EXCLUDED.Teams,
+                Customer = Initiative_Area_Impact.Customer + EXCLUDED.Customer,
+                Company = Initiative_Area_Impact.Company + EXCLUDED.Company,
+                Workforce_Wellbeing = Initiative_Area_Impact.Workforce_Wellbeing + EXCLUDED.Workforce_Wellbeing,
+                Change_Management = Initiative_Area_Impact.Change_Management + EXCLUDED.Change_Management,
+                Risk_Management = Initiative_Area_Impact.Risk_Management + EXCLUDED.Risk_Management,
+                Operations = Initiative_Area_Impact.Operations + EXCLUDED.Operations,
+                Innovation = Initiative_Area_Impact.Innovation + EXCLUDED.Innovation,
+                Finance = Initiative_Area_Impact.Finance + EXCLUDED.Finance,
+                Compliance_Governance = Initiative_Area_Impact.Compliance_Governance + EXCLUDED.Compliance_Governance,
+                Sustainability = Initiative_Area_Impact.Sustainability + EXCLUDED.Sustainability,
+                Technology = Initiative_Area_Impact.Technology + EXCLUDED.Technology
+        """
+
+        # Prepare values for insertion or update
+        values = (
+            company_id, initiative_id, date, month,
+            classification.get('Strategy', 0),
+            classification.get('Teams', 0),
+            classification.get('Customer', 0),
+            classification.get('Company', 0),
+            classification.get('Workforce_Wellbeing', 0),
+            classification.get('Change_Management', 0),
+            classification.get('Risk_Management', 0),
+            classification.get('Operations', 0),
+            classification.get('Innovation', 0),
+            classification.get('Finance', 0),
+            classification.get('Compliance_Governance', 0),
+            classification.get('Sustainability', 0),
+            classification.get('Technology', 0)
+        )
+
+        # Execute the SQL query
+        cursor.execute(sql, values)
+        connection.commit()
+        cursor.execute("SELECT * FROM Initiative_Area_Impact")
+        rows = cursor.fetchall()
+        print("Current Table Data:")
+        for row in rows:
+            print(row)
+
+        return JsonResponse({"status": "success"}, status=200)
+
+    except (psycopg2.DatabaseError, json.JSONDecodeError) as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+    finally:
+        # Ensure the connection is closed
+        cursor.close()
+        connection.close()
 
 def classify_text_with_llm_together(query_text):
     TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -194,11 +279,25 @@ def webhook_handler(request):
             data = json.loads(request.body)
             query = data.get("query")
             source = data.get("source")
+            company_id = data.get("collection")  
+            initiative_id = data.get("entity")  
+            current_date = data.get("current_date")
             # Perform classification or analytics logging
             print(f"Received query from {source}: {query}")
             classification_result = classify_text_with_llm_together(query)
             print(f"classification:{classification_result}")
-            return JsonResponse({"classification": classification_result}, status=200)
+            payload = {
+                "Company_ID": company_id,
+                "Initiative_ID": initiative_id,
+                "Date": current_date,  # Use the provided date from the payload
+                "areas": json.loads(classification_result).get("areas", {})  # Parse classification JSON
+            }
+            response = requests.post("https://chay-testing-192912d0328c.herokuapp.com/insert-classification", json=payload)
+            if response.status_code == 200:
+                return JsonResponse({"status": "success"}, status=200)
+            else:
+                return JsonResponse({"error": "Failed to insert data"}, status=response.status_code)
+
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
