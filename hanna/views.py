@@ -35,9 +35,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-
-
-
 logging.basicConfig(level=logging.INFO)
 
 job_done = "STOP"
@@ -174,7 +171,7 @@ def insert_classification_data(data):
     date = data.get("Date")
     
     # Create a unique key for each record
-    record_key = (company_id, initiative_id, date)
+    record_key = f"{company_id}-{initiative_id}-{date}"
 
     # Ensure all categories are present with a value of 0 or 1
     validated_areas = {category: min(max(data.get("areas", {}).get(category, 0), 0), 1) for category in DEFAULT_AREAS}
