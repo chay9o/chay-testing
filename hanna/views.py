@@ -166,19 +166,12 @@ DEFAULT_AREAS = {
 
 # A global dictionary to simulate an in-memory table (not persistent)
 classification_store = {}
-def parse_date(date_str):
-    """ Parse the incoming date string to a consistent format """
-    try:
-        # Parse the incoming date string assuming it’s like 'Monday, October 28, 2024 at 10:31:11 AM India Standard Time'
-        parsed_date = datetime.strptime(date_str, "%A, %B %d, %Y at %I:%M:%S %p %Z")
-        return parsed_date.strftime("%Y-%m-%d")
-    except ValueError as e:
-        raise ValueError(f"Date parsing error: {str(e)}")
+
 # New helper function that accepts the parsed payload directly
 def insert_classification_data(data):
     company_id = data.get("Company_ID")
     initiative_id = data.get("Initiative_ID")
-    date = parse_date(data.get("Date"))
+    date = data.get("Date")
     
     # Create a unique key for each record
     record_key = (company_id, initiative_id, date)
@@ -198,6 +191,7 @@ def insert_classification_data(data):
         }
     print(f"Stored data for {record_key}: {classification_store[record_key]}")
     return {"status": "success"}
+
 
 
 
@@ -288,11 +282,6 @@ def view_classifications(request):
         company_id = request.GET.get("company_id")
         initiative_id = request.GET.get("initiative_id")
         area_condition = request.GET.get("area", "Strategy")
-        days_interval = int(request.GET.get("days_interval", 30))
-
-        # Get the current date and calculate the past interval
-        current_date = datetime.now()
-        past_date = current_date - timedelta(days=days_interval)
 
         # Prepare filtered results
         filtered_results = {}
@@ -301,16 +290,13 @@ def view_classifications(request):
             # Filter by Company ID, Initiative ID, and a condition (e.g., Strategy > 0)
             for key, value in classification_store.items():
                 if (key[0] == company_id and key[1] == initiative_id and
-                        value["areas"].get(area_condition, 0) > 0 and
-                        datetime.strptime(key[2], "%Y-%m-%d") >= past_date):
+                        value["areas"].get(area_condition, 0) > 0):
                     filtered_results[key] = value
 
         elif filter_type == "company" and company_id:
             # Filter by Company ID and a condition (e.g., Strategy = 1)
             for key, value in classification_store.items():
-                if (key[0] == company_id and
-                        value["areas"].get(area_condition, 0) == 1 and
-                        datetime.strptime(key[2], "%Y-%m-%d") >= past_date):
+                if (key[0] == company_id and value["areas"].get(area_condition, 0) == 1):
                     filtered_results[key] = value
 
         # Return the filtered results
