@@ -286,12 +286,19 @@ def webhook_handler(request):
             print(f"Received query from {source}: {query}")
             classification_result = classify_text_with_llm_together(query)
             print(f"classification:{classification_result}")
+            try:
+                classification_data = json.loads(classification_result)
+                areas = classification_data.get("areas", {})
+            except json.JSONDecodeError as e:
+                return JsonResponse({"error": f"Failed to parse classification result: {str(e)}"}, status=500)
+
             payload = {
                 "Company_ID": company_id,
                 "Initiative_ID": initiative_id,
                 "Date": current_date,  # Use the provided date from the payload
-                "areas": json.loads(classification_result).get("areas", {})  # Parse classification JSON
+                "areas": areas  # Parse classification JSON
             }
+            print(payload)
             response = requests.post("https://chay-testing-192912d0328c.herokuapp.com/insert-classification", json=payload)
             if response.status_code == 200:
                 return JsonResponse({"status": "success"}, status=200)
