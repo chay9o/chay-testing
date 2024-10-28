@@ -166,12 +166,19 @@ DEFAULT_AREAS = {
 
 # A global dictionary to simulate an in-memory table (not persistent)
 classification_store = {}
-
+def parse_date(date_str):
+    """ Parse the incoming date string to a consistent format """
+    try:
+        # Parse the incoming date string assuming it’s like 'Monday, October 28, 2024 at 10:31:11 AM India Standard Time'
+        parsed_date = datetime.strptime(date_str, "%A, %B %d, %Y at %I:%M:%S %p %Z")
+        return parsed_date.strftime("%Y-%m-%d")
+    except ValueError as e:
+        raise ValueError(f"Date parsing error: {str(e)}")
 # New helper function that accepts the parsed payload directly
 def insert_classification_data(data):
     company_id = data.get("Company_ID")
     initiative_id = data.get("Initiative_ID")
-    date = data.get("Date")
+    date = parse_date(data.get("Date"))
     
     # Create a unique key for each record
     record_key = (company_id, initiative_id, date)
@@ -191,7 +198,6 @@ def insert_classification_data(data):
         }
     print(f"Stored data for {record_key}: {classification_store[record_key]}")
     return {"status": "success"}
-
 
 
 
