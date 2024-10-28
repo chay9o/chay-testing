@@ -147,17 +147,10 @@ def chat_view(request):
 
     return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
 
-@csrf_exempt
-def insert_classification(request):
-    # Check request method
-    if request.method != "POST":
-        print("Invalid request method")
-        return JsonResponse({"error": "Invalid request method"}, status=400)
-
+# New helper function that accepts the parsed payload directly
+def insert_classification_data(data):
     try:
-        # Parse JSON data from request
-        data = json.loads(request.body)
-        print("Data received successfully:", data)
+        # Extract values from data dictionary
         company_id = data.get("Company_ID")
         initiative_id = data.get("Initiative_ID")
         date = data.get("Date")
@@ -165,19 +158,15 @@ def insert_classification(request):
         classification = data.get("areas", {})
         print("Extracted Values - Company ID:", company_id, ", Initiative ID:", initiative_id)
 
-        # Manually establish connection for temporary use
-        try:
-            connection = psycopg2.connect(
-                host="ccpa7stkruda3o.cluster-czrs8k4jsg7.us-east-1.rds.amazonaws.com",
-                database="d63vm551mklv8i",
-                user="u8r6pme042epfk",
-                password="p34b0e70dc22c535c7cbdc96f74ed4755638b87cdfd68713fbbd726bb0d5ab75b"
-            )
-            cursor = connection.cursor()
-            print("Database connection established successfully")
-        except psycopg2.OperationalError as db_conn_error:
-            print(f"Failed to connect to database: {db_conn_error}")
-            return JsonResponse({"error": "Database connection failed"}, status=500)
+        # Establish connection to the database
+        connection = psycopg2.connect(
+            host="ccpa7stkruda3o.cluster-czrs8k4jsg7.us-east-1.rds.amazonaws.com",
+            database="d63vm551mklv8i",
+            user="u8r6pme042epfk",
+            password="p34b0e70dc22c535c7cbdc96f74ed4755638b87cdfd68713fbbd726bb0d5ab75b"
+        )
+        cursor = connection.cursor()
+        print("Database connection established successfully")
 
         # Insert or update logic
         sql = """
@@ -226,18 +215,17 @@ def insert_classification(request):
         cursor.execute(sql, values)
         connection.commit()
         print("Data inserted/updated successfully")
-        
+
+        # Fetch and print all rows from the table
         cursor.execute("SELECT * FROM Initiative_Area_Impact")
         rows = cursor.fetchall()
         print("Current Table Data:")
         for row in rows:
             print(row)
 
-        return JsonResponse({"status": "success"}, status=200)
-
-    except (psycopg2.DatabaseError, json.JSONDecodeError) as e:
+    except (psycopg2.DatabaseError, Exception) as e:
         print(f"Database Error: {e}")
-        return JsonResponse({"error": str(e)}, status=500)
+        raise
 
     finally:
         # Ensure the connection is closed
@@ -246,6 +234,9 @@ def insert_classification(request):
         if connection:
             connection.close()
         print("Database connection closed")
+
+
+
 
 def classify_text_with_llm_together(query_text):
     TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -314,7 +305,7 @@ def webhook_handler(request):
                 "areas": areas  # Parse classification JSON
             }
             print(payload)
-            insert_classification(payload)
+            insert_classification_data(payload)
             return JsonResponse({"status": "success"}, status=200)
 
         except json.JSONDecodeError:
