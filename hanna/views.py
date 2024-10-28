@@ -146,91 +146,50 @@ def chat_view(request):
         return JsonResponse({"message": response}, status=200)
 
     return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
+    
+DEFAULT_AREAS = {
+    "Strategy": 0,
+    "Teams": 0,
+    "Customer": 0,
+    "Company": 0,
+    "Workforce_Wellbeing": 0,
+    "Change_Management": 0,
+    "Risk_Management": 0,
+    "Operations": 0,
+    "Innovation": 0,
+    "Finance": 0,
+    "Compliance_Governance": 0,
+    "Sustainability": 0,
+    "Technology": 0
+}
+
+# A global dictionary to simulate an in-memory table (not persistent)
+classification_store = {}
 
 # New helper function that accepts the parsed payload directly
 def insert_classification_data(data):
-    try:
-        # Extract values from data dictionary
-        company_id = data.get("Company_ID")
-        initiative_id = data.get("Initiative_ID")
-        date = data.get("Date")
-        month = date[:7] + "-01"  # Assume month format as 'YYYY-MM-01'
-        classification = data.get("areas", {})
-        print("Extracted Values - Company ID:", company_id, ", Initiative ID:", initiative_id)
+    company_id = data.get("Company_ID")
+    initiative_id = data.get("Initiative_ID")
+    date = data.get("Date")
+    
+    # Create a unique key for each record
+    record_key = (company_id, initiative_id, date)
 
-        db_uri = "postgres://u8r6pme042epfk:p34b0e70dc22c535c7cbdc96f74ed4755638b87cdfd68713fbbd726bb0d5ab75b@ccpa7stkruda3o.cluster-czrs8k4jsg7.us-east-1.rds.amazonaws.com:5432/d63vm551mklv8i"
+    # Ensure all categories are present with a value of 0 or 1
+    validated_areas = {category: min(max(data.get("areas", {}).get(category, 0), 0), 1) for category in DEFAULT_AREAS}
 
-        connection = psycopg2.connect(db_uri, sslmode='require')
-        cursor = connection.cursor()
-        print("Database connection established successfully using URI")
-
-
-        # Insert or update logic
-        sql = """
-            INSERT INTO Initiative_Area_Impact (
-                Company_ID, Initiative_ID, Date, Month, Strategy, Teams, Customer, Company, Workforce_Wellbeing,
-                Change_Management, Risk_Management, Operations, Innovation, Finance, Compliance_Governance,
-                Sustainability, Technology
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (Company_ID, Initiative_ID, Date) DO UPDATE
-            SET Strategy = Initiative_Area_Impact.Strategy + EXCLUDED.Strategy,
-                Teams = Initiative_Area_Impact.Teams + EXCLUDED.Teams,
-                Customer = Initiative_Area_Impact.Customer + EXCLUDED.Customer,
-                Company = Initiative_Area_Impact.Company + EXCLUDED.Company,
-                Workforce_Wellbeing = Initiative_Area_Impact.Workforce_Wellbeing + EXCLUDED.Workforce_Wellbeing,
-                Change_Management = Initiative_Area_Impact.Change_Management + EXCLUDED.Change_Management,
-                Risk_Management = Initiative_Area_Impact.Risk_Management + EXCLUDED.Risk_Management,
-                Operations = Initiative_Area_Impact.Operations + EXCLUDED.Operations,
-                Innovation = Initiative_Area_Impact.Innovation + EXCLUDED.Innovation,
-                Finance = Initiative_Area_Impact.Finance + EXCLUDED.Finance,
-                Compliance_Governance = Initiative_Area_Impact.Compliance_Governance + EXCLUDED.Compliance_Governance,
-                Sustainability = Initiative_Area_Impact.Sustainability + EXCLUDED.Sustainability,
-                Technology = Initiative_Area_Impact.Technology + EXCLUDED.Technology
-        """
-
-        # Prepare values for insertion or update
-        values = (
-            company_id, initiative_id, date, month,
-            classification.get('Strategy', 0),
-            classification.get('Teams', 0),
-            classification.get('Customer', 0),
-            classification.get('Company', 0),
-            classification.get('Workforce_Wellbeing', 0),
-            classification.get('Change_Management', 0),
-            classification.get('Risk_Management', 0),
-            classification.get('Operations', 0),
-            classification.get('Innovation', 0),
-            classification.get('Finance', 0),
-            classification.get('Compliance_Governance', 0),
-            classification.get('Sustainability', 0),
-            classification.get('Technology', 0)
-        )
-        print("Prepared values for insertion:", values)
-
-        # Execute the SQL query
-        cursor.execute(sql, values)
-        connection.commit()
-        print("Data inserted/updated successfully")
-
-        # Fetch and print all rows from the table
-        cursor.execute("SELECT * FROM Initiative_Area_Impact")
-        rows = cursor.fetchall()
-        print("Current Table Data:")
-        for row in rows:
-            print(row)
-
-    except (psycopg2.DatabaseError, Exception) as e:
-        print(f"Database Error: {e}")
-        raise
-
-    finally:
-        # Ensure the connection is closed
-        if cursor:
-            cursor.close()
-        if connection:
-            connection.close()
-        print("Database connection closed")
+    # If the record already exists, update the values
+    if record_key in classification_store:
+        for key, value in validated_areas.items():
+            classification_store[record_key]["areas"][key] = min(classification_store[record_key]["areas"][key] + value, 1)
+    else:
+        # Store new data
+        classification_store[record_key] = {
+            "Month": date[:7] + "-01",  # 'YYYY-MM-01' format
+            "areas": validated_areas
+        }
+    print(f"Stored data for {record_key}: {classification_store[record_key]}")
+    return {"status": "success"}
 
 
 
@@ -302,8 +261,11 @@ def webhook_handler(request):
                 "areas": areas  # Parse classification JSON
             }
             print(payload)
-            insert_classification_data(payload)
-            return JsonResponse({"status": "success"}, status=200)
+            result = insert_classification_data(payload)
+            if result.get("status") == "success":
+                return JsonResponse({"status": "success"}, status=200)
+            else:
+                return JsonResponse({"error": "Error storing data"}, status=500)
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
