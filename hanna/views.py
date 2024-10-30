@@ -261,7 +261,10 @@ def webhook_handler(request):
             print(payload)
             result = insert_classification_data(payload)
             if result.get("status") == "success":
-                return JsonResponse({"status": "success"}, status=200)
+                return JsonResponse({
+                    "status": "success",
+                    "result": classification_data  # Return classification result
+                }, status=200)
             else:
                 return JsonResponse({"error": "Error storing data"}, status=500)
 
