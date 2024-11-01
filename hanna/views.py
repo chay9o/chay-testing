@@ -241,7 +241,7 @@ def webhook_handler(request):
             source = data.get("source")
             company_id = data.get("collection")  
             initiative_id = data.get("entity")  
-            current_date = data.get("current_date")
+            date = data.get("date")
             # Perform classification or analytics logging
             print(f"Received query from {source}: {query}")
             classification_result = classify_text_with_llm_together(query)
@@ -255,7 +255,7 @@ def webhook_handler(request):
             payload = {
                 "Company_ID": company_id,
                 "Initiative_ID": initiative_id,
-                "Date": current_date,  # Use the provided date from the payload
+                "Date": date,  # Use the provided date from the payload
                 "areas": areas  # Parse classification JSON
             }
             print(payload)
