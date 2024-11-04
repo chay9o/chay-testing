@@ -1975,18 +1975,21 @@ def process_prompts4(final_content, language):
         # Process the streamed response
         generated_text = ""
         for chunk in response:
-            # Check if chunk is a dictionary and has 'choices' attribute
-            if isinstance(chunk, dict) and 'choices' in chunk and len(chunk['choices']) > 0:
-                if hasattr(chunk['choices'][0], 'delta') and hasattr(chunk['choices'][0].delta, 'content'):
-                    if chunk['choices'][0].delta.content:
-                        generated_text += chunk['choices'][0].delta.content
-                elif hasattr(chunk['choices'][0], 'message') and hasattr(chunk['choices'][0].message, 'content'):
-                    if chunk['choices'][0].message.content:
-                        generated_text += chunk['choices'][0].message.content
+            # Check if the chunk is a dictionary and contains 'choices'
+            if isinstance(chunk, dict) and 'choices' in chunk:
+                choices = chunk['choices']
+                # If 'choices' has content, try to access it
+                if choices and hasattr(choices[0], 'message') and hasattr(choices[0].message, 'content'):
+                    generated_text += choices[0].message.content
+                else:
+                    logger.info(f"Unexpected 'choices' structure: {choices}")
             else:
-                # Log an informational message if the chunk is not as expected
+                # Log any unexpected structure for troubleshooting
                 logger.info(f"Unexpected response structure: {chunk}")
-
+        
+        # Verify if any valid JSON was parsed
+        if not generated_text.strip():
+            raise ValueError("No valid JSON output found in the LLM response")
 
         final_response = generated_text.strip()
 
