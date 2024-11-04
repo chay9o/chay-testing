@@ -1986,15 +1986,17 @@ def process_prompts4(final_content, language):
             else:
                 # Log any unexpected structure for troubleshooting
                 logger.info(f"Unexpected response structure: {chunk}")
+
+            print("Full LLM Response:\n", generated_text)
         
             # Verify if any valid JSON was parsed
             if not generated_text.strip():
                 raise ValueError("No valid JSON output found in the LLM response")
     
-            final_response = generated_text.strip()
+            #final_response = generated_text.strip()
     
             # Log the final response
-            print(f"Final LLM Response:\n{final_response}")
+            #print(f"Final LLM Response:\n{final_response}")
             json_data = extract_json_from_response(final_response)
 
             # Check for the template type
