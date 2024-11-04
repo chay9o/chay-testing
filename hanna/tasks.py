@@ -1987,15 +1987,15 @@ def process_prompts4(final_content, language):
                 # Log any unexpected structure for troubleshooting
                 logger.info(f"Unexpected response structure: {chunk}")
         
-        # Verify if any valid JSON was parsed
-        if not generated_text.strip():
-            raise ValueError("No valid JSON output found in the LLM response")
-
-        final_response = generated_text.strip()
-
-        # Log the final response
-        print(f"Final LLM Response:\n{final_response}")
-        json_data = extract_json_from_response(final_response)
+            # Verify if any valid JSON was parsed
+            if not generated_text.strip():
+                raise ValueError("No valid JSON output found in the LLM response")
+    
+            final_response = generated_text.strip()
+    
+            # Log the final response
+            print(f"Final LLM Response:\n{final_response}")
+            json_data = extract_json_from_response(final_response)
 
             # Check for the template type
             template_type = json_data.get("canvas", {}).get("template_type")
