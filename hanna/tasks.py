@@ -1959,17 +1959,28 @@ def process_prompts4(final_content, language):
         # Replace {final_content} in the system prompt with the actual final_content input
         system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
 
-        # Send the system prompt to the DeepInfra LLM
-        response = llm(system_prompt)
-        print(f"Raw response from DeepInfra: {response}")
-
+         # Use Together API instead of llm.stream
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "system", "content": system_prompt}],
+            max_tokens=8192,
+            temperature=0.4,
+            top_p=0.9
+        )
         # Collect response content
         generated_text = ""
         for chunk in response:
-            if hasattr(chunk, 'content'):
-                generated_text += chunk.content
-            else:
-                generated_text += str(chunk)
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    generated_text += chunk.choices[0].message.content
+
 
         final_response = generated_text.strip()
 
