@@ -149,25 +149,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def handle_response(self, response):
         final_response = ""
         async for res in self._convert_to_async_iter(response):
-            # Log the type of res for debugging purposes
-            #log_info_async(f"Type of res: {type(res)}")
-            
-            # Check if res is a string or needs to be converted to a string
             res_text = str(res)
-
-            # Continue filtering if res_text is a string
             if res_text.startswith('content=') or res_text.startswith('id=') or res_text.startswith('response_metadata='):
                 continue
-
             final_response += res_text
-
         await self.send(text_data=json.dumps({"message": final_response}))
         await self.send(text_data=json.dumps({"message": "job done"}))
 
     async def _convert_to_async_iter(self, generator):
         for item in generator:
             yield item
-            await asyncio.sleep(0)  # yield control to the event loop
+            await asyncio.sleep(0)
+
+    # New query counters
+    async def increment_query_counter(self, company_id, initiative_id):
+        # Increment total query counter
+        await some_counter_increment_function(company_id, initiative_id, "total_queries")
+        print(f"Total queries for company {company_id}, initiative {initiative_id} incremented.")
+
+    async def increment_trained_data_counter(self, company_id, initiative_id):
+        # Increment counter for trained data queries
+        await some_counter_increment_function(company_id, initiative_id, "trained_data_queries")
+        print(f"Trained data queries for company {company_id}, initiative {initiative_id} incremented.")
 
     async def receive(self, text_data=None, bytes_data=None):
         retriever = ""
@@ -206,6 +209,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         log_info_async(f"data: {data}")
 
+        # Increment query counter
+        await self.increment_query_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
+        
+        # Flag for trained data usage
+        is_trained_data_used = False
+
         if not llm_hybrid.collection_exists(collection):
             await self.send(text_data=json.dumps({'error': 'This collection does not exist!'}))
             return
@@ -237,26 +246,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "Definitional Questions" in cat or \
                     "Context Required" in cat:
 
-                # if "Context Required" not in cat:
-                #     mode = 0
-
                 master_vector = mv.search_master_vectors(query=query, class_="MV001")
                 company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
                 member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids, user_id=user_id)
+                
+                if company_vector or initiative_vector or member_vector:
+                    is_trained_data_used = True
+                    await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
 
             elif "Individuals" in cat or "Personal Information" in cat:
-                # if "Individuals" in cat:
-                #     mode = 0
-                # if "Personal Information" in cat:
-                #     mode = 0.2
 
                 company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
                 member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids, user_id=user_id)
-
-            # if "Greeting" in cat:
-            #     mode = 0.4
+                
+                if company_vector or initiative_vector or member_vector:
+                    is_trained_data_used = True
+                    await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
 
             if 2 <= len(keywords_list) <= 3:
 
@@ -276,8 +283,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     cv.extend(r2)
                     miv.extend(r3)
 
-                #print("HOP: ", msv, cv, miv)
-
             initiative_vector.extend(member_vector)
 
             master_vector.extend(msv)
@@ -294,14 +299,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         else:
             print("Searching Meeting Vectors!")
-            # mode = 0
 
             tmp = llm_hybrid.date_filter(query, current_date)
 
             date_pattern = r"FILTER:\s*(\d{4}-\d{1,2}-\d{1,2})"
             query_pattern = r"QUERY:\s*\[(.*?)\]"
 
-            # Find matches
             date_match = re.search(date_pattern, tmp)
             query_match = re.search(query_pattern, tmp)
 
@@ -315,20 +318,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 query_value = query_match.group(1)
             else:
                 query_value = ""
-
             print("Date:", date_value)
             print("Query:", query_value)
 
             if date_value != "" and query_value == "":
-                print("RETRIEVED DATE...")
-                user_meeting_vec = llm_hybrid.search_vectors_user_type(date_value, collection, combine_ids, user_id,
-                                                                       "Meeting")
-
-                initiative_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, entity,
-                                                                                "Meeting")
-
-                company_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, collection,
-                                                                             "Meeting")
+                user_meeting_vec = llm_hybrid.search_vectors_user_type(date_value, collection, combine_ids, user_id, "Meeting")
+                initiative_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, entity, "Meeting")
+                company_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, collection, "Meeting")
 
                 initiative_meeting_vec.extend(user_meeting_vec)
                 company_meeting_vec.extend(initiative_meeting_vec)
@@ -336,15 +332,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 retriever = "\n".join(company_meeting_vec) if len(company_meeting_vec) > 0 else ""
 
             elif query_value != "" and date_value != "":
-                print("RETRIEVED QUERY...")
-                user_meeting_vec = llm_hybrid.search_vectors_user_type(date_value, collection, combine_ids, user_id,
-                                                                       "Meeting")
-
-                initiative_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, entity,
-                                                                                "Meeting")
-
-                company_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, collection,
-                                                                             "Meeting")
+                user_meeting_vec = llm_hybrid.search_vectors_user_type(date_value, collection, combine_ids, user_id, "Meeting")
+                initiative_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, entity, "Meeting")
+                company_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, collection, "Meeting")
 
                 initiative_meeting_vec.extend(user_meeting_vec)
                 company_meeting_vec.extend(initiative_meeting_vec)
@@ -352,21 +342,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 retriever = "\n".join(company_meeting_vec) if len(company_meeting_vec) > 0 else ""
 
             elif query_value != "" and date_value == "":
-                print("RETRIEVED DATE 2...")
                 company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
-                member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids,
-                                                               user_id=user_id)
+                member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids, user_id=user_id)
 
                 initiative_vector.extend(member_vector)
                 top_master_vec = mv.reranker(query=query, batch=master_vector, return_type=str)
                 top_company_vec = llm_hybrid.reranker(query=query, batch=company_vector, class_=collection, return_type=str)
-                top_member_initiative_vec = llm_hybrid.reranker(query=query, batch=initiative_vector, top_k=10,
-                                                                class_=collection, return_type=str)
+                top_member_initiative_vec = llm_hybrid.reranker(query=query, batch=initiative_vector, top_k=10, class_=collection, return_type=str)
 
                 retriever = f"{top_master_vec} {top_company_vec} {top_member_initiative_vec}"
-
-            # log_info_async(f"LOADING VECTORS: {retriever}")
 
         config = {
             'callbacks': [SimpleCallback(self.que)]
@@ -385,7 +370,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
             chat_history_str = template.render(data)
 
-        chain = prompt | llm.with_config(configurable={"llm_temperature": mode})
+        chain = prompt | self.llm.with_config(configurable={"llm_temperature": mode})
 
         response = chain.stream({'matching_model': retriever,
                                  'question': query,
@@ -402,6 +387,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await task_1
         await task_2
+
 
 
 class LiveDataChatConsumer(AsyncWebsocketConsumer):
