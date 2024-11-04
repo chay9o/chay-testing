@@ -1104,7 +1104,7 @@ def stinsight_step6(request):
             task = process_prompts_3.apply_async(args=[final_content, language])
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
-            task = process_prompts4.apply_async(args=[final_content, language])
+            return generate_ppt_for_option4(request)
         else:
             return JsonResponse({'error': 'Invalid option selected'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1112,6 +1112,63 @@ def stinsight_step6(request):
     except Exception as e:
         print(e)
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def trigger_ppt_generation(final_content, language):
+    try:
+        # Trigger the asynchronous task for PPT generation
+        task = process_prompts4.apply_async(args=[final_content, language])
+        return {'task_id': task.id, 'status': 'PPT generation initiated'}
+    except Exception as e:
+        logger.error(f"Error in trigger_ppt_generation: {e}")
+        return {'error': 'Failed to initiate PPT generation'}
+
+@api_view(['POST'])
+def generate_ppt_for_option4(request):
+    """
+    Endpoint to trigger PPT generation specifically for 'option4'.
+    It initiates the task and returns the task ID for status tracking.
+    """
+    try:
+        data = json.loads(request.body)
+        final_content = data.get('final_content')
+        language = data.get('language')
+
+        response_data = trigger_ppt_generation(final_content, language)
+        if 'error' in response_data:
+            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(response_data, status=status.HTTP_202_ACCEPTED)
+    except Exception as e:
+        logger.error(f"Error in generate_ppt_for_option4: {e}")
+        return Response({'error': 'Failed to initiate PPT generation'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def get_ppt_for_option4(request, task_id):
+    """
+    Endpoint to retrieve the generated PPT file for 'option4' after the task is complete.
+    """
+    try:
+        result = AsyncResult(task_id)
+        
+        if result.status == 'SUCCESS':
+            result_data = result.result
+            pptx_base64 = result_data.get('pptx_base64', '')
+            title = result_data.get('title', 'Generated_Presentation')
+            description = result_data.get('description', '')
+
+            return JsonResponse({
+                'pptx_base64': pptx_base64,
+                'title': title,
+                'description': description
+            })
+        elif result.status == 'FAILURE':
+            return Response({'error': 'Task failed', 'traceback': result.traceback}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response({'status': result.status}, status=status.HTTP_202_ACCEPTED)
+    except Exception as e:
+        logger.error(f"Error in get_ppt_for_option4: {e}")
+        return Response({'error': 'Failed to retrieve PPT file'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 @api_view(['POST'])
