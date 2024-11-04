@@ -75,6 +75,28 @@ chat_template = (
 )
 
 @csrf_exempt
+def log_query_counters(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            company_id = data.get("company_id")
+            initiative_id = data.get("initiative_id")
+            total_queries = data.get("total_queries")
+            trained_data_queries = data.get("trained_data_queries")
+
+            # Log and print the query counters
+            logger.info(f"Company ID: {company_id}, Initiative ID: {initiative_id}")
+            logger.info(f"Total Queries: {total_queries}, Trained Data Queries: {trained_data_queries}")
+            print(f"Company ID: {company_id}, Initiative ID: {initiative_id}")
+            print(f"Total Queries: {total_queries}, Trained Data Queries: {trained_data_queries}")
+
+            return JsonResponse({"status": "success", "message": "Query counters logged successfully."})
+        except Exception as e:
+            logger.error(f"Error logging query counters: {e}")
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+    return JsonResponse({"status": "error", "message": "Invalid request method."}, status=405)
+    
+@csrf_exempt
 def chat_view(request):
     if request.method == "POST":
         data = json.loads(request.body)
