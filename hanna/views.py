@@ -671,9 +671,9 @@ def evaluate_text(request):
 
 
 # Define global variables to store user inputs and generated questions, initialized as None
-user_inputs_global = None
-generated_questions_global = None
-problem_description = None  # Variable to store the problem description from step1
+user_inputs_global = []
+generated_questions_global = []
+problem_description = ""  # Variable to store the problem description from step1
 
 
 # Helper function to build the system prompt by appending previous steps from global lists
