@@ -187,6 +187,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             sys.stdout.flush()
 
     async def receive(self, text_data=None, bytes_data=None):
+        logging.info("Received message in ChatConsumer")
         retriever = ""
 
         master_vector = []
