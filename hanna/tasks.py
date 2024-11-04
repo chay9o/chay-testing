@@ -1976,12 +1976,25 @@ def process_prompts4(final_content, language):
         # Process the streamed response
         generated_response = ""
         for chunk in response:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                generated_response += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                generated_response += chunk.choices[0].message.content
+                # Print the chunk to directly observe its structure
+                print("Chunk:", chunk)
+                
+                # Ensure that the chunk is a dictionary and check for 'choices' key
+                if isinstance(chunk, dict) and 'choices' in chunk:
+                    choices = chunk['choices']
+                    if isinstance(choices, list) and choices and 'message' in choices[0]:
+                        message = choices[0]['message']
+                        if 'content' in message:
+                            generated_text += message['content']
+                        else:
+                            logger.info(f"Unexpected 'message' structure: {message}")
+                    else:
+                        logger.info(f"Unexpected 'choices' structure: {choices}")
+                else:
+                    logger.info(f"Unexpected response structure: {chunk}")
 
-            # Now the generated_response is a complete string, parse it as JSON
+            # Print the full response text for debugging
+            print("Full LLM Response:\n", generated_text)
             print(f"Raw AI Response: {generated_response}")
             json_response = json.loads(generated_response)
             print(f"json_response: {json_response}")
