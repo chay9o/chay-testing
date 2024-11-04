@@ -166,39 +166,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await asyncio.sleep(0)
 
     # New query counters
-    async def send_query_counter_to_view(counter_type):
-        url = "https://chay-testing-192912d0328c.herokuapp.com/log_query_counters"  # Adjust if needed
-        data = {
-            counter_type: 1  # Each increment call will send a single increment
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=data) as resp:
-                if resp.status != 200:
-                    print(f"Failed to log {counter_type} for company {company_id}, initiative {initiative_id}")
-                else:
-                    print(f"Logged {counter_type} for company {company_id}, initiative {initiative_id}")
-                    
-    async def increment_query_counter(self, company_id, initiative_id):
-        await self.send_query_counter_to_view(company_id, initiative_id, "total_queries")
-        try:
-            await some_counter_increment_function(company_id, initiative_id, "total_queries")
-            logging.info(f"Total queries for company {company_id}, initiative {initiative_id} incremented.")
-            print(f"Total queries for company {company_id}, initiative {initiative_id} incremented.")
-            sys.stdout.flush()
-        except Exception as e:
-            print(f"Error in increment_query_counter: {e}")
-            sys.stdout.flush()
+    async def increment_counter(self, counter_type):
+        """
+        Increment the specified counter (e.g., total_queries, trained_data_queries).
+        :param counter_type: Type of counter to increment (e.g., 'total_queries', 'trained_data_queries')
+        """
+        # Placeholder for the actual implementation
+        log_info_async(f"Incrementing {counter_type}")
 
-    async def increment_trained_data_counter(self, company_id, initiative_id):
-        await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
-        try:
-            await some_counter_increment_function(company_id, initiative_id, "trained_data_queries")
-            logging.info(f"Trained data queries for company {company_id}, initiative {initiative_id} incremented.")
-            print(f"Trained data queries for company {company_id}, initiative {initiative_id} incremented.")
-            sys.stdout.flush()
-        except Exception as e:
-            print(f"Error in increment_trained_data_counter: {e}")
-            sys.stdout.flush()
+    async def increment_query_counter(self):
+        await self.increment_counter("total_queries")
+
+    async def increment_trained_data_counter(self):
+        await self.increment_counter("trained_data_queries")
 
     async def receive(self, text_data=None, bytes_data=None):
         logging.info("Received message in ChatConsumer")
@@ -240,7 +220,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Increment query counter
         #await self.send_query_counter_to_view("total_queries")
-        await self.increment_query_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
+        await self.increment_query_counter()
         
         # Flag for trained data usage
         is_trained_data_used = False
@@ -284,7 +264,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
                     #await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
-                    await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
+                    await self.increment_trained_data_counter()
 
             elif "Individuals" in cat or "Personal Information" in cat:
 
@@ -295,7 +275,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
                     #await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
-                    await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
+                    await self.increment_trained_data_counter()
 
             if 2 <= len(keywords_list) <= 3:
 
