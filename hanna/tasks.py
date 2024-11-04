@@ -1975,7 +1975,7 @@ def process_prompts4(final_content, language):
         # Collect response content
         # Process the streamed response
         generated_text = ""
-         for chunk in response:
+        for chunk in response:
             if len(chunk.choices) > 0:
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
                     if chunk.choices[0].delta.content:
