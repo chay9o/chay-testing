@@ -1975,19 +1975,17 @@ def process_prompts4(final_content, language):
         # Collect response content
         # Process the streamed response
         generated_text = ""
-        for chunk in response:
-            # Check if the chunk is a dictionary and contains 'choices'
-            if isinstance(chunk, dict) and 'choices' in chunk:
-                choices = chunk['choices']
-                # If 'choices' has content, try to access it
-                if choices and hasattr(choices[0], 'message') and hasattr(choices[0].message, 'content'):
-                    generated_text += choices[0].message.content
-                else:
-                    logger.info(f"Unexpected 'choices' structure: {choices}")
+         for chunk in response:
+            if len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    if chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
+                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                    if chunk.choices[0].message.content:
+                        generated_text += chunk.choices[0].message.content
             else:
-                # Log any unexpected structure for troubleshooting
-                logger.info(f"Unexpected response structure: {chunk}")
-
+                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}", )
+                
             print("Full LLM Response:\n", generated_text)
         
             # Verify if any valid JSON was parsed
