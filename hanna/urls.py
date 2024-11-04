@@ -20,7 +20,7 @@ urlpatterns = [
     path('stinsight_step6', views.stinsight_step6, name='stinsight_step6'),
     path('DA_tester', views.DA_tester, name='DA_tester'),
     path('generate_questions', views.generate_questions, name='generate_questions'),
-    path('get_ppt_for_option4', views.get_ppt_for_option4, name='get_ppt_for_option4'),
+    path('get_ppt_for_option4/<str:task_id>/', views.get_ppt_for_option4, name='get_ppt_for_option4'),
   
     path('webhook_handler', views.webhook_handler, name='webhook_handler'),
     path('log_query_counters', views.log_query_counters, name='log_query_counters'),
