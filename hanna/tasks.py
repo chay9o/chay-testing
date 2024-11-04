@@ -1972,14 +1972,20 @@ def process_prompts4(final_content, language):
             top_p=0.9
         )
         # Collect response content
+        # Process the streamed response
         generated_text = ""
         for chunk in response:
-            if len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                    if chunk.choices[0].delta.content:
-                        generated_text += chunk.choices[0].delta.content
-                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                    generated_text += chunk.choices[0].message.content
+            # Check if chunk is a dictionary and has 'choices' attribute
+            if isinstance(chunk, dict) and 'choices' in chunk and len(chunk['choices']) > 0:
+                if hasattr(chunk['choices'][0], 'delta') and hasattr(chunk['choices'][0].delta, 'content'):
+                    if chunk['choices'][0].delta.content:
+                        generated_text += chunk['choices'][0].delta.content
+                elif hasattr(chunk['choices'][0], 'message') and hasattr(chunk['choices'][0].message, 'content'):
+                    if chunk['choices'][0].message.content:
+                        generated_text += chunk['choices'][0].message.content
+            else:
+                # Log an informational message if the chunk is not as expected
+                logger.info(f"Unexpected response structure: {chunk}")
 
 
         final_response = generated_text.strip()
