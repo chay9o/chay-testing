@@ -22,6 +22,7 @@ urlpatterns = [
     path('generate_questions', views.generate_questions, name='generate_questions'),
   
     path('webhook_handler', views.webhook_handler, name='webhook_handler'),
+    path('log_query_counters', views.log_query_counters, name='log_query_counters'),
     path('view_classifications', views.view_classifications, name='view_classifications'),
 
     path('create-solution/', views.create_solution, name='create_solution'),
