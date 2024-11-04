@@ -181,6 +181,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     print(f"Logged {counter_type} for company {company_id}, initiative {initiative_id}")
                     
     async def increment_query_counter(self, company_id, initiative_id):
+        await self.send_query_counter_to_view(company_id, initiative_id, "total_queries")
         try:
             await some_counter_increment_function(company_id, initiative_id, "total_queries")
             logging.info(f"Total queries for company {company_id}, initiative {initiative_id} incremented.")
@@ -191,6 +192,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             sys.stdout.flush()
 
     async def increment_trained_data_counter(self, company_id, initiative_id):
+        await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
         try:
             await some_counter_increment_function(company_id, initiative_id, "trained_data_queries")
             logging.info(f"Trained data queries for company {company_id}, initiative {initiative_id} incremented.")
@@ -239,6 +241,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         log_info_async(f"data: {data}")
 
         # Increment query counter
+        await self.send_query_counter_to_view(company_id, initiative_id, "total_queries")
         await self.increment_query_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
         
         # Flag for trained data usage
@@ -282,6 +285,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
+                    await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
                     await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
 
             elif "Individuals" in cat or "Personal Information" in cat:
@@ -292,6 +296,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
+                    await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
                     await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
 
             if 2 <= len(keywords_list) <= 3:
