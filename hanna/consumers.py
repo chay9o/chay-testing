@@ -239,7 +239,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         log_info_async(f"data: {data}")
 
         # Increment query counter
-        await self.send_query_counter_to_view(company_id, initiative_id, "total_queries")
+        await self.send_query_counter_to_view("total_queries")
         await self.increment_query_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
         
         # Flag for trained data usage
