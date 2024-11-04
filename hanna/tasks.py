@@ -6,6 +6,7 @@ import tempfile
 from pptx import Presentation
 from pptx.util import Pt, Inches
 from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
 from django.core.files.storage import default_storage
 from django.conf import settings
 import os
