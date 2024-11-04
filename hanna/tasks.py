@@ -1972,6 +1972,7 @@ def process_prompts4(final_content, language):
             top_p=0.9,
             stop=["<|eot_id|>", "<|eom_id|>"]
         )
+        print(response)
         # Collect response content
         # Process the streamed response
         generated_response = ""
