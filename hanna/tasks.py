@@ -1995,31 +1995,16 @@ def process_prompts4(final_content, language):
 
         # Log the final response
         print(f"Final LLM Response:\n{final_response}")
-
-        # Search for the JSON content in the response, even if the exact pattern is not found
-        json_start = final_response.find("{")
-        json_end = final_response.rfind("}") + 1  # Locate the last closing brace for the JSON
-
-        if json_start != -1 and json_end != -1:
-            # Extract the JSON string from the response
-            json_string = final_response[json_start:json_end]
-
-            # Parse the extracted JSON
-            try:
-                canvas_data = json.loads(json_string)
-                print(f"Extracted JSON: {canvas_data}")
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to decode JSON: {str(e)}")
-                raise ValueError(f"Failed to decode JSON: {str(e)}")
+        json_data = extract_json_from_response(final_response)
 
             # Check for the template type
-            template_type = canvas_data.get("canvas", {}).get("template_type")
+            template_type = json_data.get("canvas", {}).get("template_type")
             print(f"Template Type: {template_type}")
+            
             response_data = {
                 "final_text": final_response,
                 "template_type": template_type
             }
-
             # Based on the template type, forward to the appropriate function
             if template_type == 1:
                 handle_template_type_1(canvas_data)
@@ -2044,6 +2029,20 @@ def process_prompts4(final_content, language):
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
 
+def extract_json_from_response(response_text):
+    json_start = response_text.find("{")
+    json_end = response_text.rfind("}") + 1
+    if json_start != -1 and json_end != -1:
+        json_string = response_text[json_start:json_end]
+        try:
+            return json.loads(json_string)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode JSON: {str(e)}")
+            raise ValueError(f"Failed to decode JSON: {str(e)}")
+    else:
+        logger.error("No valid JSON output found in the LLM response")
+        raise ValueError("No valid JSON output found in the LLM response")
+        
 # Example functions to handle each template type
 def handle_template_type_1(canvas_data):
     print(f"Handling template type 1 with data: {canvas_data}")
