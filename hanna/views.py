@@ -274,22 +274,6 @@ def webhook_handler(request):
             except json.JSONDecodeError as e:
                 return JsonResponse({"error": f"Failed to parse classification result: {str(e)}"}, status=500)
 
-            payload = {
-                "Company_ID": company_id,
-                "Initiative_ID": initiative_id,
-                "Date": date,  # Use the provided date from the payload
-                "areas": areas  # Parse classification JSON
-            }
-            print(payload)
-            result = insert_classification_data(payload)
-            if result.get("status") == "success":
-                return JsonResponse({
-                    "status": "success",
-                    "result": classification_data  # Return classification result
-                }, status=200)
-            else:
-                return JsonResponse({"error": "Error storing data"}, status=500)
-
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
