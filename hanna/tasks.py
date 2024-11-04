@@ -1960,7 +1960,7 @@ def process_prompts4(final_content, language):
         system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
 
         # Send the system prompt to the DeepInfra LLM
-        response = llm.stream(system_prompt)
+        response = llm(system_prompt)
         print(f"Raw response from DeepInfra: {response}")
 
         # Collect response content
