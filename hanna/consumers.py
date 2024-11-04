@@ -239,7 +239,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         log_info_async(f"data: {data}")
 
         # Increment query counter
-        await self.send_query_counter_to_view("total_queries")
+        #await self.send_query_counter_to_view("total_queries")
         await self.increment_query_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
         
         # Flag for trained data usage
@@ -283,7 +283,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
-                    await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
+                    #await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
                     await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
 
             elif "Individuals" in cat or "Personal Information" in cat:
@@ -294,7 +294,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
-                    await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
+                    #await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
                     await self.increment_trained_data_counter(company_id=data.get('company_id'), initiative_id=data.get('initiative_id'))
 
             if 2 <= len(keywords_list) <= 3:
