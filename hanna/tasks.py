@@ -1974,32 +1974,21 @@ def process_prompts4(final_content, language):
         )
         # Collect response content
         # Process the streamed response
-        generated_text = ""
+        generated_response = ""
         for chunk in response:
-            if len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                    if chunk.choices[0].delta.content:
-                        generated_text += chunk.choices[0].delta.content
-                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                    if chunk.choices[0].message.content:
-                        generated_text += chunk.choices[0].message.content
-            else:
-                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}", )
-                
-            print("Full LLM Response:\n", generated_text)
-        
-            # Verify if any valid JSON was parsed
-            if not generated_text.strip():
-                raise ValueError("No valid JSON output found in the LLM response")
-    
-            #final_response = generated_text.strip()
-    
-            # Log the final response
-            #print(f"Final LLM Response:\n{final_response}")
-            json_data = extract_json_from_response(final_response)
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                generated_response += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                generated_response += chunk.choices[0].message.content
+
+            # Now the generated_response is a complete string, parse it as JSON
+            print(f"Raw AI Response: {generated_response}")
+            json_response = json.loads(generated_response)
+            print(f"json_response: {json_response}")
+           
 
             # Check for the template type
-            template_type = json_data.get("canvas", {}).get("template_type")
+            template_type = json_response.get("canvas", {}).get("template_type")
             print(f"Template Type: {template_type}")
             
             response_data = {
