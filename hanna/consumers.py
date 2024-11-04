@@ -166,6 +166,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await asyncio.sleep(0)
 
     # New query counters
+    async def send_query_counter_to_view(self, company_id, initiative_id, counter_type):
+        url = "https://chay-testing-192912d0328c.herokuapp.com/log_query_counters"  # Adjust if needed
+        data = {
+            "company_id": company_id,
+            "initiative_id": initiative_id,
+            counter_type: 1  # Each increment call will send a single increment
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=data) as resp:
+                if resp.status != 200:
+                    print(f"Failed to log {counter_type} for company {company_id}, initiative {initiative_id}")
+                else:
+                    print(f"Logged {counter_type} for company {company_id}, initiative {initiative_id}")
+                    
     async def increment_query_counter(self, company_id, initiative_id):
         try:
             await some_counter_increment_function(company_id, initiative_id, "total_queries")
