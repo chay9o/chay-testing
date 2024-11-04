@@ -1969,7 +1969,8 @@ def process_prompts4(final_content, language):
             messages=[{"role": "system", "content": system_prompt}],
             max_tokens=8192,
             temperature=0.4,
-            top_p=0.9
+            top_p=0.9,
+            stop=["<|eot_id|>", "<|eom_id|>"]
         )
         # Collect response content
         # Process the streamed response
