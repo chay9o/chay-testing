@@ -165,12 +165,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def increment_query_counter(self, company_id, initiative_id):
         # Increment total query counter
         await some_counter_increment_function(company_id, initiative_id, "total_queries")
+        logging.info(f"Total queries for company {company_id}, initiative {initiative_id} incremented.")
         print(f"Total queries for company {company_id}, initiative {initiative_id} incremented.")
+        await asyncio.sleep(0) 
 
     async def increment_trained_data_counter(self, company_id, initiative_id):
         # Increment counter for trained data queries
         await some_counter_increment_function(company_id, initiative_id, "trained_data_queries")
+        logging.info(f"Trained data queries for company {company_id}, initiative {initiative_id} incremented.")
         print(f"Trained data queries for company {company_id}, initiative {initiative_id} incremented.")
+        await asyncio.sleep(0)
 
     async def receive(self, text_data=None, bytes_data=None):
         retriever = ""
