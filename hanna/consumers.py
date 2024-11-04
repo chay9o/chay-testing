@@ -127,6 +127,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 description="The temperature of the LLM",
             )
         )
+        self.counters = {"total_queries": 0, "trained_data_queries": 0}
 
     async def connect(self):
         await self.accept()
@@ -172,8 +173,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         :param counter_type: Type of counter to increment (e.g., 'total_queries', 'trained_data_queries')
         """
         # Placeholder for the actual implementation
-        self.counters[counter_type] += 1
+        if counter_type in self.counters:
+            self.counters[counter_type] += 1
+        else:
+            self.counters[counter_type] = 1  # Initialize if it doesn't exist
         log_info_async(f"Incremented {counter_type} to {self.counters[counter_type]}")
+        print(f"{counter_type} count: {self.counters[counter_type]}")
 
     async def increment_query_counter(self):
         await self.increment_counter("total_queries")
