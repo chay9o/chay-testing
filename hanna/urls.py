@@ -22,7 +22,7 @@ urlpatterns = [
     path('generate_questions', views.generate_questions, name='generate_questions'),
     path('get_ppt_for_option4/<str:task_id>/', views.get_ppt_for_option4, name='get_ppt_for_option4'),
 
-    path('check_evaluation_status/<str:task_id>/', check_evaluation_status, name='check_evaluation_status'),
+    path('check_evaluation_status/<str:task_id>/', views.check_evaluation_status, name='check_evaluation_status'),
   
     path('webhook_handler', views.webhook_handler, name='webhook_handler'),
     path('log_query_counters', views.log_query_counters, name='log_query_counters'),
