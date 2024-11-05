@@ -2003,9 +2003,10 @@ def process_prompts4(final_content, language):
             
         response_data = {
             "final_text": json_response,
-            "template_type": template_type,
-            "pptx_base64": pptx_base64
+            "template_type": template_type
+            
         }
+        pptx_base64 = None
         canvas_data = json_response
             # Based on the template type, forward to the appropriate function
         if template_type == 1:
@@ -2020,10 +2021,8 @@ def process_prompts4(final_content, language):
         else:
             logger.error(f"Unknown template type: {template_type}")
             raise ValueError(f"Unknown template type: {template_type}")
-        
-    
         return response_data
-
+        
     except Exception as e:
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
