@@ -611,6 +611,7 @@ def build_system_prompt(base_prompt, user_id):
 def stinsight_step1(request):
     try:
         data = json.loads(request.body)
+        print("Received data:", data)
         user_id = data.get('user_id')
         
         if not user_id:
@@ -675,8 +676,8 @@ def stinsight_step1(request):
         generated_questions_global[user_id].append(generated_question_value)
 
         # Print the system prompt with actual values
-        print(prompt_with_values)
-
+        print("System prompt:", prompt_with_values)
+        
         step1_data = {
             'step1': {
                 'user_input': problem_description,
