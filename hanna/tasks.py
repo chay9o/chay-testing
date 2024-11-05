@@ -2127,10 +2127,11 @@ def handle_template_type_4(canvas_data):
     
     log_memory_usage("Save Presentation")
     print("done")
+    response_data["pptx_base64"] = pptx_base64  # Ensure pptx_base64 is added
+    print(f"Returning Response Data with pptx_base64: {response_data}")
+    return response_data
 
-    return {
-        'pptx_base64': pptx_base64,
-    }
+    
     
     
 
