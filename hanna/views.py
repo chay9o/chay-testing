@@ -1161,14 +1161,12 @@ def get_ppt_for_option4(request, task_id):
             title = "title"
             description = "description"
 
-            if pptx_base64:
-                return JsonResponse({
-                    'pptx_base64': pptx_base64,
-                    'smartnote_title': smartnote_title,
-                    'smartnote_description': smartnote_description
-                })
-            else:
-                return JsonResponse({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+           
+            return JsonResponse({
+                'pptx_base64': pptx_base64,
+                'smartnote_title': smartnote_title,
+                'smartnote_description': smartnote_description
+            })
                 
         else:
             return JsonResponse({'error': 'Task not completed'}, status=status.HTTP_400_BAD_REQUEST)
