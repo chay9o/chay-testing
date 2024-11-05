@@ -1161,18 +1161,20 @@ def get_ppt_for_option4(request, task_id):
             title = "title"
             description = "description"
 
-            return JsonResponse({
-                'pptx_base64': pptx_base64,
-                'title': title,
-                'description': description
-            })
-        elif result.status == 'FAILURE':
-            return Response({'error': 'Task failed', 'traceback': result.traceback}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            if pptx_base64:
+                return JsonResponse({
+                    'pptx_base64': pptx_base64,
+                    'smartnote_title': smartnote_title,
+                    'smartnote_description': smartnote_description
+                })
+            else:
+                return JsonResponse({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+                
         else:
-            return Response({'status': result.status}, status=status.HTTP_202_ACCEPTED)
+            return JsonResponse({'error': 'Task not completed'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"Error in get_ppt_for_option4: {e}")
-        return Response({'error': 'Failed to retrieve PPT file'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        print(e)
+        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 @api_view(['POST'])
