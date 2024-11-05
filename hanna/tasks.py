@@ -1975,7 +1975,7 @@ def process_prompts4(final_content, language):
             repetition_penalty=1,
             stream=True
         )
-        print(response)
+        print(f"Response: {response}")
         # Collect response content
         # Process the streamed response
         generated_response = ""
@@ -1987,7 +1987,7 @@ def process_prompts4(final_content, language):
 
 
             # Print the full response text for debugging
-        print("Full LLM Response:\n", generated_text)
+        #print("Full LLM Response:\n", generated_text)
         print(f"Raw AI Response: {generated_response}")
         json_response = json.loads(generated_response)
         print(f"json_response: {json_response}")
