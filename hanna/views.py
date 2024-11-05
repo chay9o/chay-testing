@@ -604,6 +604,22 @@ def evaluate_text(request):
         print(e)
         return JsonResponse({'error': 'Something went wrong!'}, status=500)
 
+@csrf_exempt
+@api_view(['GET'])
+def check_evaluation_status(request, task_id):
+    task = AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {'status': 'Pending'}
+    elif task.state == 'SUCCESS':
+        response = {'status': 'Completed', 'result': task.result}
+    elif task.state == 'FAILURE':
+        response = {'status': 'Failed', 'error': str(task.result)}
+    else:
+        response = {'status': 'Unknown'}
+
+    return JsonResponse(response)
+
+
 # Define global variables to store user inputs and generated questions, initialized as None
 user_inputs_global = []
 generated_questions_global = []
