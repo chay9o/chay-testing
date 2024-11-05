@@ -2002,7 +2002,8 @@ def process_prompts4(final_content, language):
             
         response_data = {
             "final_text": json_response,
-            "template_type": template_type
+            "template_type": template_type,
+            "pptx_base64": pptx_base64
         }
         canvas_data = json_response
             # Based on the template type, forward to the appropriate function
