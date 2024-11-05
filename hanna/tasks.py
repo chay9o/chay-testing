@@ -2001,7 +2001,7 @@ def process_prompts4(final_content, language):
         print(f"Template Type: {template_type}")
             
         response_data = {
-            "final_text": final_response,
+            "final_text": json_response,
             "template_type": template_type
         }
             # Based on the template type, forward to the appropriate function
