@@ -1200,6 +1200,12 @@ def DA_tester(request):
         elif selected_option == 'option3':
             # Trigger process_prompts3 for option 3 (e.g., Data Analysis Option 3)
             task = process_prompts_3.apply_async(args=[user_input, language])
+        elif selected_option == 'option4':
+            # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
+            response_data = trigger_ppt_generation(final_content, language)
+            if 'error' in response_data:
+                return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse(response_data, status=status.HTTP_202_ACCEPTED)
         else:
             return JsonResponse({'error': 'Invalid option selected'}, status=status.HTTP_400_BAD_REQUEST)
 
