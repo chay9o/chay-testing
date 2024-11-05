@@ -20,7 +20,7 @@ from .backup import AWSBackup
 from jinja2 import Template
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .tasks import generate_ppt_task, process_prompts_1, process_prompts_2, process_prompts_3, process_prompts4
+from .tasks import generate_ppt_task, process_prompts_1, process_prompts_2, process_prompts_3, process_prompts4, evaluate_text_task
 from celery.result import AsyncResult
 import re
 from together import Together
@@ -596,79 +596,13 @@ def evaluate_text(request):
         data = json.loads(request.body)
         note_text = data['noteText']
         guidelines = data['guidelines']
-        # Detect the language of note text and the first guideline
-        note_language = detectLanguage(note_text, 'en')
-        print(note_language)
-        guideline_language = detectLanguage(guidelines[0]['text'], 'en')
-        print(guideline_language)
 
-        # Prepare a warning if languages are different
-        language_warning = None
-        if note_language != guideline_language:
-            language_warning = 'Smartnote and the Strategic Alignment are in different languages, so the outcome may not be accurate.'
-
-        with open("strategic-prompt.txt", "r") as file:
-            prompt_ = file.read()
-
-        SYSPROMPT = str(prompt_)
-
-        guidelines_text = "\n".join([f"#Guideline {index + 1}: \"{guideline['text']}\"" for index, guideline in enumerate(guidelines)])
-        # Incorporate language into the system prompt
-        prompt_with_values = SYSPROMPT.replace("{note_text}", note_text).replace("{guidelines}", guidelines_text).replace("{language}", note_language)
-        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-        client = Together(api_key=TOGETHER_API_KEY)
-
-        messages = [
-            {"role": "system", "content": prompt_with_values},
-            {"role": "user", "content": f"{note_text}\n{guidelines_text}"}
-        ]
-
-        response = client.chat.completions.create(
-            model="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-            messages=messages,
-            max_tokens=4096,
-            temperature=0,
-            top_p=0.7,
-            top_k=50,
-            repetition_penalty=1,
-            stop=["<|eot_id|>","<|eom_id|>"],
-            stream=True
-        )
-
-        analysis = ""
-        for chunk in response:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                analysis += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                analysis += chunk.choices[0].message.content
-
-        print(f"Raw analysis data: {analysis}")
-        if analysis.startswith("```") and analysis.endswith("```"):
-            analysis_lines = analysis.splitlines()
-            # Remove the first and last lines
-            analysis_lines = analysis_lines[1:-1]
-            # Join the lines back into a single string
-            analysis = "\n".join(analysis_lines)
-        print(f"Sanitized analysis data: {analysis}")
-      
-        if not analysis:
-            return Response({'error': 'Empty response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        try:
-            analysis_json = json.loads(analysis)
-        except json.JSONDecodeError as e:
-            print(f"JSON Decode Error: {e}, Raw data: {analysis}")
-            return Response({'error': 'Invalid JSON response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Include the warning in the response if it exists
-        if language_warning:
-            analysis_json['warning'] = language_warning
-
-        return JsonResponse(analysis_json, safe=False)
+        # Trigger the Celery task
+        task = evaluate_text_task.delay(note_text, guidelines)
+        return JsonResponse({'task_id': task.id}, status=202)
     except Exception as e:
         print(e)
-        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        return JsonResponse({'error': 'Something went wrong!'}, status=500)
 
 # Define global variables to store user inputs and generated questions, initialized as None
 user_inputs_global = []
