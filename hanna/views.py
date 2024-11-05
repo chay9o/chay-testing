@@ -558,36 +558,6 @@ def create_collection(request) -> Response:
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def detectLanguage( text, original_language):
-    # Load the pre-trained language identification model
-    model_path = 'lid.176.ftz'  # Path to the pre-trained model file
-    model = fasttext.load_model(model_path)
-    # Text to be identified
-    text = text.replace('\n', ' ').strip()  # Remove newlines and trim whitespace
-    # If the text is less than 5 words, return the original language
-    if len(text.split()) < 5:
-        return original_language
-    # Predict the language of the text
-    predicted_languages = model.predict(text, k=1)  # Get top 1 prediction
-    detected_language_code = predicted_languages[0][0].replace('__label__', '')
-    # Mapping of language codes to language names. I think with these languages we have more than enough
-    language_names = {
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'zh': 'Chinese',
-        'ru': 'Russian',
-        'ja': 'Japanese',
-        'nl': 'Dutch',
-        'ar': 'Arabic',
-        'ur': 'Urdu'
-    }
-    # Return the full name of the detected language
-    return language_names.get(detected_language_code, original_language)
-
 
 @csrf_exempt
 @api_view(['POST'])
