@@ -1969,64 +1969,53 @@ def process_prompts4(final_content, language):
             messages=[{"role": "system", "content": system_prompt}],
             max_tokens=8192,
             temperature=0.4,
-            top_p=0.9,
-            stop=["<|eot_id|>", "<|eom_id|>"]
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            top_p=0.7,
+            top_k=50,
+            repetition_penalty=1,
+            stream=True
         )
         print(response)
         # Collect response content
         # Process the streamed response
         generated_response = ""
         for chunk in response:
-                # Print the chunk to directly observe its structure
-                print("Chunk:", chunk)
-                
-                # Ensure that the chunk is a dictionary and check for 'choices' key
-                if isinstance(chunk, dict) and 'choices' in chunk:
-                    choices = chunk['choices']
-                    if isinstance(choices, list) and choices and 'message' in choices[0]:
-                        message = choices[0]['message']
-                        if 'content' in message:
-                            generated_text += message['content']
-                        else:
-                            logger.info(f"Unexpected 'message' structure: {message}")
-                    else:
-                        logger.info(f"Unexpected 'choices' structure: {choices}")
-                else:
-                    logger.info(f"Unexpected response structure: {chunk}")
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                generated_response += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                generated_response += chunk.choices[0].message.content
+
 
             # Print the full response text for debugging
         print("Full LLM Response:\n", generated_text)
-            print(f"Raw AI Response: {generated_response}")
-            json_response = json.loads(generated_response)
-            print(f"json_response: {json_response}")
+        print(f"Raw AI Response: {generated_response}")
+        json_response = json.loads(generated_response)
+        print(f"json_response: {json_response}")
            
 
             # Check for the template type
-            template_type = json_response.get("canvas", {}).get("template_type")
-            print(f"Template Type: {template_type}")
+        template_type = json_response.get("canvas", {}).get("template_type")
+        print(f"Template Type: {template_type}")
             
-            response_data = {
-                "final_text": final_response,
-                "template_type": template_type
-            }
+        response_data = {
+            "final_text": final_response,
+            "template_type": template_type
+        }
             # Based on the template type, forward to the appropriate function
-            if template_type == 1:
-                handle_template_type_1(canvas_data)
-            elif template_type == 2:
-                handle_template_type_2(canvas_data)
-            elif template_type == 3:
-                handle_template_type_3(canvas_data)
-            elif template_type == 4:
-                pptx_data = handle_template_type_4(canvas_data)
-                response_data.update(pptx_data) 
-            else:
-                logger.error(f"Unknown template type: {template_type}")
-                raise ValueError(f"Unknown template type: {template_type}")
-        
+        if template_type == 1:
+            handle_template_type_1(canvas_data)
+        elif template_type == 2:
+            handle_template_type_2(canvas_data)
+        elif template_type == 3:
+            handle_template_type_3(canvas_data)
+        elif template_type == 4:
+            pptx_data = handle_template_type_4(canvas_data)
+            response_data.update(pptx_data) 
         else:
-            logger.error("No valid JSON output found in the LLM response")
-            raise ValueError("No valid JSON output found in the LLM response")
-
+            logger.error(f"Unknown template type: {template_type}")
+            raise ValueError(f"Unknown template type: {template_type}")
+        
+    
         return response_data
 
     except Exception as e:
