@@ -1995,7 +1995,7 @@ def process_prompts4(final_content, language):
                     logger.info(f"Unexpected response structure: {chunk}")
 
             # Print the full response text for debugging
-            print("Full LLM Response:\n", generated_text)
+        print("Full LLM Response:\n", generated_text)
             print(f"Raw AI Response: {generated_response}")
             json_response = json.loads(generated_response)
             print(f"json_response: {json_response}")
