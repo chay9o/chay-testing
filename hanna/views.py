@@ -590,33 +590,42 @@ def check_evaluation_status(request, task_id):
     return JsonResponse(response)
 
 
-# Define global variables to store user inputs and generated questions, initialized as None
-user_inputs_global = []
-generated_questions_global = []
-problem_description = ""  # Variable to store the problem description from step1
+# Define global dictionaries to store user-specific inputs and generated questions
+user_inputs_global = {}
+generated_questions_global = {}
+problem_description_global = {}  # Dictionary to store the problem description for each user
 
 
-# Helper function to build the system prompt by appending previous steps from global lists
-def build_system_prompt(base_prompt):
+
+# Helper function to build the system prompt by appending previous steps from user-specific data
+def build_system_prompt(base_prompt, user_id):
     steps_content = ""
-    for generated_question, user_input in zip(generated_questions_global, user_inputs_global):
-        steps_content += f"{generated_question}\n{user_input}\n"
+    if user_id in generated_questions_global and user_id in user_inputs_global:
+        for generated_question, user_input in zip(generated_questions_global[user_id], user_inputs_global[user_id]):
+            steps_content += f"{generated_question}\n{user_input}\n"
     return base_prompt.replace("{previous_steps}", steps_content)
 
 
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step1(request):
-    global user_inputs_global, generated_questions_global, problem_description
     try:
-        # Initialize the global lists for a new session
-        user_inputs_global = []
-        generated_questions_global = []
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Initialize the lists for this user if they don't already exist
+        if user_id not in user_inputs_global:
+            user_inputs_global[user_id] = []
+            generated_questions_global[user_id] = []
+            problem_description_global[user_id] = ""
         
         # Capture the problem description from step1
-        data = json.loads(request.body)
         problem_description = data['user_input']
         language = data['language']
+        problem_description_global[user_id] = problem_description
 
         with open("strategic-insight-prompt.txt", "r") as file:
             prompt_template = file.read()
@@ -663,7 +672,7 @@ def stinsight_step1(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question in the global list
-        generated_questions_global.append(generated_question_value)
+        generated_questions_global[user_id].append(generated_question_value)
 
         # Print the system prompt with actual values
         print(prompt_with_values)
@@ -683,21 +692,26 @@ def stinsight_step1(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step2(request):
-    global user_inputs_global, generated_questions_global
     try:
+        # Extract user_id from request (assuming it's provided in the request body)
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data['user_input']
         language = data['language']
 
         # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        user_inputs_global[user_id].append(user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -705,7 +719,7 @@ def stinsight_step2(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
         ]
 
         response = client.chat.completions.create(
@@ -738,11 +752,11 @@ def stinsight_step2(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question value in the global list
-        generated_questions_global.append(generated_question_value)
+        generated_questions_global[user_id].append(generated_question_value)
 
         # Rebuild the system prompt again, now with the extracted question
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
 
         # Print the system prompt with actual values
         print(system_prompt)
@@ -764,21 +778,25 @@ def stinsight_step2(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step3(request):
-    global user_inputs_global, generated_questions_global
     try:
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data['user_input']
         language = data['language']
 
         # Store the user input for the current step
-        user_inputs_global.append(user_input)
-
+        user_inputs_global[user_id].append(user_input)
+        
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -786,7 +804,7 @@ def stinsight_step3(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
         ]
 
         response = client.chat.completions.create(
@@ -819,7 +837,10 @@ def stinsight_step3(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global.append(generated_question_value)
+        generated_questions_global[user_id].append(generated_question_value)
+
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
 
         # Print the system prompt with actual values
         print(system_prompt)
@@ -840,21 +861,24 @@ def stinsight_step3(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step4(request):
-    global user_inputs_global, generated_questions_global
     try:
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data['user_input']
         language = data['language']
 
-        # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        user_inputs_global[user_id].append(user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -895,7 +919,10 @@ def stinsight_step4(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global.append(generated_question_value)
+        generated_questions_global[user_id].append(generated_question_value)
+
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
 
         # Print the system prompt with actual values
         print(system_prompt)
@@ -907,7 +934,6 @@ def stinsight_step4(request):
                 'generated_question': generated_question_value
             }
         }
-
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
         print(e)
@@ -916,21 +942,24 @@ def stinsight_step4(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step5(request):
-    global user_inputs_global, generated_questions_global
     try:
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data['user_input']
         language = data['language']
 
-        # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        user_inputs_global[user_id].append(user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -971,8 +1000,10 @@ def stinsight_step5(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global.append(generated_question_value)
+        generated_questions_global[user_id].append(generated_question_value)
 
+        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = build_system_prompt(system_prompt, user_id)
         # Print the system prompt with actual values
         print(system_prompt)
 
@@ -993,20 +1024,21 @@ def stinsight_step5(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step6(request):
-    global user_inputs_global, generated_questions_global, problem_description
     try:
-        # Parse the request data
-        data = json.loads(request.body)
+        #data = json.loads(request.body)
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data.get('user_input', '')
         language = data.get('language', 'en')
-        selected_option = data.get('selected_option', 'option1')  # Get the dropdown choice
+        selected_option = data.get('selected_option', 'option1')
 
-        # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        user_inputs_global[user_id].append(user_input)
 
         # Collect the final content that includes the problem description and all user inputs
-        final_content = problem_description + "\n\n" + "\n".join(user_inputs_global)
-
+        final_content = problem_description_global[user_id] + "\n\n" + "\n".join(user_inputs_global[user_id])
         # Print all data for verification
         #print("Final Content to be passed to process_prompts:")
         #print(final_content)
