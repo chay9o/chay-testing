@@ -1988,8 +1988,9 @@ def process_prompts4(final_content, language):
 
             # Print the full response text for debugging
         #print("Full LLM Response:\n", generated_text)
-        print(f"Raw AI Response: {generated_response}")
+        
         cleaned_text = re.sub(r"```json|```", "", generated_response).strip()
+        print(f"Raw cleaned text: {cleaned_text}")
         json_response = extract_json_from_response(cleaned_text)
         #print(f"json_data: {json_data}")
         #json_response = json.loads(cleaned_text)
