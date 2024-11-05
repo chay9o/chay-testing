@@ -40,6 +40,75 @@ chat_template = (
     "{% endif %}{% endfor %}"
 )
 
+@shared_task
+def evaluate_text_task(note_text, guidelines):
+    try:
+        note_language = detectLanguage(note_text, 'en')
+        print(note_language)
+        guideline_language = detectLanguage(guidelines[0]['text'], 'en')
+        print(guideline_language)
+
+        language_warning = None
+        if note_language != guideline_language:
+            language_warning = 'Smartnote and the Strategic Alignment are in different languages, so the outcome may not be accurate.'
+
+        with open("strategic-prompt.txt", "r") as file:
+            prompt_ = file.read()
+
+        SYSPROMPT = str(prompt_)
+        guidelines_text = "\n".join([f"#Guideline {index + 1}: \"{guideline['text']}\"" for index, guideline in enumerate(guidelines)])
+        prompt_with_values = SYSPROMPT.replace("{note_text}", note_text).replace("{guidelines}", guidelines_text).replace("{language}", note_language)
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=settings.TOGETHER_API_KEY)
+        messages = [
+            {"role": "system", "content": prompt_with_values},
+            {"role": "user", "content": f"{note_text}\n{guidelines_text}"}
+        ]
+
+        response = client.chat.completions.create(
+            model="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+            messages=messages,
+            max_tokens=4096,
+            temperature=0,
+            top_p=0.7,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        analysis = ""
+        for chunk in response:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                analysis += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                analysis += chunk.choices[0].message.content
+                
+        print(f"Raw analysis data: {analysis}")
+        if analysis.startswith("```") and analysis.endswith("```"):
+            analysis_lines = analysis.splitlines()
+            # Remove the first and last lines
+            analysis_lines = analysis_lines[1:-1]
+            # Join the lines back into a single string
+            analysis = "\n".join(analysis_lines)
+        print(f"Sanitized analysis data: {analysis}")
+      
+        if not analysis:
+            return Response({'error': 'Empty response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            analysis_json = json.loads(analysis)
+        except json.JSONDecodeError as e:
+            print(f"JSON Decode Error: {e}, Raw data: {analysis}")
+            return Response({'error': 'Invalid JSON response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if language_warning:
+            analysis_json['warning'] = language_warning
+
+        return analysis_json
+    except Exception as e:
+        return {'error': str(e)}
+
 
 # Function to generate the chat history string
 def render_chat_history(messages):
