@@ -2004,6 +2004,7 @@ def process_prompts4(final_content, language):
             "final_text": json_response,
             "template_type": template_type
         }
+        canvas_data = json_response
             # Based on the template type, forward to the appropriate function
         if template_type == 1:
             handle_template_type_1(canvas_data)
