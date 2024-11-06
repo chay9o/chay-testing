@@ -2060,7 +2060,7 @@ def process_prompts4(final_content, language):
 
         # Replace {final_content} in the system prompt with the actual final_content input
         #system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
-        system_prompt = SYSPROMPT.replace("{final_content}", final_content.strip())
+        system_prompt = SYSPROMPT.replace("{final_content}", final_content.strip()).replace("{language}", language)
 
          # Use Together API instead of llm.stream
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
