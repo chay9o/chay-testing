@@ -12,7 +12,7 @@ Steps:
 1. Analyze the situation described by the user or team.
 2. Consider the information provided below, along with any other relevant knowledge, to guide the team toward assessing and solving the situation.
 3. Choose the most suitable template from the options below, ensuring it will help the team assess, take action, and solve the problem.
-4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each.
+4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each. Ensure that all titles are kept minimal, ideally no more than three words, and key elements are limited to two-word phrases or brief terms only.
 [/INST]
 
 Template Options:
@@ -31,53 +31,53 @@ Template Options:
        "top_hexagons": [
          {
            "hexagon_number": 1,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          },
          {
            "hexagon_number": 2,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          },
          {
            "hexagon_number": 3,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          },
          {
            "hexagon_number": 4,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          }
        ],
        "bottom_hexagons": [
          {
            "hexagon_number": 1,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          },
          {
            "hexagon_number": 2,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          },
          {
            "hexagon_number": 3,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          },
          {
            "hexagon_number": 4,
-           "title": "",
+           "title": "", // Titles should be short and minimal, ideally one to three words.
            "description": "",
-           "key_elements": ["", "", "", ""]
+           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
          }
        ]
      }
