@@ -2100,6 +2100,7 @@ def process_prompts4(final_content, language):
         
         cleaned_text = re.sub(r"```json|```", "", generated_response).strip()
         print(f"Raw cleaned text: {cleaned_text}")
+        cleaned_text = "\n".join([line for line in cleaned_text.splitlines() if line.strip()])
         json_response = extract_json_from_response(cleaned_text)
         #print(f"json_data: {json_data}")
         #json_response = json.loads(cleaned_text)
