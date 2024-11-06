@@ -22,7 +22,7 @@ Template Options:
    - Composed of two rows of four hexagons each (8 hexagons total). The top row evaluates four main topics or categories, while the bottom row assesses subtopics of the ones above.
    - It is ideal for evaluating multiple aspects of a situation in a connected, hive-like structure.
 
-   JSON Output:
+   JSON Output should follow this structure::
    {
      "canvas": {
        "template_type": 4,
