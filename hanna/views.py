@@ -887,7 +887,7 @@ def stinsight_step4(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
         ]
 
         response = client.chat.completions.create(
@@ -968,7 +968,7 @@ def stinsight_step5(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
         ]
 
         response = client.chat.completions.create(
