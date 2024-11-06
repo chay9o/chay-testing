@@ -1026,7 +1026,7 @@ def stinsight_step5(request):
 @api_view(['POST'])
 def stinsight_step6(request):
     try:
-        #data = json.loads(request.body)
+        data = json.loads(request.body)
         user_id = data.get('user_id')
 
         if not user_id:
