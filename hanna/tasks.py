@@ -2214,6 +2214,11 @@ def handle_template_type_4(canvas_data):
                                     paragraph.level = 1  # Set an indentation level for bullet points
                                     paragraph.alignment = PP_ALIGN.LEFT  # Keep left alignment for bullet points
 
+                                elif any(description in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for description in hexagon['description']):
+                                    # Indent key elements to move them toward the center
+                                    paragraph.level = 0  # Set an indentation level for bullet points
+                                    paragraph.alignment = PP_ALIGN.LEFT  # Keep left alignment for bullet points
+
                                 elif paragraph.text.strip() in [
                                     hexagon['description'] for hexagon in canvas_data['canvas']['top_hexagons']
                                 ] + [
