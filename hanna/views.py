@@ -1116,13 +1116,18 @@ def get_ppt_for_option4(request, task_id):
 
            
             return JsonResponse({
+                'status': 'SUCCESS',
                 'pptx_base64': pptx_base64,
-                'smartnote_title': title,
-                'smartnote_description': description
+                'title': title,
+                'description': description
             })
                 
-        else:
-            return JsonResponse({'error': 'Task not completed'}, status=status.HTTP_400_BAD_REQUEST)
+        elif result.status == 'FAILURE':
+            return JsonResponse({'status': 'FAILURE', 'error': 'Task failed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        else:  # For PENDING or any other status
+            return JsonResponse({'status': result.status})
+            
     except Exception as e:
         print(e)
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
