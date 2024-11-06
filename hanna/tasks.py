@@ -2165,72 +2165,72 @@ def handle_template_type_4(canvas_data):
     print(f"Handling template type 4 with data: {canvas_data}")
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
     # Build the complete replacement dictionary to handle titles, descriptions, and key elements
-replacement_dict = {
-    "box1": f"{canvas_data['canvas']['top_hexagons'][0]['title']}\n\n{canvas_data['canvas']['top_hexagons'][0]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][0]['key_elements'][:3]),
-    "top_hex2": f"{canvas_data['canvas']['top_hexagons'][1]['title']}\n\n{canvas_data['canvas']['top_hexagons'][1]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][1]['key_elements'][:3]),
-    "top_hex3": f"{canvas_data['canvas']['top_hexagons'][2]['title']}\n\n{canvas_data['canvas']['top_hexagons'][2]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][2]['key_elements'][:3]),
-    "top_hex4": f"{canvas_data['canvas']['top_hexagons'][3]['title']}\n\n{canvas_data['canvas']['top_hexagons'][3]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][3]['key_elements'][:3]),
-    "box2": f"{canvas_data['canvas']['bottom_hexagons'][0]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][0]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][0]['key_elements'][:3]),
-    "bottom_hex2": f"{canvas_data['canvas']['bottom_hexagons'][1]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][1]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][1]['key_elements'][:3]),
-    "bottom_hex3": f"{canvas_data['canvas']['bottom_hexagons'][2]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][2]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][2]['key_elements'][:3]),
-    "bottom_hex4": f"{canvas_data['canvas']['bottom_hexagons'][3]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][3]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][3]['key_elements'][:3]),
-    "cut1": canvas_data["canvas"]["canvas_name"],
-    "cut2": canvas_data["canvas"]["canvas_description"],
-}
-
-
-# Iterate through slides and apply formatting for 'cut1', 'cut2', hexagon titles, descriptions, and key elements
-for slide in presentation.slides:
-    for shape in slide.shapes:
-        if hasattr(shape, "text"):
-            for placeholder, replacement in replacement_dict.items():
-                if placeholder in shape.text:
-                    shape.text = shape.text.replace(placeholder, replacement)
+    replacement_dict = {
+        "box1": f"{canvas_data['canvas']['top_hexagons'][0]['title']}\n\n{canvas_data['canvas']['top_hexagons'][0]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][0]['key_elements'][:3]),
+        "top_hex2": f"{canvas_data['canvas']['top_hexagons'][1]['title']}\n\n{canvas_data['canvas']['top_hexagons'][1]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][1]['key_elements'][:3]),
+        "top_hex3": f"{canvas_data['canvas']['top_hexagons'][2]['title']}\n\n{canvas_data['canvas']['top_hexagons'][2]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][2]['key_elements'][:3]),
+        "top_hex4": f"{canvas_data['canvas']['top_hexagons'][3]['title']}\n\n{canvas_data['canvas']['top_hexagons'][3]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][3]['key_elements'][:3]),
+        "box2": f"{canvas_data['canvas']['bottom_hexagons'][0]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][0]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][0]['key_elements'][:3]),
+        "bottom_hex2": f"{canvas_data['canvas']['bottom_hexagons'][1]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][1]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][1]['key_elements'][:3]),
+        "bottom_hex3": f"{canvas_data['canvas']['bottom_hexagons'][2]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][2]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][2]['key_elements'][:3]),
+        "bottom_hex4": f"{canvas_data['canvas']['bottom_hexagons'][3]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][3]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][3]['key_elements'][:3]),
+        "cut1": canvas_data["canvas"]["canvas_name"],
+        "cut2": canvas_data["canvas"]["canvas_description"],
+    }
     
-                    # Adjust text fitting, size, alignment, and color
-                    if hasattr(shape, "text_frame") and shape.text_frame is not None:
-                        shape.text_frame.word_wrap = True
-                        shape.text_frame.auto_size = True  # Ensure text boxes resize to fit content
-                        
-                        shape.text_frame.margin_left = Inches(0.20)  # Adjust as needed
-                        shape.text_frame.margin_right = Inches(0.20)  
-
-                        for paragraph in shape.text_frame.paragraphs:
-                            # Center-align titles only
-                            if paragraph.text.strip() in [
-                                hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
-                            ] + [
-                                hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
-                            ]:
-                                # Center align for titles only
-                                paragraph.alignment = PP_ALIGN.CENTER
-                                for run in paragraph.runs:
-                                    #run.font.size = Pt(12)
-                                    run.font.bold = True  # Make title bold
-
-                            elif any(key in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for key in hexagon['key_elements']):
-                                # Indent key elements to move them toward the center
-                                paragraph.level = 1  # Set an indentation level for bullet points
-                                paragraph.alignment = PP_ALIGN.LEFT  # Keep left alignment for bullet points
-                            else:
-                                # Left-align descriptions
-                                paragraph.alignment = PP_ALIGN.LEFT
-                                
+    
+    # Iterate through slides and apply formatting for 'cut1', 'cut2', hexagon titles, descriptions, and key elements
+    for slide in presentation.slides:
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, replacement in replacement_dict.items():
+                    if placeholder in shape.text:
+                        shape.text = shape.text.replace(placeholder, replacement)
+        
+                        # Adjust text fitting, size, alignment, and color
+                        if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                            shape.text_frame.word_wrap = True
+                            shape.text_frame.auto_size = True  # Ensure text boxes resize to fit content
                             
-                            # Font and color adjustments
-                            for run in paragraph.runs:
-                                if placeholder == "cut1":
-                                    run.font.size = Pt(20)  # Larger font for cut1
-                                    run.font.name = "Arial"
-                                    run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
-                                elif placeholder == "cut2":
-                                    run.font.size = Pt(14)  # Smaller font for cut2
-                                    run.font.name = "Arial"
-                                    run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
+                            shape.text_frame.margin_left = Inches(0.20)  # Adjust as needed
+                            shape.text_frame.margin_right = Inches(0.20)  
+    
+                            for paragraph in shape.text_frame.paragraphs:
+                                # Center-align titles only
+                                if paragraph.text.strip() in [
+                                    hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
+                                ] + [
+                                    hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
+                                ]:
+                                    # Center align for titles only
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        #run.font.size = Pt(12)
+                                        run.font.bold = True  # Make title bold
+    
+                                elif any(key in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for key in hexagon['key_elements']):
+                                    # Indent key elements to move them toward the center
+                                    paragraph.level = 1  # Set an indentation level for bullet points
+                                    paragraph.alignment = PP_ALIGN.LEFT  # Keep left alignment for bullet points
                                 else:
-                                    run.font.size = Pt(11)  # Standard font size for other shapes
-                                    run.font.name = "Arial"
-                                    run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
+                                    # Left-align descriptions
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    
+                                
+                                # Font and color adjustments
+                                for run in paragraph.runs:
+                                    if placeholder == "cut1":
+                                        run.font.size = Pt(20)  # Larger font for cut1
+                                        run.font.name = "Arial"
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
+                                    elif placeholder == "cut2":
+                                        run.font.size = Pt(14)  # Smaller font for cut2
+                                        run.font.name = "Arial"
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
+                                    else:
+                                        run.font.size = Pt(11)  # Standard font size for other shapes
+                                        run.font.name = "Arial"
+                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
         
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
