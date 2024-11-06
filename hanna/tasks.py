@@ -2055,18 +2055,25 @@ def process_prompts4(final_content, language):
         # Load system prompt from the text file
         with open("cpromptcheck.txt", "r") as file:
             prompt_file_content = file.read()
+            
+        SYSPROMPT = str(prompt_)
 
         # Replace {final_content} in the system prompt with the actual final_content input
-        system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
+        #system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
+        system_prompt = SYSPROMPT.replace("{final_content}", final_content.strip())
 
          # Use Together API instead of llm.stream
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
         model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{final_content}\n"}
+        ]
         
         response = client.chat.completions.create(
             model=model_name,
-            messages=[{"role": "system", "content": system_prompt}],
+            messages=messages,
             max_tokens=8192,
             temperature=0.4,
             stop=["<|eot_id|>", "<|eom_id|>"],
@@ -2084,6 +2091,8 @@ def process_prompts4(final_content, language):
                 generated_response += chunk.choices[0].delta.content
             elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
                 generated_response += chunk.choices[0].message.content
+
+        print(f"Generated response: {generated_response}")
 
 
             # Print the full response text for debugging
