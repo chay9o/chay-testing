@@ -13,7 +13,7 @@ Steps:
 2. Consider the information provided below, along with any other relevant knowledge, to guide the team toward assessing and solving the situation.
 3. Choose the most suitable template from the options below, ensuring it will help the team assess, take action, and solve the problem.
 4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each. Ensure that all titles are kept minimal, ideally no more than two words, and key elements are limited to two-word phrases or brief terms only.
-5. All output, including titles, descriptions, and key elements, should be in the specified language: {language}.
+5. In the JSON output, only the values (titles, descriptions, and key elements) should be provided in the specified language: {language}. Do not change the JSON keys.
 [/INST]
 
 Template Options:
@@ -23,7 +23,7 @@ Template Options:
    - Composed of two rows of four hexagons each (8 hexagons total). The top row evaluates four main topics or categories, while the bottom row assesses subtopics of the ones above.
    - It is ideal for evaluating multiple aspects of a situation in a connected, hive-like structure.
 
-   JSON Output should follow this structure::
+   JSON Output should follow this structure (with values in {language}):
    {
      "canvas": {
        "template_type": 4,
