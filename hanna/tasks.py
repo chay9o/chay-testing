@@ -2214,6 +2214,7 @@ def handle_template_type_4(canvas_data):
                                     paragraph.alignment = PP_ALIGN.LEFT  # Keep left alignment for bullet points
                                 else:
                                     # Left-align descriptions
+                                    paragraph.level = 1
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     
                                 
