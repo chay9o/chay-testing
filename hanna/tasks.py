@@ -2056,7 +2056,7 @@ def process_prompts4(final_content, language):
         with open("cpromptcheck.txt", "r") as file:
             prompt_file_content = file.read()
             
-        SYSPROMPT = str(prompt_)
+        SYSPROMPT = str(prompt_file_content)
 
         # Replace {final_content} in the system prompt with the actual final_content input
         #system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
