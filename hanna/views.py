@@ -1110,15 +1110,15 @@ def get_ppt_for_option4(request, task_id):
         if result.status == 'SUCCESS':
             result_data = result.result
             pptx_base64 = result_data.get('pptx_base64', '')
-            #print(f"Retrieved pptx_base64 in result data: {pptx_base64}")
+            print(f"Retrieved pptx_base64 in result data: {pptx_base64}")
             title = "title"
             description = "description"
 
            
             return JsonResponse({
                 'pptx_base64': pptx_base64,
-                'smartnote_title': smartnote_title,
-                'smartnote_description': smartnote_description
+                'smartnote_title': title,
+                'smartnote_description': description
             })
                 
         else:
