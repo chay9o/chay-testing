@@ -2235,8 +2235,8 @@ def handle_template_type_4(canvas_data):
                                     paragraph.level = 1
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                    run.font.size = Pt(11)
-                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                                        run.font.size = Pt(11)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)
                                     continue  # Skip further processing for this paragraph
                                     
                                 # Font and color adjustments
