@@ -2209,6 +2209,7 @@ def handle_template_type_4(canvas_data):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
+                                        run.font.name = "Arial"
                                         run.font.color.rgb = RGBColor(255, 255, 255)
                                     # Skip further processing for this paragraph
                                     continue
@@ -2223,6 +2224,7 @@ def handle_template_type_4(canvas_data):
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(14)
+                                        run.font.name = "Arial"
                                         run.font.color.rgb = RGBColor(255, 255, 255)
                                     continue  # Skip further processing for this paragraph
                             
@@ -2236,6 +2238,7 @@ def handle_template_type_4(canvas_data):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
+                                        run.font.name = "Arial"
                                         run.font.color.rgb = RGBColor(255, 255, 255)
                                     continue  # Skip further processing for this paragraph
                                     
@@ -2252,9 +2255,10 @@ def handle_template_type_4(canvas_data):
                                         run.font.name = "Arial"
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
                                     else:
-                                        run.font.size = Pt(11)  # Standard font size for other shapes
+                                        run.font.size = Pt(14)
+                                        run.font.bold = True# Smaller font for cut2
                                         run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
         
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
