@@ -2198,35 +2198,41 @@ def handle_template_type_4(canvas_data):
     
                             for paragraph in shape.text_frame.paragraphs:
                                 # Center-align titles only
-                                if paragraph.text.strip() in [
-                                    hexagon['description'] for hexagon in canvas_data['canvas']['top_hexagons']
-                                ] + [
-                                    hexagon['description'] for hexagon in canvas_data['canvas']['bottom_hexagons']
-                                ] or any(description in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for description in hexagon['description']):
-                                    # High priority: Ensure descriptions are always level 0
+                                text_content = paragraph.text.strip()
+
+                                # Directly set descriptions to paragraph level 0 and left alignment
+                                if any(
+                                    text_content == hexagon['description'] or hexagon['description'] in text_content
+                                    for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
+                                ):
                                     paragraph.level = 0
                                     paragraph.alignment = PP_ALIGN.LEFT
-                                    continue  # Skip to the next paragraph after setting description
+                                    # Skip further processing for this paragraph
+                                    continue
                             
-                                # Check if the paragraph text matches a title from top/bottom hexagons
-                                if paragraph.text.strip() in [
+                                # Title condition: Center-align titles and make bold
+                                if text_content in [
                                     hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
                                 ] + [
                                     hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
                                 ]:
-                                    # Center-align titles only
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
-                                        run.font.bold = True  # Make title bold
+                                        run.font.bold = True
+                                    continue  # Skip further processing for this paragraph
                             
-                                # Check if the paragraph text contains any key elements
-                                elif any(key in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for key in hexagon['key_elements']):
-                                    paragraph.level = 1  # Set indentation for key elements
-                                    paragraph.alignment = PP_ALIGN.LEFT  # Left-align key elements
-                            
-                                else:
-                                    # Default to left-aligned for anything not matching specific conditions
+                                # Key elements: Indent key elements to level 1
+                                if any(
+                                    key in text_content
+                                    for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
+                                    for key in hexagon['key_elements']
+                                ):
+                                    paragraph.level = 1
                                     paragraph.alignment = PP_ALIGN.LEFT
+                                    continue  # Skip further processing for this paragraph
+                            
+                                # Default: Left-align anything else without changing level
+                                paragraph.alignment = PP_ALIGN.LEFT
                                     
                                 # Font and color adjustments
                                 for run in paragraph.runs:
