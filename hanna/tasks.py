@@ -2230,9 +2230,6 @@ def handle_template_type_4(canvas_data):
                                     paragraph.level = 1
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     continue  # Skip further processing for this paragraph
-                            
-                                # Default: Left-align anything else without changing level
-                                paragraph.alignment = PP_ALIGN.LEFT
                                     
                                 # Font and color adjustments
                                 for run in paragraph.runs:
