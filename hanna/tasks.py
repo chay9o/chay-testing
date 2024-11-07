@@ -2242,11 +2242,13 @@ def handle_template_type_4(canvas_data):
                                 # Font and color adjustments
                                 for run in paragraph.runs:
                                     if placeholder == "cut1":
-                                        run.font.size = Pt(20)  # Larger font for cut1
+                                        run.font.size = Pt(20)
+                                        run.font.bold = True# Larger font for cut1
                                         run.font.name = "Arial"
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
                                     elif placeholder == "cut2":
-                                        run.font.size = Pt(14)  # Smaller font for cut2
+                                        run.font.size = Pt(14)
+                                        run.font.bold = True# Smaller font for cut2
                                         run.font.name = "Arial"
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
                                     else:
