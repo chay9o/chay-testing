@@ -2207,6 +2207,9 @@ def handle_template_type_4(canvas_data):
                                 ):
                                     paragraph.level = 0
                                     paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(11)
+                                        run.font.color.rgb = RGBColor(255, 255, 255)
                                     # Skip further processing for this paragraph
                                     continue
                             
@@ -2219,6 +2222,8 @@ def handle_template_type_4(canvas_data):
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
+                                        run.font.size = Pt(14)
+                                        run.font.color.rgb = RGBColor(255, 255, 255)
                                     continue  # Skip further processing for this paragraph
                             
                                 # Key elements: Indent key elements to level 1
@@ -2229,6 +2234,9 @@ def handle_template_type_4(canvas_data):
                                 ):
                                     paragraph.level = 1
                                     paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                    run.font.size = Pt(11)
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
                                     continue  # Skip further processing for this paragraph
                                     
                                 # Font and color adjustments
