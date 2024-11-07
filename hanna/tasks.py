@@ -2162,11 +2162,24 @@ def handle_template_type_3(canvas_data):
     print(f"Handling template type 3 with data: {canvas_data}")
 
 def handle_template_type_4(canvas_data):
-    presentation = Presentation("Hex Canvas Design (1).pptx")
+    presentation = Presentation("Hex Canvas Design (3).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
     # Build the complete replacement dictionary to handle titles, descriptions, and key elements
-    replacement_dict = {
+    replacement_dict_slide1 = {
+        "box1": canvas_data['canvas']['top_hexagons'][0]['title'],
+        "top_hex2": canvas_data['canvas']['top_hexagons'][1]['title'],
+        "top_hex3": canvas_data['canvas']['top_hexagons'][2]['title'],
+        "top_hex4": canvas_data['canvas']['top_hexagons'][3]['title'],
+        "box2": canvas_data['canvas']['bottom_hexagons'][0]['title'],
+        "bottom_hex2": canvas_data['canvas']['bottom_hexagons'][1]['title'],
+        "bottom_hex3": canvas_data['canvas']['bottom_hexagons'][2]['title'],
+        "bottom_hex4": canvas_data['canvas']['bottom_hexagons'][3]['title'],
+        "cut1": canvas_data["canvas"]["canvas_name"],
+        "cut2": canvas_data["canvas"]["canvas_description"],
+    }
+    
+    replacement_dict_slide2 = {
         "box1": f"{canvas_data['canvas']['top_hexagons'][0]['title']}\n\n{canvas_data['canvas']['top_hexagons'][0]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][0]['key_elements'][:3]),
         "top_hex2": f"{canvas_data['canvas']['top_hexagons'][1]['title']}\n\n{canvas_data['canvas']['top_hexagons'][1]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][1]['key_elements'][:3]),
         "top_hex3": f"{canvas_data['canvas']['top_hexagons'][2]['title']}\n\n{canvas_data['canvas']['top_hexagons'][2]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][2]['key_elements'][:3]),
