@@ -2199,34 +2199,35 @@ def handle_template_type_4(canvas_data):
                             for paragraph in shape.text_frame.paragraphs:
                                 # Center-align titles only
                                 if paragraph.text.strip() in [
-                                    hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
-                                ] + [
-                                    hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
-                                ]:
-                                    # Center align for titles only
-                                    paragraph.alignment = PP_ALIGN.CENTER
-                                    for run in paragraph.runs:
-                                        #run.font.size = Pt(12)
-                                        run.font.bold = True  # Make title bold
-    
-                                elif any(key in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for key in hexagon['key_elements']):
-                                    # Indent key elements to move them toward the center
-                                    paragraph.level = 1  # Set an indentation level for bullet points
-                                    paragraph.alignment = PP_ALIGN.LEFT  # Keep left alignment for bullet points
-
-                                elif paragraph.text.strip() in [
                                     hexagon['description'] for hexagon in canvas_data['canvas']['top_hexagons']
                                 ] + [
                                     hexagon['description'] for hexagon in canvas_data['canvas']['bottom_hexagons']
                                 ] or any(description in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for description in hexagon['description']):
-                                    paragraph.level = 0  # Ensure descriptions have level 0
-                                    paragraph.alignment = PP_ALIGN.LEFT  # Keep left alignment for descriptions
+                                    # High priority: Ensure descriptions are always level 0
+                                    paragraph.level = 0
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    continue  # Skip to the next paragraph after setting description
+                            
+                                # Check if the paragraph text matches a title from top/bottom hexagons
+                                if paragraph.text.strip() in [
+                                    hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
+                                ] + [
+                                    hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
+                                ]:
+                                    # Center-align titles only
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True  # Make title bold
+                            
+                                # Check if the paragraph text contains any key elements
+                                elif any(key in paragraph.text for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons'] for key in hexagon['key_elements']):
+                                    paragraph.level = 1  # Set indentation for key elements
+                                    paragraph.alignment = PP_ALIGN.LEFT  # Left-align key elements
+                            
                                 else:
-                                    # Left-align descriptions
-                                    paragraph.level = 0 
+                                    # Default to left-aligned for anything not matching specific conditions
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     
-                                
                                 # Font and color adjustments
                                 for run in paragraph.runs:
                                     if placeholder == "cut1":
