@@ -2117,9 +2117,9 @@ def process_prompts4(final_content, language):
         #template_type = json_response.get("canvas", {}).get("template_type")
         template_type = canvas_data.get("canvas", {}).get("template_type")
         print(f"Template Type: {template_type}")
-        canvas_data = json_response
+        #canvas_data = json_response
         response_data = {
-            "final_text": json_response,
+            "final_text": canvas_data,
             "template_type": template_type,
             "additional_text": additional_text
             
