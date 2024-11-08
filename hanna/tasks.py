@@ -2281,23 +2281,43 @@ def handle_template_type_4(canvas_data, additional_text=""):
     apply_replacements(presentation.slides[1], replacement_dict_slide2)  # Slide 2: Titles, descriptions, key elements
 
     if additional_text:
-        for text in additional_text.split('\n\n'):  # Splitting by paragraphs for multiple slides
-            slide_layout = presentation.slide_layouts[0]  # Adjust slide layout as needed
-            new_slide = presentation.slides.add_slide(slide_layout)
-
-            # Add a title and content for each new slide
+        blank_layout = None
+        for layout in presentation.slide_layouts:
+            if not layout.placeholders:  # Layout with no placeholders is likely blank
+                blank_layout = layout
+                break
+    
+        if not blank_layout:
+            blank_layout = presentation.slide_layouts[0]  
+            
+        for text in additional_text.split('\n\n'):
+            # Add a new slide with the blank layout
+            new_slide = presentation.slides.add_slide(blank_layout)
+    
+            # Check if the slide has a title placeholder and set text if it exists
             title_placeholder = new_slide.shapes.title
-            title_placeholder.text = "Additional Insights"  # Or dynamically set based on content
-
-            text_placeholder = new_slide.placeholders[1]
-            text_placeholder.text = text  # Fill with additional text content
-
-            # Apply formatting to the text
-            for paragraph in text_placeholder.text_frame.paragraphs:
+            if title_placeholder:
+                title_placeholder.text = "Additional Insights"
+    
+            # Check if a content placeholder exists; if not, add a new textbox
+            if len(new_slide.placeholders) > 1:
+                text_placeholder = new_slide.placeholders[1]
+                text_placeholder.text = text  # Set text if placeholder is available
+            else:
+                # Add a textbox manually if no content placeholder is found
+                left = Inches(1)
+                top = Inches(1)
+                width = Inches(8)
+                height = Inches(5)
+                text_box = new_slide.shapes.add_textbox(left, top, width, height)
+                text_frame = text_box.text_frame
+                text_frame.text = text
+    
+            # Format the text within the textbox or placeholder
+            for paragraph in new_slide.shapes[-1].text_frame.paragraphs:  # Access the last shape added (textbox)
                 paragraph.font.size = Pt(12)
                 paragraph.font.color.rgb = RGBColor(0, 0, 0)  # Black text for readability
-
-
+    
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)  # Move the stream position to the start
