@@ -91,8 +91,8 @@ For any template, consider these areas to influence the sections: Objectives to 
 Always keep a balance between workforce well-being value, company value, and client value, but don’t mention these values explicitly—just shape your thinking accordingly.
 [/INST]
 
-[INST]
-Prompt 2:
+
+
 Instructions:
 A canvas creation expert previously created a canvas based on the situation provided. Now, as a critical-thinking expert, the goal is to enhance the clarity, depth, and usefulness of the canvas. Reanalyze the canvas and either improve it or choose a more appropriate one.
 
@@ -112,9 +112,9 @@ Additional Considerations:
 Desired Output:
 Return an improved version of the canvas in JSON format.
 
-Prompt 3:
+
 Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.
 
-Prompt 4:
+
 Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
-[/INST]
+
