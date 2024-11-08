@@ -2282,7 +2282,7 @@ def handle_template_type_4(canvas_data, additional_text=""):
 
     if additional_text:
         for text in additional_text.split('\n\n'):  # Splitting by paragraphs for multiple slides
-            slide_layout = presentation.slide_layouts[1]  # Adjust slide layout as needed
+            slide_layout = presentation.slide_layouts[0]  # Adjust slide layout as needed
             new_slide = presentation.slides.add_slide(slide_layout)
 
             # Add a title and content for each new slide
