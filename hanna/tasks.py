@@ -2277,6 +2277,24 @@ def handle_template_type_4(canvas_data):
     apply_replacements(presentation.slides[0], replacement_dict_slide1, font_color_black=True)  # Slide 1: Titles only, black font
     apply_replacements(presentation.slides[1], replacement_dict_slide2)  # Slide 2: Titles, descriptions, key elements
 
+    if additional_text:
+        for text in additional_text.split('\n\n'):  # Splitting by paragraphs for multiple slides
+            slide_layout = presentation.slide_layouts[1]  # Adjust slide layout as needed
+            new_slide = presentation.slides.add_slide(slide_layout)
+
+            # Add a title and content for each new slide
+            title_placeholder = new_slide.shapes.title
+            title_placeholder.text = "Additional Insights"  # Or dynamically set based on content
+
+            text_placeholder = new_slide.placeholders[1]
+            text_placeholder.text = text  # Fill with additional text content
+
+            # Apply formatting to the text
+            for paragraph in text_placeholder.text_frame.paragraphs:
+                paragraph.font.size = Pt(12)
+                paragraph.font.color.rgb = RGBColor(0, 0, 0)  # Black text for readability
+
+
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)  # Move the stream position to the start
