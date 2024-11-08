@@ -2241,17 +2241,19 @@ def handle_template_type_4(canvas_data):
                                     continue
     
                                 # Title condition: Center-align titles and make bold
-                                if text_content in [
-                                    hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
-                                ] + [
-                                    hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
-                                ]:
-                                    paragraph.alignment = PP_ALIGN.CENTER
-                                    for run in paragraph.runs:
-                                        run.font.bold = True
-                                        run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(255, 255, 255)
-                                    continue
+                                if slide in [presentation.slides[0], presentation.slides[1]]:
+                                    if text_content in [
+                                        hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
+                                    ] + [
+                                        hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
+                                    ]:
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        continue
+
     
                                 # Key elements: Indent key elements to level 1
                                 if any(
