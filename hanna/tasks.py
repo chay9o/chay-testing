@@ -2165,10 +2165,15 @@ def handle_template_type_3(canvas_data):
     print(f"Handling template type 3 with data: {canvas_data}")
 
 def handle_template_type_4(canvas_data, additional_text=""):
-    presentation = Presentation("Hex Canvas Design (3).pptx")
+    presentation = Presentation("Hex Canvas Design (4).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
     # Build the complete replacement dictionary to handle titles, descriptions, and key elements
+
+    replacement_dict_slide0 = {
+        "cut1": canvas_data["canvas"]["canvas_name"],
+    }
+    
     replacement_dict_slide1 = {
         "box1": canvas_data['canvas']['top_hexagons'][0]['title'],
         "top_hex2": canvas_data['canvas']['top_hexagons'][1]['title'],
@@ -2277,47 +2282,45 @@ def handle_template_type_4(canvas_data, additional_text=""):
                                     run.font.name = "Arial"
                                     run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
 
-    apply_replacements(presentation.slides[0], replacement_dict_slide1, font_color_black=True)  # Slide 1: Titles only, black font
-    apply_replacements(presentation.slides[1], replacement_dict_slide2)  # Slide 2: Titles, descriptions, key elements
+    apply_replacements(presentation.slides[0], replacement_dict_slide0)
+    apply_replacements(presentation.slides[1], replacement_dict_slide1, font_color_black=True)  # Slide 1: Titles only, black font
+    apply_replacements(presentation.slides[2], replacement_dict_slide2)  # Slide 2: Titles, descriptions, key elements
 
     if additional_text:
-        blank_layout = None
-        for layout in presentation.slide_layouts:
-            if not layout.placeholders:  # Layout with no placeholders is likely blank
-                blank_layout = layout
-                break
+        slide_layout = presentation.slide_layouts[3]  # Use layout 3 as specified
+        max_lines = 12  # Maximum lines per text box
     
-        if not blank_layout:
-            blank_layout = presentation.slide_layouts[0]  
-            
-        for text in additional_text.split('\n\n'):
-            # Add a new slide with the blank layout
-            new_slide = presentation.slides.add_slide(blank_layout)
+        # Split additional text into individual paragraphs
+        paragraphs = additional_text.split('\n\n')
     
-            # Check if the slide has a title placeholder and set text if it exists
-            title_placeholder = new_slide.shapes.title
-            if title_placeholder:
-                title_placeholder.text = "Additional Insights"
+        current_slide = None
+        current_text_box = None
+        current_line_count = 0
     
-            # Check if a content placeholder exists; if not, add a new textbox
-            if len(new_slide.placeholders) > 1:
-                text_placeholder = new_slide.placeholders[1]
-                text_placeholder.text = text  # Set text if placeholder is available
-            else:
-                # Add a textbox manually if no content placeholder is found
-                left = Inches(1)
-                top = Inches(1)
-                width = Inches(8)
-                height = Inches(5)
-                text_box = new_slide.shapes.add_textbox(left, top, width, height)
-                text_frame = text_box.text_frame
-                text_frame.text = text
+        for paragraph in paragraphs:
+            lines = paragraph.splitlines()  # Split paragraph into lines
+            for line in lines:
+                # If we need a new slide or text box
+                if current_slide is None or current_line_count >= max_lines:
+                    current_slide = presentation.slides.add_slide(slide_layout)
+                    current_text_box = current_slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(5))
+                    text_frame = current_text_box.text_frame
+                    text_frame.clear()  # Clear any placeholder text
+                    current_line_count = 0  # Reset line count for the new slide
     
-            # Format the text within the textbox or placeholder
-            for paragraph in new_slide.shapes[-1].text_frame.paragraphs:  # Access the last shape added (textbox)
+                # Add line to the text box
+                paragraph = text_frame.add_paragraph()
+                paragraph.text = line
                 paragraph.font.size = Pt(12)
-                paragraph.font.color.rgb = RGBColor(0, 0, 0)  # Black text for readability
+                paragraph.font.color.rgb = RGBColor(0, 0, 0)  # Black text color
+                paragraph.alignment = PP_ALIGN.LEFT
     
+                current_line_count += 1  # Increment line count
+    
+                # Check if we need a new slide after this line
+                if current_line_count >= max_lines:
+                    current_slide = None  # Set to None to trigger a new slide next iteration
+                
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)  # Move the stream position to the start
