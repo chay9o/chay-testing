@@ -2086,6 +2086,7 @@ def process_prompts4(final_content, language):
         # Collect response content
         # Process the streamed response
         generated_response = ""
+        additional_text = ""  # Variable to hold other response text
         for chunk in response:
             if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
                 generated_response += chunk.choices[0].delta.content
@@ -2105,6 +2106,8 @@ def process_prompts4(final_content, language):
         #print(f"json_data: {json_data}")
         #json_response = json.loads(cleaned_text)
         print(f"json_response: {json_response}")
+        additional_text = generated_response.replace(json.dumps(json_response), "").strip()
+        print(f"additional_text: {additional_text}")
            
 
             # Check for the template type
@@ -2126,7 +2129,7 @@ def process_prompts4(final_content, language):
         elif template_type == 3:
             handle_template_type_3(canvas_data)
         elif template_type == 4:
-            pptx_data = handle_template_type_4(canvas_data)
+            pptx_data = handle_template_type_4(canvas_data, additional_text)
             response_data.update(pptx_data) 
         else:
             logger.error(f"Unknown template type: {template_type}")
@@ -2161,7 +2164,7 @@ def handle_template_type_2(canvas_data):
 def handle_template_type_3(canvas_data):
     print(f"Handling template type 3 with data: {canvas_data}")
 
-def handle_template_type_4(canvas_data):
+def handle_template_type_4(canvas_data, additional_text=""):
     presentation = Presentation("Hex Canvas Design (3).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
