@@ -101,26 +101,20 @@ Steps:
 2. Identify improvement areas: Critically assess each part of the JSON. Are all sections clear, useful, and well-defined? Does the canvas fully capture the important aspects of the situation?
 3. Make enhancements: Improve the JSON by refining titles, descriptions, and content to ensure that the revised version is more effective.
 4. Provide the improved JSON: Return the enhanced canvas in JSON format, reflecting the critical analysis and improvements.
-[/INST]
 
-[INST]
 Additional Considerations:
 - Ensure the revised canvas allows for better problem-solving.
 - Keep the proposed format for the canvas.
 - If the original template (Progression, Grid, Circular, Hive) was not the best choice, switch and update the JSON accordingly.
-[/INST]
 
-[INST]
+
+
 Desired Output:
 Return an improved version of the canvas in JSON format.
-[/INST]
 
-[INST]
 Prompt 3:
 Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.
-[/INST]
 
-[INST]
 Prompt 4:
 Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
 [/INST]
