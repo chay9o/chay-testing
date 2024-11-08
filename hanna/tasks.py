@@ -2105,7 +2105,7 @@ def process_prompts4(final_content, language):
         #json_response = extract_json_from_response(cleaned_text)
         canvas_data, additional_text = extract_multiple_jsons_from_response(cleaned_text)
         #print(f"json_data: {json_data}")
-        #json_response = json.loads(cleaned_text)
+        canvas_data = json.loads(cleaned_text)
         #print(f"json_response: {json_response}")
         print(f"Canvas Data: {canvas_data}")
         print(f"Additional Text: {additional_text}")
