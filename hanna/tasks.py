@@ -2165,7 +2165,7 @@ def handle_template_type_3(canvas_data):
     print(f"Handling template type 3 with data: {canvas_data}")
 
 def handle_template_type_4(canvas_data, additional_text=""):
-    presentation = Presentation("Hex Canvas Design (3).pptx")
+    presentation = Presentation("Hex Canvas Design (5).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
     # Build the complete replacement dictionary to handle titles, descriptions, and key elements
