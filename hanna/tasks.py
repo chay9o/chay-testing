@@ -2147,21 +2147,21 @@ def process_prompts4(final_content, language):
 
 def extract_multiple_jsons_from_response(response_text):
     """
-    Extracts two JSON objects from the response text: canvas_data and additional_text.
+    Extracts JSON objects from the response text by matching balanced braces.
     """
     try:
-        # Use regex to locate and extract JSON objects
-        json_matches = re.findall(r'\{(?:[^{}]|(?R))*\}', response_text)
+        # Use a regex pattern to find JSON-like objects by matching balanced braces
+        json_objects = re.findall(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', response_text)
         
-        if len(json_matches) >= 2:
+        if len(json_objects) >= 2:
             # Assuming the first match is canvas_data and the second is additional_text
-            canvas_data = json.loads(json_matches[0])
-            additional_text = json.loads(json_matches[1])
+            canvas_data = json.loads(json_objects[0])
+            additional_text = json.loads(json_objects[1])
             return canvas_data, additional_text
 
-        elif len(json_matches) == 1:
+        elif len(json_objects) == 1:
             # If only one JSON object is found, assume it's the main canvas JSON
-            canvas_data = json.loads(json_matches[0])
+            canvas_data = json.loads(json_objects[0])
             additional_text = None
             return canvas_data, additional_text
         
@@ -2172,7 +2172,7 @@ def extract_multiple_jsons_from_response(response_text):
         # Log and raise an error if JSON decoding fails
         logger.error(f"Failed to decode JSON: {str(e)}")
         raise ValueError(f"Failed to decode JSON: {str(e)}")
-
+        
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
     json_end = response_text.rfind("}") + 1
