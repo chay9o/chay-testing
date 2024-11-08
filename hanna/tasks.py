@@ -2117,7 +2117,7 @@ def process_prompts4(final_content, language):
         #template_type = json_response.get("canvas", {}).get("template_type")
         template_type = canvas_data.get("canvas", {}).get("template_type")
         print(f"Template Type: {template_type}")
-            
+        canvas_data = json_response
         response_data = {
             "final_text": json_response,
             "template_type": template_type,
@@ -2125,7 +2125,7 @@ def process_prompts4(final_content, language):
             
         }
         pptx_base64 = None
-        canvas_data = json_response
+        
             # Based on the template type, forward to the appropriate function
         if template_type == 1:
             handle_template_type_1(canvas_data)
