@@ -2194,26 +2194,24 @@ def handle_template_type_4(canvas_data):
     
     
     # Iterate through slides and apply formatting for 'cut1', 'cut2', hexagon titles, descriptions, and key elements
-    for slide in presentation.slides:
+    def apply_replacements(slide, replacement_dict, font_color_black=False):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 for placeholder, replacement in replacement_dict.items():
                     if placeholder in shape.text:
                         shape.text = shape.text.replace(placeholder, replacement)
-        
-                        # Adjust text fitting, size, alignment, and color
+    
+                        # Formatting and styling as per original code
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
-                            shape.text_frame.auto_size = True  # Ensure text boxes resize to fit content
-                            
-                            shape.text_frame.margin_left = Inches(0.20)  # Adjust as needed
-                            shape.text_frame.margin_right = Inches(0.20)  
+                            shape.text_frame.auto_size = True
+                            shape.text_frame.margin_left = Inches(0.20)
+                            shape.text_frame.margin_right = Inches(0.20)
     
                             for paragraph in shape.text_frame.paragraphs:
-                                # Center-align titles only
                                 text_content = paragraph.text.strip()
-
-                                # Directly set descriptions to paragraph level 0 and left alignment
+    
+                                # Description formatting
                                 if any(
                                     text_content == hexagon['description'] or hexagon['description'] in text_content
                                     for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
@@ -2222,11 +2220,10 @@ def handle_template_type_4(canvas_data):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(255, 255, 255)
-                                    # Skip further processing for this paragraph
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
                                     continue
-                            
-                                # Title condition: Center-align titles and make bold
+    
+                                # Title formatting
                                 if text_content in [
                                     hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
                                 ] + [
@@ -2236,10 +2233,10 @@ def handle_template_type_4(canvas_data):
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(255, 255, 255)
-                                    continue  # Skip further processing for this paragraph
-                            
-                                # Key elements: Indent key elements to level 1
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                    continue
+    
+                                # Key elements formatting
                                 if any(
                                     key in text_content
                                     for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
@@ -2249,26 +2246,29 @@ def handle_template_type_4(canvas_data):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(255, 255, 255)
-                                    continue  # Skip further processing for this paragraph
-                                    
-                                # Font and color adjustments
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                    continue
+    
+                                # General font adjustments
                                 for run in paragraph.runs:
                                     if placeholder == "cut1":
                                         run.font.size = Pt(20)
-                                        run.font.bold = True# Larger font for cut1
+                                        run.font.bold = True
                                         run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
+                                        run.font.color.rgb = RGBColor(0, 0, 0)
                                     elif placeholder == "cut2":
                                         run.font.size = Pt(14)
-                                        run.font.bold = True# Smaller font for cut2
+                                        run.font.bold = True
                                         run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
+                                        run.font.color.rgb = RGBColor(0, 0, 0)
                                     else:
-                                        run.font.size = Pt(11)  # Standard font size for other shapes
+                                        run.font.size = Pt(11)
                                         run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
-        
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+
+    apply_replacements(presentation.slides[0], replacement_dict_slide1, font_color_black=True)  # Slide 1: Titles only, black font
+    apply_replacements(presentation.slides[1], replacement_dict_slide2)  # Slide 2: Titles, descriptions, key elements
+
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)  # Move the stream position to the start
