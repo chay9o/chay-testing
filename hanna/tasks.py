@@ -2086,7 +2086,6 @@ def process_prompts4(final_content, language):
         # Collect response content
         # Process the streamed response
         generated_response = ""
-        additional_text = ""  # Variable to hold other response text
         for chunk in response:
             if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
                 generated_response += chunk.choices[0].delta.content
@@ -2101,22 +2100,28 @@ def process_prompts4(final_content, language):
         
         cleaned_text = re.sub(r"```json|```", "", generated_response).strip()
         print(f"Raw cleaned text: {cleaned_text}")
+        
         cleaned_text = "\n".join([line for line in cleaned_text.splitlines() if line.strip()])
-        json_response = extract_json_from_response(cleaned_text)
+        #json_response = extract_json_from_response(cleaned_text)
+        canvas_data, additional_text = extract_multiple_jsons_from_response(cleaned_text)
         #print(f"json_data: {json_data}")
         #json_response = json.loads(cleaned_text)
-        print(f"json_response: {json_response}")
-        additional_text = generated_response.replace(json.dumps(json_response), "").strip()
-        print(f"additional_text: {additional_text}")
+        #print(f"json_response: {json_response}")
+        print(f"Canvas Data: {canvas_data}")
+        print(f"Additional Text: {additional_text}")
+        #additional_text = generated_response.replace(json.dumps(json_response), "").strip()
+        #print(f"additional_text: {additional_text}")
            
 
             # Check for the template type
-        template_type = json_response.get("canvas", {}).get("template_type")
+        #template_type = json_response.get("canvas", {}).get("template_type")
+        template_type = canvas_data.get("canvas", {}).get("template_type")
         print(f"Template Type: {template_type}")
             
         response_data = {
             "final_text": json_response,
-            "template_type": template_type
+            "template_type": template_type,
+            "additional_text": additional_text
             
         }
         pptx_base64 = None
@@ -2139,6 +2144,34 @@ def process_prompts4(final_content, language):
     except Exception as e:
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
+
+def extract_multiple_jsons_from_response(response_text):
+    """
+    Extracts two JSON objects from the response text: canvas_data and additional_text.
+    """
+    try:
+        # Find the first and second JSON objects in the response text
+        json_start_1 = response_text.find("{")
+        json_end_1 = response_text.find("}") + 1
+        first_json = json.loads(response_text[json_start_1:json_end_1])
+
+        json_start_2 = response_text.find("{", json_end_1)
+        json_end_2 = response_text.rfind("}") + 1
+        second_json = json.loads(response_text[json_start_2:json_end_2]) if json_start_2 != -1 else None
+
+        # Distinguish between canvas and additional_text based on keys
+        if "canvas" in first_json:
+            canvas_data = first_json
+            additional_text = second_json
+        else:
+            canvas_data = second_json
+            additional_text = first_json
+
+        return canvas_data, additional_text
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode JSON: {str(e)}")
+        raise ValueError(f"Failed to decode JSON: {str(e)}")
 
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
