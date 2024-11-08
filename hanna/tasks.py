@@ -2150,26 +2150,26 @@ def extract_multiple_jsons_from_response(response_text):
     Extracts two JSON objects from the response text: canvas_data and additional_text.
     """
     try:
-        # Find the first and second JSON objects in the response text
-        json_start_1 = response_text.find("{")
-        json_end_1 = response_text.find("}") + 1
-        first_json = json.loads(response_text[json_start_1:json_end_1])
+        # Use regex to locate and extract JSON objects
+        json_matches = re.findall(r'\{(?:[^{}]|(?R))*\}', response_text)
+        
+        if len(json_matches) >= 2:
+            # Assuming the first match is canvas_data and the second is additional_text
+            canvas_data = json.loads(json_matches[0])
+            additional_text = json.loads(json_matches[1])
+            return canvas_data, additional_text
 
-        json_start_2 = response_text.find("{", json_end_1)
-        json_end_2 = response_text.rfind("}") + 1
-        second_json = json.loads(response_text[json_start_2:json_end_2]) if json_start_2 != -1 else None
-
-        # Distinguish between canvas and additional_text based on keys
-        if "canvas" in first_json:
-            canvas_data = first_json
-            additional_text = second_json
+        elif len(json_matches) == 1:
+            # If only one JSON object is found, assume it's the main canvas JSON
+            canvas_data = json.loads(json_matches[0])
+            additional_text = None
+            return canvas_data, additional_text
+        
         else:
-            canvas_data = second_json
-            additional_text = first_json
-
-        return canvas_data, additional_text
-
+            raise ValueError("No valid JSON objects found in the response text.")
+    
     except json.JSONDecodeError as e:
+        # Log and raise an error if JSON decoding fails
         logger.error(f"Failed to decode JSON: {str(e)}")
         raise ValueError(f"Failed to decode JSON: {str(e)}")
 
