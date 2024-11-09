@@ -2152,26 +2152,28 @@ def extract_multiple_jsons_from_response(response_text):
     try:
         # Use a regex pattern to find JSON-like objects by matching balanced braces
         json_objects = re.findall(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', response_text)
-        
-        if len(json_objects) >= 2:
-            # Assuming the first match is canvas_data and the second is additional_text
-            canvas_data = json.loads(json_objects[0])
-            additional_text = json.loads(json_objects[1])
-            return canvas_data, additional_text
 
-        elif len(json_objects) == 1:
-            # If only one JSON object is found, assume it's the main canvas JSON
-            canvas_data = json.loads(json_objects[0])
-            additional_text = None
-            return canvas_data, additional_text
-        
-        else:
+        # Decode and validate each JSON object
+        decoded_objects = []
+        for obj in json_objects:
+            try:
+                decoded_objects.append(json.loads(obj))
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to decode a JSON object: {obj} - {str(e)}")
+
+        if len(decoded_objects) == 0:
             raise ValueError("No valid JSON objects found in the response text.")
-    
-    except json.JSONDecodeError as e:
-        # Log and raise an error if JSON decoding fails
-        logger.error(f"Failed to decode JSON: {str(e)}")
-        raise ValueError(f"Failed to decode JSON: {str(e)}")
+
+        # Assign objects to variables based on their position
+        canvas_data = decoded_objects[0] if len(decoded_objects) > 0 else None
+        additional_text = decoded_objects[1] if len(decoded_objects) > 1 else None
+
+        return canvas_data, additional_text
+
+    except Exception as e:
+        # Catch any other unexpected exceptions
+        logger.error(f"An error occurred while extracting JSON objects: {str(e)}")
+        raise ValueError(f"An error occurred while extracting JSON objects: {str(e)}")
         
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
