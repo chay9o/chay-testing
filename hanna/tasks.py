@@ -2147,33 +2147,56 @@ def process_prompts4(final_content, language):
 
 def extract_multiple_jsons_from_response(response_text):
     """
-    Extracts JSON objects from the response text by matching balanced braces.
+    Extracts multiple JSON objects from the response text by identifying balanced braces.
     """
+    def find_balanced_json_blocks(text):
+        """Helper function to extract balanced JSON blocks."""
+        stack = []
+        json_blocks = []
+        start_idx = None
+        
+        for i, char in enumerate(text):
+            if char == '{':
+                if not stack:
+                    start_idx = i  # Start of a potential JSON block
+                stack.append(char)
+            elif char == '}':
+                if stack:
+                    stack.pop()
+                    if not stack:
+                        # Found a balanced JSON block
+                        json_blocks.append(text[start_idx:i + 1])
+                        start_idx = None
+        
+        return json_blocks
+
     try:
-        # Use a regex pattern to find JSON-like objects by matching balanced braces
-        json_objects = re.findall(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', response_text)
-
-        # Decode and validate each JSON object
-        decoded_objects = []
-        for obj in json_objects:
-            try:
-                decoded_objects.append(json.loads(obj))
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to decode a JSON object: {obj} - {str(e)}")
-
-        if len(decoded_objects) == 0:
+        # Extract potential JSON blocks
+        json_blocks = find_balanced_json_blocks(response_text)
+        
+        if not json_blocks:
             raise ValueError("No valid JSON objects found in the response text.")
+        
+        # Decode each JSON block
+        decoded_objects = []
+        for block in json_blocks:
+            try:
+                decoded_objects.append(json.loads(block))
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to decode JSON block: {block} - {str(e)}")
 
-        # Assign objects to variables based on their position
+        if not decoded_objects:
+            raise ValueError("No valid JSON objects could be parsed.")
+
+        # Assign the first two JSON objects if available
         canvas_data = decoded_objects[0] if len(decoded_objects) > 0 else None
         additional_text = decoded_objects[1] if len(decoded_objects) > 1 else None
 
         return canvas_data, additional_text
 
     except Exception as e:
-        # Catch any other unexpected exceptions
-        logger.error(f"An error occurred while extracting JSON objects: {str(e)}")
-        raise ValueError(f"An error occurred while extracting JSON objects: {str(e)}")
+        logger.error(f"Error during JSON extraction: {str(e)}")
+        raise ValueError(f"Error during JSON extraction: {str(e)}")
         
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
