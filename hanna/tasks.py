@@ -2100,32 +2100,24 @@ def process_prompts4(final_content, language):
         
         cleaned_text = re.sub(r"```json|```", "", generated_response).strip()
         print(f"Raw cleaned text: {cleaned_text}")
-        
         cleaned_text = "\n".join([line for line in cleaned_text.splitlines() if line.strip()])
-        #json_response = extract_json_from_response(cleaned_text)
-        canvas_data, additional_text = extract_multiple_jsons_from_response(cleaned_text)
+        json_response = extract_json_from_response(cleaned_text)
         #print(f"json_data: {json_data}")
-        canvas_data = json.loads(cleaned_text)
-        #print(f"json_response: {json_response}")
-        print(f"Canvas Data: {canvas_data}")
-        print(f"Additional Text: {additional_text}")
-        #additional_text = generated_response.replace(json.dumps(json_response), "").strip()
-        #print(f"additional_text: {additional_text}")
+        #json_response = json.loads(cleaned_text)
+        print(f"json_response: {json_response}")
            
 
             # Check for the template type
-        #template_type = json_response.get("canvas", {}).get("template_type")
-        template_type = canvas_data.get("canvas", {}).get("template_type")
+        template_type = json_response.get("canvas", {}).get("template_type")
         print(f"Template Type: {template_type}")
-        #canvas_data = json_response
+            
         response_data = {
-            "final_text": canvas_data,
-            "template_type": template_type,
-            "additional_text": additional_text
+            "final_text": json_response,
+            "template_type": template_type
             
         }
         pptx_base64 = None
-        
+        canvas_data = json_response
             # Based on the template type, forward to the appropriate function
         if template_type == 1:
             handle_template_type_1(canvas_data)
@@ -2134,7 +2126,7 @@ def process_prompts4(final_content, language):
         elif template_type == 3:
             handle_template_type_3(canvas_data)
         elif template_type == 4:
-            pptx_data = handle_template_type_4(canvas_data, additional_text)
+            pptx_data = handle_template_type_4(canvas_data)
             response_data.update(pptx_data) 
         else:
             logger.error(f"Unknown template type: {template_type}")
@@ -2145,59 +2137,6 @@ def process_prompts4(final_content, language):
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
 
-def extract_multiple_jsons_from_response(response_text):
-    """
-    Extracts multiple JSON objects from the response text by identifying balanced braces.
-    """
-    def find_balanced_json_blocks(text):
-        """Helper function to extract balanced JSON blocks."""
-        stack = []
-        json_blocks = []
-        start_idx = None
-        
-        for i, char in enumerate(text):
-            if char == '{':
-                if not stack:
-                    start_idx = i  # Start of a potential JSON block
-                stack.append(char)
-            elif char == '}':
-                if stack:
-                    stack.pop()
-                    if not stack:
-                        # Found a balanced JSON block
-                        json_blocks.append(text[start_idx:i + 1])
-                        start_idx = None
-        
-        return json_blocks
-
-    try:
-        # Extract potential JSON blocks
-        json_blocks = find_balanced_json_blocks(response_text)
-        
-        if not json_blocks:
-            raise ValueError("No valid JSON objects found in the response text.")
-        
-        # Decode each JSON block
-        decoded_objects = []
-        for block in json_blocks:
-            try:
-                decoded_objects.append(json.loads(block))
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to decode JSON block: {block} - {str(e)}")
-
-        if not decoded_objects:
-            raise ValueError("No valid JSON objects could be parsed.")
-
-        # Assign the first two JSON objects if available
-        canvas_data = decoded_objects[0] if len(decoded_objects) > 0 else None
-        additional_text = decoded_objects[1] if len(decoded_objects) > 1 else None
-
-        return canvas_data, additional_text
-
-    except Exception as e:
-        logger.error(f"Error during JSON extraction: {str(e)}")
-        raise ValueError(f"Error during JSON extraction: {str(e)}")
-        
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
     json_end = response_text.rfind("}") + 1
@@ -2222,7 +2161,7 @@ def handle_template_type_2(canvas_data):
 def handle_template_type_3(canvas_data):
     print(f"Handling template type 3 with data: {canvas_data}")
 
-def handle_template_type_4(canvas_data, additional_text=""):
+def handle_template_type_4(canvas_data):
     presentation = Presentation("Hex Canvas Design (3).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
@@ -2271,25 +2210,8 @@ def handle_template_type_4(canvas_data, additional_text=""):
     
                             for paragraph in shape.text_frame.paragraphs:
                                 text_content = paragraph.text.strip()
-                                
-                                # First, handle cut1 and cut2 explicitly to avoid interference with description conditions
-                                if placeholder == "cut1":
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(20)
-                                        run.font.bold = True  # Larger font for cut1
-                                        run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
-                                    continue  # Skip further processing for this paragraph
     
-                                elif placeholder == "cut2":
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(14)
-                                        run.font.bold = True  # Smaller font for cut2
-                                        run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
-                                    continue  # Skip further processing for this paragraph
-                                
-                                # Description alignment and styling
+                                # Description formatting
                                 if any(
                                     text_content == hexagon['description'] or hexagon['description'] in text_content
                                     for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
@@ -2298,25 +2220,23 @@ def handle_template_type_4(canvas_data, additional_text=""):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(255, 255, 255)
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
                                     continue
     
-                                # Title condition: Center-align titles and make bold
-                                if slide in [presentation.slides[0], presentation.slides[1]]:
-                                    if text_content in [
-                                        hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
-                                    ] + [
-                                        hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
-                                    ]:
-                                        paragraph.alignment = PP_ALIGN.CENTER
-                                        for run in paragraph.runs:
-                                            run.font.bold = True
-                                            run.font.size = Pt(14)
-                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
-                                        continue
-
+                                # Title formatting
+                                if text_content in [
+                                    hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
+                                ] + [
+                                    hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
+                                ]:
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(14)
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                    continue
     
-                                # Key elements: Indent key elements to level 1
+                                # Key elements formatting
                                 if any(
                                     key in text_content
                                     for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
@@ -2326,56 +2246,29 @@ def handle_template_type_4(canvas_data, additional_text=""):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(255, 255, 255)
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
                                     continue
     
-                                # Default font and color adjustments for other cases
+                                # General font adjustments
                                 for run in paragraph.runs:
-                                    run.font.size = Pt(11)
-                                    run.font.name = "Arial"
-                                    run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
+                                    if placeholder == "cut1":
+                                        run.font.size = Pt(20)
+                                        run.font.bold = True
+                                        run.font.name = "Arial"
+                                        run.font.color.rgb = RGBColor(0, 0, 0)
+                                    elif placeholder == "cut2":
+                                        run.font.size = Pt(14)
+                                        run.font.bold = True
+                                        run.font.name = "Arial"
+                                        run.font.color.rgb = RGBColor(0, 0, 0)
+                                    else:
+                                        run.font.size = Pt(11)
+                                        run.font.name = "Arial"
+                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
 
     apply_replacements(presentation.slides[0], replacement_dict_slide1, font_color_black=True)  # Slide 1: Titles only, black font
     apply_replacements(presentation.slides[1], replacement_dict_slide2)  # Slide 2: Titles, descriptions, key elements
 
-    if additional_text:
-        blank_layout = None
-        for layout in presentation.slide_layouts:
-            if not layout.placeholders:  # Layout with no placeholders is likely blank
-                blank_layout = layout
-                break
-    
-        if not blank_layout:
-            blank_layout = presentation.slide_layouts[0]  
-            
-        for text in additional_text.split('\n\n'):
-            # Add a new slide with the blank layout
-            new_slide = presentation.slides.add_slide(blank_layout)
-    
-            # Check if the slide has a title placeholder and set text if it exists
-            title_placeholder = new_slide.shapes.title
-            if title_placeholder:
-                title_placeholder.text = "Additional Insights"
-    
-            # Check if a content placeholder exists; if not, add a new textbox
-            if len(new_slide.placeholders) > 1:
-                text_placeholder = new_slide.placeholders[1]
-                text_placeholder.text = text  # Set text if placeholder is available
-            else:
-                # Add a textbox manually if no content placeholder is found
-                left = Inches(1)
-                top = Inches(1)
-                width = Inches(8)
-                height = Inches(5)
-                text_box = new_slide.shapes.add_textbox(left, top, width, height)
-                text_frame = text_box.text_frame
-                text_frame.text = text
-    
-            # Format the text within the textbox or placeholder
-            for paragraph in new_slide.shapes[-1].text_frame.paragraphs:  # Access the last shape added (textbox)
-                paragraph.font.size = Pt(12)
-                paragraph.font.color.rgb = RGBColor(0, 0, 0)  # Black text for readability
-    
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)  # Move the stream position to the start
