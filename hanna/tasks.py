@@ -2101,7 +2101,7 @@ def process_prompts4(final_content, language):
         canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
         if not canvas_data:
-            raise ValueError("Failed to parse LLM response. Ensure the response matches the expected format.")
+            raise ValueError("Failed to parse LLM response. Ensure the response matches the expected format chay.")
 
         TEMPLATE_TYPE_MAP = {
             "Hive": 4,
@@ -2141,38 +2141,57 @@ def parse_plain_text_response(response):
     """Extract structured data from plain-text response."""
     data = {}
     try:
-        # Split the response into logical sections
+        # Split response into sections
         sections = response.split("\n\n")
+        
+        # Initialize default values
+        data["template_type"] = None
+        data["canvas_name"] = None
+        data["canvas_description"] = None
+        data["top_hexagons"] = []
+        data["bottom_hexagons"] = []
 
         for section in sections:
             if "**Template Type:**" in section:
-                data["template_type"] = section.split("**Template Type:**")[1].strip()
+                match = re.search(r"\*\*Template Type:\*\* (.+)", section)
+                data["template_type"] = int(match.group(1).strip()) if match else None
             elif "**Canvas Name:**" in section:
-                data["canvas_name"] = section.split("**Canvas Name:**")[1].strip()
+                match = re.search(r"\*\*Canvas Name:\*\* (.+)", section)
+                data["canvas_name"] = match.group(1).strip() if match else None
             elif "**Canvas Description:**" in section:
-                data["canvas_description"] = section.split("**Canvas Description:**")[1].strip()
+                match = re.search(r"\*\*Canvas Description:\*\* (.+)", section)
+                data["canvas_description"] = match.group(1).strip() if match else None
             elif "**Top Hexagon" in section or "**Bottom Hexagon" in section:
                 hexagon_match = re.search(r"(Top|Bottom) Hexagon (\d+):", section)
                 if hexagon_match:
                     position = "top_hexagons" if "Top" in hexagon_match.group(1) else "bottom_hexagons"
                     hex_num = int(hexagon_match.group(2))
-                    title = re.search(r"\*\*Title:\*\* (.*)", section).group(1).strip()
-                    description = re.search(r"\*\*Description:\*\* (.*)", section).group(1).strip()
-                    key_elements = re.search(r"\*\*Key Elements:\*\* (.*)", section).group(1).split(", ")
+                    title_match = re.search(r"\*\*Title:\*\* (.+)", section)
+                    desc_match = re.search(r"\*\*Description:\*\* (.+)", section)
+                    key_elements_match = re.search(r"\*\*Key Elements:\*\* (.+)", section)
 
-                    if position not in data:
-                        data[position] = []
-                    data[position].append({
-                        "hexagon_number": hex_num,
-                        "title": title,
-                        "description": description,
-                        "key_elements": key_elements
-                    })
+                    title = title_match.group(1).strip() if title_match else None
+                    description = desc_match.group(1).strip() if desc_match else None
+                    key_elements = key_elements_match.group(1).strip().split(", ") if key_elements_match else []
+
+                    if title and description:
+                        hexagon_data = {
+                            "hexagon_number": hex_num,
+                            "title": title,
+                            "description": description,
+                            "key_elements": key_elements
+                        }
+                        data[position].append(hexagon_data)
+
+        # Ensure the template_type is present
+        if not data["template_type"]:
+            raise ValueError("Template type is missing in the response.")
         return data
 
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
         return {}
+
 
 
 def extract_json_from_response(response_text):
