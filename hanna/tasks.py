@@ -2098,26 +2098,16 @@ def process_prompts4(final_content, language):
             # Print the full response text for debugging
         #print("Full LLM Response:\n", generated_text)
         
-        cleaned_text = re.sub(r"```json|```", "", generated_response).strip()
-        print(f"Raw cleaned text: {cleaned_text}")
-        cleaned_text = "\n".join([line for line in cleaned_text.splitlines() if line.strip()])
-        json_response = extract_json_from_response(cleaned_text)
-        #print(f"json_data: {json_data}")
-        #json_response = json.loads(cleaned_text)
-        print(f"json_response: {json_response}")
-           
+        canvas_data = parse_plain_text_response(generated_response)
+        print(f"Parsed canvas data: {canvas_data}")
+        
+        template_type = canvas_data.get("template_type", None)
+        if not template_type:
+            raise ValueError("Template type not found in the response")
 
-            # Check for the template type
-        template_type = json_response.get("canvas", {}).get("template_type")
-        print(f"Template Type: {template_type}")
-            
-        response_data = {
-            "final_text": json_response,
-            "template_type": template_type
-            
-        }
+        response_data = {"final_text": canvas_data, "template_type": template_type}
         pptx_base64 = None
-        canvas_data = json_response
+        #canvas_data = json_response
             # Based on the template type, forward to the appropriate function
         if template_type == 1:
             handle_template_type_1(canvas_data)
@@ -2125,7 +2115,7 @@ def process_prompts4(final_content, language):
             handle_template_type_2(canvas_data)
         elif template_type == 3:
             handle_template_type_3(canvas_data)
-        elif template_type == 4:
+        elif template_type == "Hive":
             pptx_data = handle_template_type_4(canvas_data)
             response_data.update(pptx_data) 
         else:
@@ -2136,6 +2126,40 @@ def process_prompts4(final_content, language):
     except Exception as e:
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
+
+def parse_plain_text_response(response):
+    """Extract structured data from plain-text response."""
+    data = {}
+    sections = response.split("\n\n")  # Split response into logical parts
+
+    for section in sections:
+        if "**Template Type:**" in section:
+            data["template_type"] = section.split("**Template Type:**")[1].strip()
+        elif "**Canvas Name:**" in section:
+            data["canvas_name"] = section.split("**Canvas Name:**")[1].strip()
+        elif "**Canvas Description:**" in section:
+            data["canvas_description"] = section.split("**Canvas Description:**")[1].strip()
+        elif "**Top Hexagon" in section or "**Bottom Hexagon" in section:
+            hexagon_match = re.search(r"(Top|Bottom) Hexagon (\d+):", section)
+            if hexagon_match:
+                position = "top_hexagons" if "Top" in hexagon_match.group(1) else "bottom_hexagons"
+                hex_num = int(hexagon_match.group(2))
+                title = re.search(r"\*\*Title:\*\* (.*)", section).group(1).strip()
+                description = re.search(r"\*\*Description:\*\* (.*)", section).group(1).strip()
+                key_elements = re.search(r"\*\*Key Elements:\*\* (.*)", section).group(1).split(", ")
+
+                if position not in data:
+                    data[position] = []
+                data[position].append({
+                    "hexagon_number": hex_num,
+                    "title": title,
+                    "description": description,
+                    "key_elements": key_elements
+                })
+
+    return data
+
+
 
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
@@ -2167,29 +2191,61 @@ def handle_template_type_4(canvas_data):
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
     # Build the complete replacement dictionary to handle titles, descriptions, and key elements
     replacement_dict_slide1 = {
-        "box1": canvas_data['canvas']['top_hexagons'][0]['title'],
-        "top_hex2": canvas_data['canvas']['top_hexagons'][1]['title'],
-        "top_hex3": canvas_data['canvas']['top_hexagons'][2]['title'],
-        "top_hex4": canvas_data['canvas']['top_hexagons'][3]['title'],
-        "box2": canvas_data['canvas']['bottom_hexagons'][0]['title'],
-        "bottom_hex2": canvas_data['canvas']['bottom_hexagons'][1]['title'],
-        "bottom_hex3": canvas_data['canvas']['bottom_hexagons'][2]['title'],
-        "bottom_hex4": canvas_data['canvas']['bottom_hexagons'][3]['title'],
-        "cut1": canvas_data["canvas"]["canvas_name"],
-        "cut2": canvas_data["canvas"]["canvas_description"],
+        "box1": canvas_data['top_hexagons'][0]['title'],
+        "top_hex2": canvas_data['top_hexagons'][1]['title'],
+        "top_hex3": canvas_data['top_hexagons'][2]['title'],
+        "top_hex4": canvas_data['top_hexagons'][3]['title'],
+        "box2": canvas_data['bottom_hexagons'][0]['title'],
+        "bottom_hex2": canvas_data['bottom_hexagons'][1]['title'],
+        "bottom_hex3": canvas_data['bottom_hexagons'][2]['title'],
+        "bottom_hex4": canvas_data['bottom_hexagons'][3]['title'],
+        "cut1": canvas_data["canvas_name"],
+        "cut2": canvas_data["canvas_description"],
     }
     
     replacement_dict_slide2 = {
-        "box1": f"{canvas_data['canvas']['top_hexagons'][0]['title']}\n\n{canvas_data['canvas']['top_hexagons'][0]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][0]['key_elements'][:3]),
-        "top_hex2": f"{canvas_data['canvas']['top_hexagons'][1]['title']}\n\n{canvas_data['canvas']['top_hexagons'][1]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][1]['key_elements'][:3]),
-        "top_hex3": f"{canvas_data['canvas']['top_hexagons'][2]['title']}\n\n{canvas_data['canvas']['top_hexagons'][2]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][2]['key_elements'][:3]),
-        "top_hex4": f"{canvas_data['canvas']['top_hexagons'][3]['title']}\n\n{canvas_data['canvas']['top_hexagons'][3]['description']}\n- " + "\n- ".join(canvas_data['canvas']['top_hexagons'][3]['key_elements'][:3]),
-        "box2": f"{canvas_data['canvas']['bottom_hexagons'][0]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][0]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][0]['key_elements'][:3]),
-        "bottom_hex2": f"{canvas_data['canvas']['bottom_hexagons'][1]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][1]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][1]['key_elements'][:3]),
-        "bottom_hex3": f"{canvas_data['canvas']['bottom_hexagons'][2]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][2]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][2]['key_elements'][:3]),
-        "bottom_hex4": f"{canvas_data['canvas']['bottom_hexagons'][3]['title']}\n\n{canvas_data['canvas']['bottom_hexagons'][3]['description']}\n- " + "\n- ".join(canvas_data['canvas']['bottom_hexagons'][3]['key_elements'][:3]),
-        "cut1": canvas_data["canvas"]["canvas_name"],
-        "cut2": canvas_data["canvas"]["canvas_description"],
+        "box1": (
+            f"{canvas_data['top_hexagons'][0]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][0]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][0]['key_elements'][:4])
+        ),
+        "top_hex2": (
+            f"{canvas_data['top_hexagons'][1]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][1]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][1]['key_elements'][:4])
+        ),
+        "top_hex3": (
+            f"{canvas_data['top_hexagons'][2]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][2]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][2]['key_elements'][:4])
+        ),
+        "top_hex4": (
+            f"{canvas_data['top_hexagons'][3]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][3]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][3]['key_elements'][:4])
+        ),
+        "box2": (
+            f"{canvas_data['bottom_hexagons'][0]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][0]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][0]['key_elements'][:4])
+        ),
+        "bottom_hex2": (
+            f"{canvas_data['bottom_hexagons'][1]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][1]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][1]['key_elements'][:4])
+        ),
+        "bottom_hex3": (
+            f"{canvas_data['bottom_hexagons'][2]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][2]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][2]['key_elements'][:4])
+        ),
+        "bottom_hex4": (
+            f"{canvas_data['bottom_hexagons'][3]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][3]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][3]['key_elements'][:4])
+        ),
+        "cut1": canvas_data["canvas_name"],
+        "cut2": canvas_data["canvas_description"],
     }
     
     
