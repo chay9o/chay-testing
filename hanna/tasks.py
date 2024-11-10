@@ -2126,48 +2126,58 @@ def process_prompts4(final_content, language):
         raise ValueError(f"Task failed: {str(e)}")
 
 def parse_plain_text_response(response):
-    """Parse the response to extract structured data."""
+    """Parse the plain text response to extract canvas data."""
     data = {}
     try:
-        # Extract template type
+        # Extract Template Type
         template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", response)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
         else:
             raise ValueError("Template Type not found in the response.")
 
-        # Extract canvas name
+        # Extract Canvas Name
         canvas_name_match = re.search(r"Canvas Name:\s*(.+)", response)
         if canvas_name_match:
             data["canvas_name"] = canvas_name_match.group(1).strip()
+        else:
+            raise ValueError("Canvas Name not found in the response.")
 
-        # Extract canvas description
+        # Extract Canvas Description
         canvas_description_match = re.search(r"Canvas Description:\s*(.+)", response)
         if canvas_description_match:
             data["canvas_description"] = canvas_description_match.group(1).strip()
+        else:
+            raise ValueError("Canvas Description not found in the response.")
 
-        # Initialize lists for hexagons
-        data['top_hexagons'] = []
-        data['bottom_hexagons'] = []
+        # Initialize hexagons
+        data["top_hexagons"] = []
+        data["bottom_hexagons"] = []
 
-        # Regex to match hexagon sections
-        hexagon_pattern = r"(Top|Bottom) Hexagon (\d+):\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)"
-        matches = re.finditer(hexagon_pattern, response, re.DOTALL)
+        # Match all hexagon sections
+        hexagon_pattern = re.compile(
+            r"(?P<position>Top|Bottom) Hexagon (?P<number>\d+):\s*"
+            r"Title:\s*(?P<title>.+?)\s*"
+            r"Description:\s*(?P<description>.+?)\s*"
+            r"Key Elements:\s*(?P<key_elements>.+?)(?=\n\n|\Z)",
+            re.DOTALL,
+        )
+        matches = hexagon_pattern.finditer(response)
 
         for match in matches:
             hexagon = {
-                "hexagon_number": int(match.group(2).strip()),
-                "title": match.group(3).strip(),
-                "description": match.group(4).strip(),
-                "key_elements": [element.strip() for element in match.group(5).split(",")]
+                "hexagon_number": int(match.group("number")),
+                "title": match.group("title").strip(),
+                "description": match.group("description").strip(),
+                "key_elements": [element.strip() for element in match.group("key_elements").split(",")],
             }
-            position = "top_hexagons" if match.group(1) == "Top" else "bottom_hexagons"
+            position = "top_hexagons" if match.group("position") == "Top" else "bottom_hexagons"
             data[position].append(hexagon)
 
-        # Ensure there are hexagons present
-        if not data['top_hexagons']:
+        # Check if hexagons are populated
+        if not data["top_hexagons"]:
             raise ValueError("'top_hexagons' is missing or empty.")
-        if not data['bottom_hexagons']:
+        if not data["bottom_hexagons"]:
             raise ValueError("'bottom_hexagons' is missing or empty.")
 
         return data
@@ -2175,7 +2185,6 @@ def parse_plain_text_response(response):
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
-
 
 
 def extract_json_from_response(response_text):
