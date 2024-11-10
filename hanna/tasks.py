@@ -2115,11 +2115,11 @@ def process_prompts4(final_content, language):
             handle_template_type_2(canvas_data)
         elif template_type == 3:
             handle_template_type_3(canvas_data)
-        elif template_type == 4:
+        elif template_type == "4":
             pptx_data = handle_template_type_4(canvas_data)
             response_data.update(pptx_data) 
         else:
-            logger.error(f"Unknown template type: {template_type}")
+            #logger.error(f"Unknown template type: {template_type}")
             raise ValueError(f"Unknown template type: {template_type}")
         return response_data
         
