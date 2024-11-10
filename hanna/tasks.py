@@ -2128,14 +2128,13 @@ def process_prompts4(final_content, language):
         raise ValueError(f"Task failed: {str(e)}")
 
 def parse_plain_text_response(response):
-    """Extract structured data from plain-text response."""
+    """Parse the plain-text response to extract structured data."""
     data = {}
     try:
-        # Debug: Log the response
         print(f"Parsing response:\n{response}")
 
         # Extract template type
-        template_type_match = re.search(r"Template Type:\s*[\"']?(\d+)[\"']?", response)
+        template_type_match = re.search(r"\*\*Template Type:\*\* (\d+)", response)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
         else:
@@ -2151,13 +2150,15 @@ def parse_plain_text_response(response):
         if canvas_description_match:
             data["canvas_description"] = canvas_description_match.group(1).strip()
 
-        # Extract hexagons
-        hexagon_matches = re.finditer(
-            r"\*\*(Top|Bottom) Hexagon (\d+):\*\*\s*\*\*Title:\*\* (.+?)\s*\*\*Description:\*\* (.+?)\s*\*\*Key Elements:\*\* (.+)",
-            response,
-            re.DOTALL
-        )
-        for match in hexagon_matches:
+        # Initialize hexagons
+        data['top_hexagons'] = []
+        data['bottom_hexagons'] = []
+
+        # Regex pattern to match all hexagon data
+        hexagon_pattern = r"\*\*(Top|Bottom) Hexagon (\d+):\*\*\s*\*\*Title:\*\* (.+?)\s*\*\*Description:\*\* (.+?)\s*\*\*Key Elements:\*\* (.+)"
+        matches = re.finditer(hexagon_pattern, response, re.DOTALL)
+
+        for match in matches:
             position = "top_hexagons" if match.group(1) == "Top" else "bottom_hexagons"
             hexagon_data = {
                 "hexagon_number": int(match.group(2)),
@@ -2165,16 +2166,19 @@ def parse_plain_text_response(response):
                 "description": match.group(4).strip(),
                 "key_elements": [element.strip() for element in match.group(5).split(",")]
             }
-            if position not in data:
-                data[position] = []
             data[position].append(hexagon_data)
+
+        # Ensure top and bottom hexagons are not empty
+        if not data['top_hexagons']:
+            raise ValueError("'top_hexagons' is missing or empty in the response.")
+        if not data['bottom_hexagons']:
+            raise ValueError("'bottom_hexagons' is missing or empty in the response.")
 
         return data
 
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
-
 
 
 
@@ -2210,6 +2214,9 @@ def handle_template_type_4(canvas_data):
         raise ValueError("'top_hexagons' is missing or empty.")
     if "bottom_hexagons" not in canvas_data or not canvas_data["bottom_hexagons"]:
         raise ValueError("'bottom_hexagons' is missing or empty.")
+
+    print("Top hexagons:", canvas_data["top_hexagons"])
+    print("Bottom hexagons:", canvas_data["bottom_hexagons"])
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
     # Build the complete replacement dictionary to handle titles, descriptions, and key elements
     replacement_dict_slide1 = {
