@@ -2135,7 +2135,7 @@ def parse_plain_text_response(response):
         print(f"Parsing response:\n{response}")
 
         # Extract template type
-        template_type_match = re.search(r"\*\*Template Type:\*\* (\d+)", response)
+        template_type_match = re.search(r"Template Type:\s*[\"']?(\d+)[\"']?", response)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
         else:
