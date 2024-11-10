@@ -2127,23 +2127,8 @@ def process_prompts4(final_content, language):
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
 
-def parse_plain_text_response(response, language):
-    """Parse the plain text response dynamically, supporting multiple languages."""
-    # Define keyword mappings for multiple languages
-    keyword_mapping = {
-        "template_type": {"en": "Template Type", "es": "Tipo de Plantilla"},
-        "canvas_name": {"en": "Canvas Name", "es": "Nombre del Canvas"},
-        "canvas_description": {"en": "Canvas Description", "es": "Descripción del Canvas"},
-        "top_hexagon": {"en": "Top Hexagon", "es": "Hexágono Superior"},
-        "bottom_hexagon": {"en": "Bottom Hexagon", "es": "Hexágono Inferior"},
-        "title": {"en": "Title", "es": "Título"},
-        "description": {"en": "Description", "es": "Descripción"},
-        "key_elements": {"en": "Key Elements", "es": "Elementos clave"},
-    }
-
-    # Select appropriate keywords based on language
-    keywords = {key: keyword_mapping[key].get(language, keyword_mapping[key]["en"]) for key in keyword_mapping}
-
+def parse_plain_text_response(response):
+    """Parse the plain text response with enhanced flexibility."""
     data = {
         "template_type": None,
         "canvas_name": None,
@@ -2153,42 +2138,51 @@ def parse_plain_text_response(response, language):
     }
 
     try:
+        # Regex patterns for key elements
+        template_type_pattern = re.compile(r"Template Type:\s*\"?(\d+)\"?", re.IGNORECASE)
+        canvas_name_pattern = re.compile(r"Canvas Name:\s*(.+)", re.IGNORECASE)
+        canvas_description_pattern = re.compile(r"Canvas Description:\s*(.+)", re.IGNORECASE)
+        hexagon_pattern = re.compile(
+            r"(?P<position>Top|Bottom) Hexagon (?P<number>\d+):\s*"
+            r"\*\*Title:\s*(?P<title>.+?)\*\*\s*"
+            r"\*\*Description:\s*(?P<description>.+?)\*\*\s*"
+            r"\*\*Key Elements:\s*(?P<key_elements>.+?)\*\*",
+            re.DOTALL | re.IGNORECASE,
+        )
+
         # Extract Template Type
-        template_type_match = re.search(rf"{keywords['template_type']}:\s*\"?(\d+)\"?", response)
+        template_type_match = template_type_pattern.search(response)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
 
         # Extract Canvas Name
-        canvas_name_match = re.search(rf"{keywords['canvas_name']}:\s*(.+)", response)
+        canvas_name_match = canvas_name_pattern.search(response)
         if canvas_name_match:
-            data["canvas_name"] = canvas_name_match.group(1).strip().strip("**")
+            data["canvas_name"] = canvas_name_match.group(1).strip()
+        else:
+            logger.warning("Canvas Name not found in the response.")
 
         # Extract Canvas Description
-        canvas_description_match = re.search(rf"{keywords['canvas_description']}:\s*(.+)", response)
+        canvas_description_match = canvas_description_pattern.search(response)
         if canvas_description_match:
-            data["canvas_description"] = canvas_description_match.group(1).strip().strip("**")
+            data["canvas_description"] = canvas_description_match.group(1).strip()
+        else:
+            logger.warning("Canvas Description not found in the response.")
 
-        # Extract Hexagons Dynamically
-        hexagon_pattern = re.compile(
-            rf"(?P<position>{keywords['top_hexagon']}|{keywords['bottom_hexagon']}) (?P<number>\d+):\s*"
-            rf"\*\*{keywords['title']}:\s*(?P<title>.+?)\*\*\s*"
-            rf"\*\*{keywords['description']}:\s*(?P<description>.+?)\*\*\s*"
-            rf"\*\*{keywords['key_elements']}:\s*(?P<key_elements>.+?)\*\*",
-            re.DOTALL,
-        )
-
+        # Match and group hexagons
         for match in hexagon_pattern.finditer(response):
             hexagon = {
+                "hexagon_number": int(match.group("number")),
                 "title": match.group("title").strip(),
                 "description": match.group("description").strip(),
                 "key_elements": [el.strip() for el in match.group("key_elements").split(",")],
             }
-            if match.group("position") == keywords["top_hexagon"]:
+            if match.group("position") == "Top":
                 data["top_hexagons"].append(hexagon)
-            elif match.group("position") == keywords["bottom_hexagon"]:
+            elif match.group("position") == "Bottom":
                 data["bottom_hexagons"].append(hexagon)
 
-        # Log missing hexagons
+        # Log and validate extracted data
         if not data["top_hexagons"]:
             logger.warning("'top_hexagons' is missing or empty.")
         if not data["bottom_hexagons"]:
@@ -2199,7 +2193,6 @@ def parse_plain_text_response(response, language):
     except Exception as e:
         logger.error(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
-
 
         
 def extract_json_from_response(response_text):
