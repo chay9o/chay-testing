@@ -2098,22 +2098,26 @@ def process_prompts4(final_content, language):
             # Print the full response text for debugging
         #print("Full LLM Response:\n", generated_text)
         
-        canvas_data = parse_plain_text_response(generated_response)
-        print(f"Parsed canvas data: {canvas_data}")
-        if not canvas_data:
-            raise ValueError("Failed to parse LLM response. Ensure the response matches the expected format chay.")
+        parsed_data = parse_plain_text_response(generated_response)
+        if not parsed_data or not parsed_data.get("template_type"):
+            raise ValueError("Failed to parse LLM response. Ensure the response matches the expected format.")
+        
+        template_type = parsed_data["template_type"]
+        #print(f"Parsed canvas data: {canvas_data}")
+        #if not canvas_data:
+        #    raise ValueError("Failed to parse LLM response. Ensure the response matches the expected format chay.")
 
         TEMPLATE_TYPE_MAP = {
             "Hive": 4,
             # Add other mappings if necessary
         }
         
-        template_type = canvas_data.get("template_type", None)
+        #template_type = canvas_data.get("template_type", None)
         #if not template_type_str:
             #raise ValueError("Template type not found in the response.")
         #template_type = TEMPLATE_TYPE_MAP.get(template_type_str)
-        if not template_type:
-            raise ValueError(f"Unknown template type: {template_type}")
+        #if not template_type:
+        #    raise ValueError(f"Unknown template type: {template_type}")
 
         response_data = {"final_text": canvas_data, "template_type": template_type}
         pptx_base64 = None
@@ -2139,59 +2143,57 @@ def process_prompts4(final_content, language):
 
 def parse_plain_text_response(response):
     """Extract structured data from plain-text response."""
-    data = {}
+    data = {
+        "template_type": None,
+        "canvas_name": None,
+        "canvas_description": None,
+        "top_hexagons": [],
+        "bottom_hexagons": []
+    }
     try:
-        # Split response into sections
-        sections = response.split("\n\n")
-        
-        # Initialize default values
-        data["template_type"] = None
-        data["canvas_name"] = None
-        data["canvas_description"] = None
-        data["top_hexagons"] = []
-        data["bottom_hexagons"] = []
-
-        for section in sections:
-            if "**Template Type:**" in section:
-                match = re.search(r"\*\*Template Type:\*\* (.+)", section)
-                data["template_type"] = int(match.group(1).strip()) if match else None
-            elif "**Canvas Name:**" in section:
-                match = re.search(r"\*\*Canvas Name:\*\* (.+)", section)
-                data["canvas_name"] = match.group(1).strip() if match else None
-            elif "**Canvas Description:**" in section:
-                match = re.search(r"\*\*Canvas Description:\*\* (.+)", section)
-                data["canvas_description"] = match.group(1).strip() if match else None
-            elif "**Top Hexagon" in section or "**Bottom Hexagon" in section:
-                hexagon_match = re.search(r"(Top|Bottom) Hexagon (\d+):", section)
-                if hexagon_match:
-                    position = "top_hexagons" if "Top" in hexagon_match.group(1) else "bottom_hexagons"
-                    hex_num = int(hexagon_match.group(2))
-                    title_match = re.search(r"\*\*Title:\*\* (.+)", section)
-                    desc_match = re.search(r"\*\*Description:\*\* (.+)", section)
-                    key_elements_match = re.search(r"\*\*Key Elements:\*\* (.+)", section)
-
-                    title = title_match.group(1).strip() if title_match else None
-                    description = desc_match.group(1).strip() if desc_match else None
-                    key_elements = key_elements_match.group(1).strip().split(", ") if key_elements_match else []
-
-                    if title and description:
-                        hexagon_data = {
-                            "hexagon_number": hex_num,
-                            "title": title,
-                            "description": description,
-                            "key_elements": key_elements
-                        }
-                        data[position].append(hexagon_data)
-
-        # Ensure the template_type is present
-        if not data["template_type"]:
+        # Extract template type
+        template_match = re.search(r"\*\*Template Type:\*\s*(\d+)", response)
+        if template_match:
+            data["template_type"] = int(template_match.group(1).strip())
+        else:
             raise ValueError("Template type is missing in the response.")
+
+        # Extract canvas name
+        name_match = re.search(r"\*\*Canvas Name:\*\s*(.+)", response)
+        if name_match:
+            data["canvas_name"] = name_match.group(1).strip()
+
+        # Extract canvas description
+        description_match = re.search(r"\*\*Canvas Description:\*\s*(.+)", response)
+        if description_match:
+            data["canvas_description"] = description_match.group(1).strip()
+
+        # Extract hexagons
+        hexagon_matches = re.findall(r"\*\*(Top|Bottom) Hexagon (\d+):\*\s*(.+)", response)
+        for hex_type, hex_number, content in hexagon_matches:
+            hex_title_match = re.search(r"\*\*Title:\*\s*(.+)", content)
+            hex_description_match = re.search(r"\*\*Description:\*\s*(.+)", content)
+            hex_elements_match = re.search(r"\*\*Key Elements:\*\s*(.+)", content)
+
+            hex_data = {
+                "hexagon_number": int(hex_number),
+                "title": hex_title_match.group(1).strip() if hex_title_match else None,
+                "description": hex_description_match.group(1).strip() if hex_description_match else None,
+                "key_elements": [
+                    elem.strip() for elem in hex_elements_match.group(1).split(",")
+                ] if hex_elements_match else []
+            }
+
+            if hex_type.lower() == "top":
+                data["top_hexagons"].append(hex_data)
+            elif hex_type.lower() == "bottom":
+                data["bottom_hexagons"].append(hex_data)
+
         return data
 
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
         return {}
-
 
 
 def extract_json_from_response(response_text):
