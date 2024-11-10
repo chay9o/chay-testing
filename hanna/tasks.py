@@ -2125,8 +2125,8 @@ def process_prompts4(final_content, language):
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
 
-def parse_plain_text_response(response):
-    """Parse the plain text response dynamically."""
+def parse_plain_text_response_line_by_line(response):
+    """Parse the plain text response line by line."""
     data = {
         "template_type": None,
         "canvas_name": None,
@@ -2136,62 +2136,64 @@ def parse_plain_text_response(response):
     }
 
     try:
-        # Extract Template Type
-        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", response)
-        if template_type_match:
-            data["template_type"] = template_type_match.group(1).strip()
-            logger.info("Chay-1.")
-        else:
-            logger.warning("Template Type not found in the response.")
+        # Split the response into lines for sequential processing
+        lines = response.split("\n")
+        current_hexagon = None
 
-        # Extract Canvas Name
-        canvas_name_match = re.search(r"Canvas Name:\s*(.+)", response)
-        if canvas_name_match:
-            data["canvas_name"] = canvas_name_match.group(1).strip()
-            logger.info("Chay-2.")
-        else:
-            logger.warning("Canvas Name not found in the response.")
+        for line in lines:
+            line = line.strip()
 
-        # Extract Canvas Description
-        canvas_description_match = re.search(r"Canvas Description:\s*(.+)", response)
-        if canvas_description_match:
-            data["canvas_description"] = canvas_description_match.group(1).strip()
-            logger.info("Chay-3.")
-        else:
-            logger.warning("Canvas Description not found in the response.")
+            # Extract Template Type
+            if line.startswith("Template Type:"):
+                data["template_type"] = line.split(":", 1)[1].strip().strip('"')
 
-        # Regex pattern for hexagons
-        hexagon_pattern = re.compile(
-            r"(?P<position>Top|Bottom)\s*Hexagon\s*(?P<number>\d+):\s*"
-            r"Title:\s*(?P<title>.+?)\s*"
-            r"Description:\s*(?P<description>.+?)\s*"
-            r"Key\s*Elements:\s*(?P<key_elements>.+?)(?:\n|$)",  # Key elements end at newline or end of input
-            re.DOTALL,
-        )
-        logger.info("Chay-4: Regex pattern compiled successfully.")
-        
-        # Match and group hexagons dynamically
-        for match in hexagon_pattern.finditer(response):
-            logger.info(f"Chay-Match: Matched hexagon: {match.groupdict()}")  # Debug log for matched hexagon
-            hexagon = {
-                "hexagon_number": int(match.group("number")),
-                "title": match.group("title").strip(),
-                "description": match.group("description").strip(),
-                "key_elements": [el.strip() for el in match.group("key_elements").split(",")],
-            }
-            if match.group("position").lower() == "top":
-                data["top_hexagons"].append(hexagon)
-                logger.info("Chay-5: Added to top_hexagons.")
-            elif match.group("position").lower() == "bottom":
-                data["bottom_hexagons"].append(hexagon)
-                logger.info("Chay-6: Added to bottom_hexagons.")
-        
-        # Debugging unmatched parts of the response
-        if not data["top_hexagons"] or not data["bottom_hexagons"]:
-            logger.warning("Unmatched response content:")
-            logger.warning(response)
-        
-        # Log and handle missing hexagons
+            # Extract Canvas Name
+            elif line.startswith("Canvas Name:"):
+                data["canvas_name"] = line.split(":", 1)[1].strip()
+
+            # Extract Canvas Description
+            elif line.startswith("Canvas Description:"):
+                data["canvas_description"] = line.split(":", 1)[1].strip()
+
+            # Detect the start of a hexagon
+            elif line.startswith("Top Hexagon") or line.startswith("Bottom Hexagon"):
+                if current_hexagon:
+                    # Save the previous hexagon before starting a new one
+                    if "Top" in current_hexagon["position"]:
+                        data["top_hexagons"].append(current_hexagon)
+                    elif "Bottom" in current_hexagon["position"]:
+                        data["bottom_hexagons"].append(current_hexagon)
+
+                # Start a new hexagon
+                current_hexagon = {
+                    "position": "Top" if "Top" in line else "Bottom",
+                    "hexagon_number": int(line.split()[-1][:-1]),  # Extract the number
+                    "title": "",
+                    "description": "",
+                    "key_elements": [],
+                }
+
+            # Extract Title
+            elif line.startswith("Title:") and current_hexagon:
+                current_hexagon["title"] = line.split(":", 1)[1].strip()
+
+            # Extract Description
+            elif line.startswith("Description:") and current_hexagon:
+                current_hexagon["description"] = line.split(":", 1)[1].strip()
+
+            # Extract Key Elements
+            elif line.startswith("Key Elements:") and current_hexagon:
+                elements = line.split(":", 1)[1].strip()
+                current_hexagon["key_elements"] = [el.strip() for el in elements.split(",")]
+
+        # Append the last hexagon if present
+        if current_hexagon:
+            if "Top" in current_hexagon["position"]:
+                data["top_hexagons"].append(current_hexagon)
+            elif "Bottom" in current_hexagon["position"]:
+                data["bottom_hexagons"].append(current_hexagon)
+
+        # Validate the extracted data
         if not data["top_hexagons"]:
             logger.warning("'top_hexagons' is missing or empty.")
         if not data["bottom_hexagons"]:
