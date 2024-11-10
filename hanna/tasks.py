@@ -2100,12 +2100,15 @@ def process_prompts4(final_content, language):
         
         canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
+        if not canvas_data:
+            raise ValueError("Failed to parse LLM response. Ensure the response matches the expected format.")
+
         TEMPLATE_TYPE_MAP = {
             "Hive": 4,
             # Add other mappings if necessary
         }
         
-        template_type = canvas_data.get("template_type", None)
+        template_type_str = canvas_data.get("template_type", None)
         template_type = TEMPLATE_TYPE_MAP.get(template_type_str)
         if not template_type:
             raise ValueError(f"Unknown template type: {template_type_str}")
@@ -2135,34 +2138,40 @@ def process_prompts4(final_content, language):
 def parse_plain_text_response(response):
     """Extract structured data from plain-text response."""
     data = {}
-    sections = response.split("\n\n")  # Split response into logical parts
+    try:
+        # Split the response into logical sections
+        sections = response.split("\n\n")
 
-    for section in sections:
-        if "**Template Type:**" in section:
-            data["template_type"] = section.split("**Template Type:**")[1].strip()
-        elif "**Canvas Name:**" in section:
-            data["canvas_name"] = section.split("**Canvas Name:**")[1].strip()
-        elif "**Canvas Description:**" in section:
-            data["canvas_description"] = section.split("**Canvas Description:**")[1].strip()
-        elif "**Top Hexagon" in section or "**Bottom Hexagon" in section:
-            hexagon_match = re.search(r"(Top|Bottom) Hexagon (\d+):", section)
-            if hexagon_match:
-                position = "top_hexagons" if "Top" in hexagon_match.group(1) else "bottom_hexagons"
-                hex_num = int(hexagon_match.group(2))
-                title = re.search(r"\*\*Title:\*\* (.*)", section).group(1).strip()
-                description = re.search(r"\*\*Description:\*\* (.*)", section).group(1).strip()
-                key_elements = re.search(r"\*\*Key Elements:\*\* (.*)", section).group(1).split(", ")
+        for section in sections:
+            if "**Template Type:**" in section:
+                data["template_type"] = section.split("**Template Type:**")[1].strip()
+            elif "**Canvas Name:**" in section:
+                data["canvas_name"] = section.split("**Canvas Name:**")[1].strip()
+            elif "**Canvas Description:**" in section:
+                data["canvas_description"] = section.split("**Canvas Description:**")[1].strip()
+            elif "**Top Hexagon" in section or "**Bottom Hexagon" in section:
+                hexagon_match = re.search(r"(Top|Bottom) Hexagon (\d+):", section)
+                if hexagon_match:
+                    position = "top_hexagons" if "Top" in hexagon_match.group(1) else "bottom_hexagons"
+                    hex_num = int(hexagon_match.group(2))
+                    title = re.search(r"\*\*Title:\*\* (.*)", section).group(1).strip()
+                    description = re.search(r"\*\*Description:\*\* (.*)", section).group(1).strip()
+                    key_elements = re.search(r"\*\*Key Elements:\*\* (.*)", section).group(1).split(", ")
 
-                if position not in data:
-                    data[position] = []
-                data[position].append({
-                    "hexagon_number": hex_num,
-                    "title": title,
-                    "description": description,
-                    "key_elements": key_elements
-                })
+                    if position not in data:
+                        data[position] = []
+                    data[position].append({
+                        "hexagon_number": hex_num,
+                        "title": title,
+                        "description": description,
+                        "key_elements": key_elements
+                    })
+        return data
 
-    return data
+    except Exception as e:
+        print(f"Error parsing response: {str(e)}")
+        return {}
+
 
 
 
