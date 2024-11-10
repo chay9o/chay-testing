@@ -2127,7 +2127,13 @@ def process_prompts4(final_content, language):
 
 def parse_plain_text_response(response):
     """Parse the plain text response dynamically."""
-    data = {}
+    data = {
+        "template_type": None,
+        "canvas_name": None,
+        "canvas_description": None,
+        "top_hexagons": [],
+        "bottom_hexagons": [],
+    }
 
     try:
         # Extract Template Type
@@ -2135,29 +2141,25 @@ def parse_plain_text_response(response):
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
         else:
-            raise ValueError("Template Type not found in the response.")
+            logger.warning("Template Type not found in the response.")
 
         # Extract Canvas Name
         canvas_name_match = re.search(r"Canvas Name:\s*(.+)", response)
         if canvas_name_match:
             data["canvas_name"] = canvas_name_match.group(1).strip()
         else:
-            raise ValueError("Canvas Name not found in the response.")
+            logger.warning("Canvas Name not found in the response.")
 
         # Extract Canvas Description
         canvas_description_match = re.search(r"Canvas Description:\s*(.+)", response)
         if canvas_description_match:
             data["canvas_description"] = canvas_description_match.group(1).strip()
         else:
-            raise ValueError("Canvas Description not found in the response.")
-
-        # Initialize lists for hexagons
-        data["top_hexagons"] = []
-        data["bottom_hexagons"] = []
+            logger.warning("Canvas Description not found in the response.")
 
         # Regex pattern for hexagons
         hexagon_pattern = re.compile(
-            r"\*\*(?P<position>Top|Bottom) Hexagon (?P<number>\d+):\*\*\s*"
+            r"(?P<position>Top|Bottom) Hexagon (?P<number>\d+):\s*"
             r"\*\*Title:\s*(?P<title>.+?)\*\*\s*"
             r"\*\*Description:\s*(?P<description>.+?)\*\*\s*"
             r"\*\*Key Elements:\s*(?P<key_elements>.+?)\*\*",
@@ -2177,17 +2179,18 @@ def parse_plain_text_response(response):
             elif match.group("position") == "Bottom":
                 data["bottom_hexagons"].append(hexagon)
 
-        # Ensure hexagons exist
+        # Log and handle missing hexagons
         if not data["top_hexagons"]:
-            raise ValueError("'top_hexagons' is missing or empty.")
+            logger.warning("'top_hexagons' is missing or empty.")
         if not data["bottom_hexagons"]:
-            raise ValueError("'bottom_hexagons' is missing or empty.")
+            logger.warning("'bottom_hexagons' is missing or empty.")
 
         return data
 
     except Exception as e:
-        print(f"Error parsing response: {str(e)}")
+        logger.error(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
+
         
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
