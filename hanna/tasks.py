@@ -2108,12 +2108,12 @@ def process_prompts4(final_content, language):
             # Add other mappings if necessary
         }
         
-        template_type_str = canvas_data.get("template_type", None)
-        if not template_type_str:
-            raise ValueError("Template type not found in the response.")
-        template_type = TEMPLATE_TYPE_MAP.get(template_type_str)
+        template_type = canvas_data.get("template_type", None)
+        #if not template_type_str:
+            #raise ValueError("Template type not found in the response.")
+        #template_type = TEMPLATE_TYPE_MAP.get(template_type_str)
         if not template_type:
-            raise ValueError(f"Unknown template type: {template_type_str}")
+            raise ValueError(f"Unknown template type: {template_type}")
 
         response_data = {"final_text": canvas_data, "template_type": template_type}
         pptx_base64 = None
@@ -2173,9 +2173,6 @@ def parse_plain_text_response(response):
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
         return {}
-
-
-
 
 
 def extract_json_from_response(response_text):
