@@ -23,7 +23,7 @@ Hive Template (Hexagonal Canvas, Template 4):
    - It is ideal for evaluating multiple aspects of a situation in a connected, hive-like structure.
 
    Plain Text Output:
-   Template Type: 4
+   Template Type: "4"
    Canvas Name: [Canvas name]
    Canvas Description: [Brief description]
 
