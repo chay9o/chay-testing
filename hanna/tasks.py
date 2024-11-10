@@ -2140,6 +2140,7 @@ def parse_plain_text_response(response):
         template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", response)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
+            logger.info("Chay-1.")
         else:
             logger.warning("Template Type not found in the response.")
 
@@ -2147,6 +2148,7 @@ def parse_plain_text_response(response):
         canvas_name_match = re.search(r"Canvas Name:\s*(.+)", response)
         if canvas_name_match:
             data["canvas_name"] = canvas_name_match.group(1).strip()
+            logger.info("Chay-2.")
         else:
             logger.warning("Canvas Name not found in the response.")
 
@@ -2154,6 +2156,7 @@ def parse_plain_text_response(response):
         canvas_description_match = re.search(r"Canvas Description:\s*(.+)", response)
         if canvas_description_match:
             data["canvas_description"] = canvas_description_match.group(1).strip()
+            logger.info("Chay-3.")
         else:
             logger.warning("Canvas Description not found in the response.")
 
@@ -2165,6 +2168,7 @@ def parse_plain_text_response(response):
             r"\*\*Key Elements:\s*(?P<key_elements>.+?)\*\*",
             re.DOTALL,
         )
+        logger.info("Chay-4.")
 
         # Match and group hexagons dynamically
         for match in hexagon_pattern.finditer(response):
