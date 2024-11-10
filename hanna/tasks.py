@@ -2145,7 +2145,9 @@ def parse_plain_text_response(response):
 
             # Extract Template Type
             if line.startswith("Template Type:"):
-                data["template_type"] = line.split(":", 1)[1].strip().strip('"')
+                template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", response)
+                data["template_type"] = template_type_match.group(1).strip()
+                #data["template_type"] = line.split(":", 1)[1].strip().strip('"')
 
             # Extract Canvas Name
             elif line.startswith("Canvas Name:"):
