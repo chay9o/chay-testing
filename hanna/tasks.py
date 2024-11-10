@@ -2137,37 +2137,37 @@ def parse_plain_text_response(response):
 
     try:
         # Extract Template Type
-        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", response)
+        template_type_match = re.search(r"Template Type:\s*(?:\"|')?(\d+)(?:\"|')?", response, re.IGNORECASE)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
         else:
-            logger.warning("Template Type not found in the response.")
+            raise ValueError("Template Type not found or invalid in the response.")
 
         # Extract Canvas Name
         canvas_name_match = re.search(r"Canvas Name:\s*(.+)", response)
         if canvas_name_match:
             data["canvas_name"] = canvas_name_match.group(1).strip().strip("**")
         else:
-            logger.warning("Canvas Name not found in the response.")
+            raise ValueError("Canvas Name not found in the response.")
 
         # Extract Canvas Description
         canvas_description_match = re.search(r"Canvas Description:\s*(.+)", response)
         if canvas_description_match:
             data["canvas_description"] = canvas_description_match.group(1).strip().strip("**")
         else:
-            logger.warning("Canvas Description not found in the response.")
+            raise ValueError("Canvas Description not found in the response.")
 
         # Extract Hexagons Dynamically
-        hexagon_sections = re.split(r"(?P<position>Top|Bottom) Hexagon \d+:", response)
+        hexagon_sections = re.split(r"(Top|Bottom) Hexagon \d+:", response, flags=re.IGNORECASE)
 
         for i in range(1, len(hexagon_sections), 2):
-            position = hexagon_sections[i].strip()
+            position = hexagon_sections[i].strip().capitalize()
             content = hexagon_sections[i + 1].strip()
 
             # Extract Title, Description, and Key Elements
-            title_match = re.search(r"\*\*Title:\s*(.+?)\*\*", content)
-            description_match = re.search(r"\*\*Description:\s*(.+?)\*\*", content)
-            key_elements_match = re.search(r"\*\*Key Elements:\s*(.+?)\*\*", content)
+            title_match = re.search(r"\*\*Title:\s*(.+?)\*\*", content, re.IGNORECASE)
+            description_match = re.search(r"\*\*Description:\s*(.+?)\*\*", content, re.IGNORECASE)
+            key_elements_match = re.search(r"\*\*Key Elements:\s*(.+?)\*\*", content, re.IGNORECASE)
 
             hexagon = {
                 "title": title_match.group(1).strip() if title_match else None,
@@ -2183,17 +2183,19 @@ def parse_plain_text_response(response):
             elif position == "Bottom":
                 data["bottom_hexagons"].append(hexagon)
 
-        # Log Missing Hexagons
+        # Ensure Hexagons Are Found
         if not data["top_hexagons"]:
-            logger.warning("'top_hexagons' is missing or empty.")
+            raise ValueError("'top_hexagons' is missing or empty.")
         if not data["bottom_hexagons"]:
-            logger.warning("'bottom_hexagons' is missing or empty.")
+            raise ValueError("'bottom_hexagons' is missing or empty.")
 
         return data
 
     except Exception as e:
         logger.error(f"Error parsing response: {str(e)}")
+        logger.error(f"Full LLM response for debugging:\n{response}")
         raise ValueError(f"Parsing error: {str(e)}")
+
 
 
         
