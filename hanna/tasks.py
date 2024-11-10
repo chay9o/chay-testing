@@ -2322,7 +2322,7 @@ def handle_template_type_4(canvas_data):
                                 # Description alignment and styling
                                 if any(
                                     text_content == hexagon['description'] or hexagon['description'] in text_content
-                                    for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
+                                    for hexagon in canvas_data['top_hexagons'] + canvas_data['bottom_hexagons']
                                 ):
                                     paragraph.level = 0
                                     paragraph.alignment = PP_ALIGN.LEFT
@@ -2334,9 +2334,9 @@ def handle_template_type_4(canvas_data):
                                 # Title condition: Center-align titles and make bold
                                 if slide in [presentation.slides[0], presentation.slides[1]]:
                                     if text_content in [
-                                        hexagon['title'] for hexagon in canvas_data['canvas']['top_hexagons']
+                                        hexagon['title'] for hexagon in canvas_data['top_hexagons']
                                     ] + [
-                                        hexagon['title'] for hexagon in canvas_data['canvas']['bottom_hexagons']
+                                        hexagon['title'] for hexagon in canvas_data['bottom_hexagons']
                                     ]:
                                         paragraph.alignment = PP_ALIGN.CENTER
                                         for run in paragraph.runs:
@@ -2349,7 +2349,7 @@ def handle_template_type_4(canvas_data):
                                 # Key elements: Indent key elements to level 1
                                 if any(
                                     key in text_content
-                                    for hexagon in canvas_data['canvas']['top_hexagons'] + canvas_data['canvas']['bottom_hexagons']
+                                    for hexagon in canvas_data['top_hexagons'] + canvas_data['bottom_hexagons']
                                     for key in hexagon['key_elements']
                                 ):
                                     paragraph.level = 1
