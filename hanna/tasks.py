@@ -2125,7 +2125,7 @@ def process_prompts4(final_content, language):
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
 
-def parse_plain_text_response_line_by_line(response):
+def parse_plain_text_response(response):
     """Parse the plain text response line by line."""
     data = {
         "template_type": None,
