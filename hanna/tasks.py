@@ -2100,10 +2100,15 @@ def process_prompts4(final_content, language):
         
         canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
+        TEMPLATE_TYPE_MAP = {
+            "Hive": 4,
+            # Add other mappings if necessary
+        }
         
         template_type = canvas_data.get("template_type", None)
+        template_type = TEMPLATE_TYPE_MAP.get(template_type_str)
         if not template_type:
-            raise ValueError("Template type not found in the response")
+            raise ValueError(f"Unknown template type: {template_type_str}")
 
         response_data = {"final_text": canvas_data, "template_type": template_type}
         pptx_base64 = None
@@ -2115,7 +2120,7 @@ def process_prompts4(final_content, language):
             handle_template_type_2(canvas_data)
         elif template_type == 3:
             handle_template_type_3(canvas_data)
-        elif template_type == "Hive":
+        elif template_type == 4:
             pptx_data = handle_template_type_4(canvas_data)
             response_data.update(pptx_data) 
         else:
