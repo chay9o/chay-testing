@@ -13,76 +13,59 @@ Steps:
 2. Consider the information provided below, along with any other relevant knowledge, to guide the team toward assessing and solving the situation.
 3. Choose the most suitable template from the options below, ensuring it will help the team assess, take action, and solve the problem.
 4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each. Ensure that all titles are kept minimal, ideally no more than two words, and key elements are limited to two-word phrases or brief terms only.
-5. In the JSON output, only the values (titles, descriptions, and key elements) should be provided in the specified language: {language}. Do not change the JSON keys.
-[/INST]
+5. Output the values (titles, descriptions, and key elements) in plain text in the specified language: {language}.
 
 Template Options:
 
 [INST]
-4. Hive Template (Hexagonal Canvas, Template 4):
+Hive Template (Hexagonal Canvas, Template 4):
    - Composed of two rows of four hexagons each (8 hexagons total). The top row evaluates four main topics or categories, while the bottom row assesses subtopics of the ones above.
    - It is ideal for evaluating multiple aspects of a situation in a connected, hive-like structure.
 
-   JSON Output should follow this structure (with values in {language}):
-   {
-     "canvas": {
-       "template_type": 4,
-       "canvas_name": "",
-       "canvas_description": "",
-       "top_hexagons": [
-         {
-           "hexagon_number": 1,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         },
-         {
-           "hexagon_number": 2,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         },
-         {
-           "hexagon_number": 3,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         },
-         {
-           "hexagon_number": 4,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         }
-       ],
-       "bottom_hexagons": [
-         {
-           "hexagon_number": 1,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         },
-         {
-           "hexagon_number": 2,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         },
-         {
-           "hexagon_number": 3,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         },
-         {
-           "hexagon_number": 4,
-           "title": "", // Titles should be short and minimal, ideally one to three words.
-           "description": "",
-           "key_elements": ["", "", "", ""] // Key elements should be limited to two words or very brief phrases, avoiding long sentences.
-         }
-       ]
-     }
-   }
+   Plain Text Output:
+   Template Type: Hive
+   Canvas Name: [Canvas name]
+   Canvas Description: [Brief description]
+
+   Top Hexagon 1:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+
+   Top Hexagon 2:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+
+   Top Hexagon 3:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+
+   Top Hexagon 4:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+
+   Bottom Hexagon 1:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+
+   Bottom Hexagon 2:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+
+   Bottom Hexagon 3:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+
+   Bottom Hexagon 4:
+     Title: [Title]
+     Description: [Description]
+     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
 [/INST]
 
 [INST]
@@ -97,22 +80,22 @@ Instructions:
 A canvas creation expert previously created a canvas based on the situation provided. Now, as a critical-thinking expert, the goal is to enhance the clarity, depth, and usefulness of the canvas. Reanalyze the canvas and either improve it or choose a more appropriate one.
 
 Steps:
-1. Analyze the previous canvas (in JSON format): Reevaluate the JSON structure, focusing on how well it helps the team understand and solve the situation.
-2. Identify improvement areas: Critically assess each part of the JSON. Are all sections clear, useful, and well-defined? Does the canvas fully capture the important aspects of the situation?
-3. Make enhancements: Improve the JSON by refining titles, descriptions, and content to ensure that the revised version is more effective.
-4. Provide the improved JSON: Return the enhanced canvas in JSON format, reflecting the critical analysis and improvements.
+1. Analyze the previous canvas: Reevaluate the structure, focusing on how well it helps the team understand and solve the situation.
+2. Identify improvement areas: Critically assess each part of the canvas. Are all sections clear, useful, and well-defined? Does the canvas fully capture the important aspects of the situation?
+3. Make enhancements: Improve the canvas by refining titles, descriptions, and content to ensure that the revised version is more effective.
+4. Provide the improved canvas in plain text, reflecting the critical analysis and improvements.
 [/INST]
 
 [INST]
 Additional Considerations:
 - Ensure the revised canvas allows for better problem-solving.
 - Keep the proposed format for the canvas.
-- If the original template (Progression, Grid, Circular, Hive) was not the best choice, switch and update the JSON accordingly.
+- If the original template (Progression, Grid, Circular, Hive) was not the best choice, switch and update accordingly.
 [/INST]
 
 [INST]
 Desired Output:
-Return an improved version of the canvas in JSON format.
+Return an improved version of the canvas in plain text.
 [/INST]
 
 [INST]
