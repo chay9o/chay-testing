@@ -2109,6 +2109,8 @@ def process_prompts4(final_content, language):
         }
         
         template_type_str = canvas_data.get("template_type", None)
+        if not template_type_str:
+            raise ValueError("Template type not found in the response.")
         template_type = TEMPLATE_TYPE_MAP.get(template_type_str)
         if not template_type:
             raise ValueError(f"Unknown template type: {template_type_str}")
@@ -2171,6 +2173,7 @@ def parse_plain_text_response(response):
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
         return {}
+
 
 
 
