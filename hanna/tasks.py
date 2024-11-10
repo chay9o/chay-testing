@@ -2131,10 +2131,15 @@ def parse_plain_text_response(response):
     """Extract structured data from plain-text response."""
     data = {}
     try:
+        # Debug: Log the response
+        print(f"Parsing response:\n{response}")
+
         # Extract template type
         template_type_match = re.search(r"\*\*Template Type:\*\* (\d+)", response)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
+        else:
+            raise ValueError("Template Type not found in the response.")
 
         # Extract canvas name
         canvas_name_match = re.search(r"\*\*Canvas Name:\*\* (.+)", response)
@@ -2168,7 +2173,7 @@ def parse_plain_text_response(response):
 
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
-        return {}
+        raise ValueError(f"Parsing error: {str(e)}")
 
 
 
