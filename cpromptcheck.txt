@@ -66,6 +66,9 @@ Hive Template (Hexagonal Canvas, Template 4):
      Title: [Title]
      Description: [Description]
      Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+**Note**:
+- Always include all 8 hexagons. Use "N/A" if data is missing for any title, description, or key element.
+- Ensure consistency and clarity across the canvas.
 [/INST]
 
 [INST]
