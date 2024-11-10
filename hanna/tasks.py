@@ -2206,6 +2206,10 @@ def handle_template_type_3(canvas_data):
 def handle_template_type_4(canvas_data):
     presentation = Presentation("Hex Canvas Design (3).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
+    if "top_hexagons" not in canvas_data or not canvas_data["top_hexagons"]:
+        raise ValueError("'top_hexagons' is missing or empty.")
+    if "bottom_hexagons" not in canvas_data or not canvas_data["bottom_hexagons"]:
+        raise ValueError("'bottom_hexagons' is missing or empty.")
     # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
     # Build the complete replacement dictionary to handle titles, descriptions, and key elements
     replacement_dict_slide1 = {
