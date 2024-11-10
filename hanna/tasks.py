@@ -2047,8 +2047,6 @@ def process_single_prompt3(prompt, chat_history, language, model_name=None):
 
 
 
-
-
 @shared_task
 def process_prompts4(final_content, language):
     try:
