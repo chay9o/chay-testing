@@ -2180,8 +2180,10 @@ def parse_plain_text_response(response):
             }
             if match.group("position") == "Top":
                 data["top_hexagons"].append(hexagon)
+                 logger.info("Chay-5.")
             elif match.group("position") == "Bottom":
                 data["bottom_hexagons"].append(hexagon)
+                 logger.info("Chay-6.")
 
         # Log and handle missing hexagons
         if not data["top_hexagons"]:
