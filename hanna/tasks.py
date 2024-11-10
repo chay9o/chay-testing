@@ -2177,18 +2177,16 @@ def parse_plain_text_response(response):
             elif match.group("position") == "Bottom":
                 data["bottom_hexagons"].append(hexagon)
 
-        # Ensure hexagons exist
-        if not data["top_hexagons"]:
-            raise ValueError("'top_hexagons' is missing or empty.")
-        if not data["bottom_hexagons"]:
-            raise ValueError("'bottom_hexagons' is missing or empty.")
+        # Log parsed hexagon data for debugging
+        print(f"Parsed Top Hexagons: {data['top_hexagons']}")
+        print(f"Parsed Bottom Hexagons: {data['bottom_hexagons']}")
 
         return data
 
     except Exception as e:
         print(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
-
+        
 def extract_json_from_response(response_text):
     json_start = response_text.find("{")
     json_end = response_text.rfind("}") + 1
