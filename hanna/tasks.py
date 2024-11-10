@@ -2157,7 +2157,7 @@ def parse_plain_text_response(response):
 
         # Regex pattern for hexagons
         hexagon_pattern = re.compile(
-            r"(?P<position>Top|Bottom) Hexagon (?P<number>\d+):\s*"
+            r"\*\*(?P<position>Top|Bottom) Hexagon (?P<number>\d+):\*\*\s*"
             r"\*\*Title:\s*(?P<title>.+?)\*\*\s*"
             r"\*\*Description:\s*(?P<description>.+?)\*\*\s*"
             r"\*\*Key Elements:\s*(?P<key_elements>.+?)\*\*",
@@ -2177,9 +2177,11 @@ def parse_plain_text_response(response):
             elif match.group("position") == "Bottom":
                 data["bottom_hexagons"].append(hexagon)
 
-        # Log parsed hexagon data for debugging
-        print(f"Parsed Top Hexagons: {data['top_hexagons']}")
-        print(f"Parsed Bottom Hexagons: {data['bottom_hexagons']}")
+        # Ensure hexagons exist
+        if not data["top_hexagons"]:
+            raise ValueError("'top_hexagons' is missing or empty.")
+        if not data["bottom_hexagons"]:
+            raise ValueError("'bottom_hexagons' is missing or empty.")
 
         return data
 
