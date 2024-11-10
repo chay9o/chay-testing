@@ -2162,29 +2162,35 @@ def parse_plain_text_response(response):
 
         # Regex pattern for hexagons
         hexagon_pattern = re.compile(
-            r"(?P<position>Top|Bottom) Hexagon (?P<number>\d+):\s*"
-            r"\*\*Title:\s*(?P<title>.+?)\*\*\s*"
-            r"\*\*Description:\s*(?P<description>.+?)\*\*\s*"
-            r"\*\*Key Elements:\s*(?P<key_elements>.+?)\*\*",
+            r"(?P<position>Top|Bottom)\s*Hexagon\s*(?P<number>\d+):\s*"
+            r"Title:\s*(?P<title>.+?)\s*"
+            r"Description:\s*(?P<description>.+?)\s*"
+            r"Key\s*Elements:\s*(?P<key_elements>.+?)(?:\n|$)",  # Key elements end at newline or end of input
             re.DOTALL,
         )
-        logger.info("Chay-4.")
-
+        logger.info("Chay-4: Regex pattern compiled successfully.")
+        
         # Match and group hexagons dynamically
         for match in hexagon_pattern.finditer(response):
+            logger.info(f"Chay-Match: Matched hexagon: {match.groupdict()}")  # Debug log for matched hexagon
             hexagon = {
                 "hexagon_number": int(match.group("number")),
                 "title": match.group("title").strip(),
                 "description": match.group("description").strip(),
                 "key_elements": [el.strip() for el in match.group("key_elements").split(",")],
             }
-            if match.group("position") == "Top":
+            if match.group("position").lower() == "top":
                 data["top_hexagons"].append(hexagon)
-                 logger.info("Chay-5.")
-            elif match.group("position") == "Bottom":
+                logger.info("Chay-5: Added to top_hexagons.")
+            elif match.group("position").lower() == "bottom":
                 data["bottom_hexagons"].append(hexagon)
-                 logger.info("Chay-6.")
-
+                logger.info("Chay-6: Added to bottom_hexagons.")
+        
+        # Debugging unmatched parts of the response
+        if not data["top_hexagons"] or not data["bottom_hexagons"]:
+            logger.warning("Unmatched response content:")
+            logger.warning(response)
+        
         # Log and handle missing hexagons
         if not data["top_hexagons"]:
             logger.warning("'top_hexagons' is missing or empty.")
