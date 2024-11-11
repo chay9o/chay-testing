@@ -1,0 +1,55 @@
+[INST]
+### Instructions:
+Using the provided canvas input and the responses from **Prompt 3** and **Prompt 4**, generate a **3-slide presentation** in plain text. The slides should provide a professional, narrative-style overview of the canvas, its collaborative process, and key takeaways.
+
+#### Input:
+Canvas Data:
+{canvas_data}
+
+Prompt 3:
+Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.
+
+Prompt 4:
+Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
+
+#### Presentation Structure:
+1. **Slide 1**: Canvas Overview
+   - Use the **Canvas Name**, **Canvas Description**, and **Prompt 3 Response**.
+   - Explain the purpose and utility of the canvas, ensuring clarity for someone new to using it.
+
+2. **Slide 2**: Collaborative Session
+   - Use the **Prompt 4 Response**.
+   - Describe the steps and guidance for facilitating a collaborative session with the canvas.
+
+3. **Slide 3**: Key Takeaways
+   - Summarize the benefits and actionable insights gained from using the canvas.
+   - Emphasize how the canvas helps teams analyze, collaborate, and achieve resolutions effectively.
+
+#### Output Format:
+[Slide 1]
+[Title] Canvas Overview [/Title]
+[Description] {Narrative from Prompt 3: Overview of the canvas, its name, purpose, and how to use it effectively.} [/Description]
+[/Slide 1]
+
+[Slide 2]
+[Title] Collaborative Session [/Title]
+[Description] {Narrative from Prompt 4: Guidance on running a collaborative session with this canvas.} [/Description]
+[/Slide 2]
+
+[Slide 3]
+[Title] Key Takeaways [/Title]
+[Description] {Summary of the benefits and actionable insights provided by the canvas and the collaborative process.} [/Description]
+[/Slide 3]
+
+---
+
+### Additional Considerations:
+1. **Consistency**: Ensure that the narrative is clear and professional, with seamless transitions between slides.
+2. **Clarity**: Avoid bullet points; use paragraph-style descriptions to maintain a corporate presentation tone.
+3. **Language**: Retain the keys like `[Title]` and `[Description]` in **ENGLISH**, regardless of the specified language.
+4. **Focus Areas**:
+   - The canvas should highlight critical areas such as **Objectives, Stakeholders, Actions, Timeline, Risks, and Success Metrics**.
+   - Ensure the canvas fosters critical thinking and actionable resolutions.
+
+Use the input data and the given prompts to create the output.
+[/INST]
