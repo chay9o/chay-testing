@@ -2125,6 +2125,15 @@ def process_prompts4(final_content, language):
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
 
+def clean_asterisks(text):
+    """
+    Remove all occurrences of `*` (including `**`) from the given text.
+    """
+    if not text:
+        return text  # Return as is if the text is None or empty
+    return text.replace("*", "").strip()
+
+
 def parse_plain_text_response(response):
     """Parse the plain text response dynamically."""
     data = {
@@ -2136,7 +2145,7 @@ def parse_plain_text_response(response):
     }
 
     try:
-        clean_response = re.sub(r"\*\*", "", response).strip()
+        clean_response = clean_asterisks(response)
         logger.info(clean_response)
 
         # Extract Template Type
