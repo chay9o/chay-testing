@@ -12,7 +12,10 @@ Steps:
 1. Analyze the situation described by the user or team.
 2. Consider the information provided below, along with any other relevant knowledge, to guide the team toward assessing and solving the situation.
 3. Choose the most suitable template from the options below, ensuring it will help the team assess, take action, and solve the problem.
-4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each. Ensure that all titles are kept minimal, ideally no more than two words, and key elements are limited to two-word phrases or brief terms only.
+4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each. Ensure that:
+   - All titles are minimal, ideally no more than two words.
+   - Key elements are limited to two-word phrases or brief terms only.
+   - No special characters (e.g., `*`, `_`, or `"` around text) are used for formatting
 5. Output the values (titles, descriptions, and key elements) in plain text in the specified language: {language}.
 
 Template Options:
@@ -23,7 +26,7 @@ Hive Template (Hexagonal Canvas, Template 4):
    - It is ideal for evaluating multiple aspects of a situation in a connected, hive-like structure.
 
    Plain Text Output:
-   Template Type: "4"
+   Template Type: 4
    Canvas Name: [Canvas name]
    Canvas Description: [Brief description]
 
@@ -69,6 +72,7 @@ Hive Template (Hexagonal Canvas, Template 4):
 **Note**:
 - Always include all 8 hexagons. Use "N/A" if data is missing for any title, description, or key element.
 - Ensure consistency and clarity across the canvas.
+Avoid using any formatting symbols like asterisks (`*`), underscores (`_`), or quotation marks (`"`) in the response.
 [/INST]
 
 [INST]
