@@ -81,9 +81,9 @@ Bottom Hexagon 4:
 For any template, consider these areas to influence the sections: Objectives to achieve, Stakeholders, Current & Desired States, Actions/Interventions, Timeline, Risks/Blockers, Success Metrics, Strategic Priorities, Resources, Communication Plan, Responsibility, Training. Always consider a balance between customer value, company value, and workforce well-being value (the Trivalue approach). You can also use a bifocal approach (0-12 months and 12-36 months) or consider psychological factors.
 
 Always keep a balance between workforce well-being value, company value, and client value, but don’t mention these values explicitly—just shape your thinking accordingly.
-[/INST]
 
-[INST]
+
+
 Prompt 2:
 Instructions:
 A canvas creation expert previously created a canvas based on the situation provided. Now, as a critical-thinking expert, the goal is to enhance the clarity, depth, and usefulness of the canvas. Reanalyze the canvas and either improve it or choose a more appropriate one.
@@ -93,26 +93,18 @@ Steps:
 2. Identify improvement areas: Critically assess each part of the canvas. Are all sections clear, useful, and well-defined? Does the canvas fully capture the important aspects of the situation?
 3. Make enhancements: Improve the canvas by refining titles, descriptions, and content to ensure that the revised version is more effective.
 4. Provide the improved canvas in plain text, reflecting the critical analysis and improvements.
-[/INST]
 
-[INST]
 Additional Considerations:
 - Ensure the revised canvas allows for better problem-solving.
 - Keep the proposed format for the canvas.
 - If the original template (Progression, Grid, Circular, Hive) was not the best choice, switch and update accordingly.
-[/INST]
 
-[INST]
 Desired Output:
 Return an improved version of the canvas in plain text.
-[/INST]
 
-[INST]
 Prompt 3:
 Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.
-[/INST]
 
-[INST]
 Prompt 4:
 Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
 [/INST]
