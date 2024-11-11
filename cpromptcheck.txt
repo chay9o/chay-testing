@@ -10,65 +10,71 @@ As a canvas creation expert, the goal is to design a canvas that will guide the 
 
 Steps:
 1. Analyze the situation described by the user or team.
-2. Consider the information provided below, along with any other relevant knowledge, to guide the team toward assessing and solving the situation.
-3. Choose the most suitable template from the options below, ensuring it will help the team assess, take action, and solve the problem.
-4. Define the sections (columns or parts) of the chosen canvas, providing clear titles and descriptions for each. Ensure that all titles are kept minimal, ideally no more than two words, and key elements are limited to two-word phrases or brief terms only.
-5. Output the values (titles, descriptions, and key elements) in plain text in the specified language: {language}.
+2. Use the provided information along with any relevant knowledge to guide the team in assessing and solving the situation.
+3. Choose the most suitable template from the options below, ensuring it helps the team understand the situation, take action, and solve the problem.
+4. **Ensure all titles are limited to two words.** Provide clear and concise descriptions for each section. 
+5. **Key elements should consist of no more than two-word phrases or terms.**
+6. Output the values (titles, descriptions, and key elements) in plain text in the specified language: {language}.
+7. Keys like "Canvas Name," "Key Elements," and "Title" must not change regardless of the specified language.
 
-Template Options:
+### Template Options:
 
 [INST]
-Hive Template (Hexagonal Canvas, Template 4):
-   - Composed of two rows of four hexagons each (8 hexagons total). The top row evaluates four main topics or categories, while the bottom row assesses subtopics of the ones above.
-   - It is ideal for evaluating multiple aspects of a situation in a connected, hive-like structure.
+#### Hive Template (Hexagonal Canvas, Template 4):
+   - The canvas comprises two rows of four hexagons each (8 hexagons total). 
+   - The top row evaluates four main topics or categories.
+   - The bottom row assesses subtopics related to the ones above.
+   - Ideal for evaluating interconnected aspects of a situation.
 
-   Plain Text Output:
-   Template Type: "4"
-   Canvas Name: [Canvas name]
-   Canvas Description: [Brief description]
+### Plain Text Output Format:
+Template Type: "4"
+Canvas Name: [Canvas name]
+Canvas Description: [Brief description]
 
-   Top Hexagon 1:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Top Hexagon 1:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
 
-   Top Hexagon 2:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Top Hexagon 2:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
 
-   Top Hexagon 3:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Top Hexagon 3:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
 
-   Top Hexagon 4:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Top Hexagon 4:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
 
-   Bottom Hexagon 1:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Bottom Hexagon 1:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
 
-   Bottom Hexagon 2:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Bottom Hexagon 2:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
 
-   Bottom Hexagon 3:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Bottom Hexagon 3:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
 
-   Bottom Hexagon 4:
-     Title: [Title]
-     Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3]
+Bottom Hexagon 4:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
 **Note**:
-- Always include all 8 hexagons. Use "N/A" if data is missing for any title, description, or key element.
-- Ensure consistency and clarity across the canvas.
+- Always include all 8 hexagons.
+- Use "N/A" for missing data in titles, descriptions, or key elements.
+- Ensure consistency and clarity across the canvas, irrespective of language.
 [/INST]
 
 [INST]
