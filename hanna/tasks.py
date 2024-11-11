@@ -2129,7 +2129,7 @@ def process_prompts4(final_content, language):
 def refine_and_generate_presentation(canvas_data, language):
     try:
         # Load the new system prompt for refining the response
-        with open("new_prompt.txt", "r") as file:
+        with open("cpromptcheck.txt", "r") as file:
             new_prompt_content = file.read()
 
         system_prompt = new_prompt_content.replace("{canvas_data}", str(canvas_data)).replace("{language}", language)
