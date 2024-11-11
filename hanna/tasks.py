@@ -2113,7 +2113,7 @@ def process_prompts4(final_content, language):
             handle_template_type_2(canvas_data)
         elif template_type == 3:
             handle_template_type_3(canvas_data)
-        elif template_type == 4:
+        elif template_type == "4":
             pptx_data = handle_template_type_4(canvas_data)
             response_data.update(pptx_data) 
         else:
@@ -2136,8 +2136,9 @@ def parse_plain_text_response(response):
     }
 
     try:
+        clean_response = response.replace("**", "").strip()
         # Extract Template Type
-        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", response)
+        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", clean_response)
         if template_type_match:
             data["template_type"] = template_type_match.group(1).strip()
         else:
