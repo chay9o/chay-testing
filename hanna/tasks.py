@@ -2137,6 +2137,8 @@ def parse_plain_text_response(response):
 
     try:
         clean_response = response.replace("**", "").strip()
+        logger.info(clean_response)
+
         # Extract Template Type
         template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", clean_response)
         if template_type_match:
