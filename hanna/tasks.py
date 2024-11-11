@@ -2126,54 +2126,55 @@ def process_prompts4(final_content, language):
         raise ValueError(f"Task failed: {str(e)}")
 
 def parse_plain_text_response(response):
-    """Parse the plain text response dynamically with enhanced robustness for inconsistent outputs."""
+    """Parse the plain text response dynamically."""
     data = {
-        "template_type": "N/A",
-        "canvas_name": "N/A",
-        "canvas_description": "N/A",
+        "template_type": None,
+        "canvas_name": None,
+        "canvas_description": None,
         "top_hexagons": [],
         "bottom_hexagons": [],
     }
 
     try:
-        # Normalize the response to handle variations in spacing and punctuation
-        normalized_response = normalize_response(response)
-
         # Extract Template Type
-        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", normalized_response, re.IGNORECASE)
-        data["template_type"] = template_type_match.group(1).strip() if template_type_match else "N/A"
-        if data["template_type"] == "N/A":
-            logger.warning("Template Type not found or invalid in the response.")
+        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", response)
+        if template_type_match:
+            data["template_type"] = template_type_match.group(1).strip()
+        else:
+            logger.warning("Template Type not found in the response.")
 
         # Extract Canvas Name
-        canvas_name_match = re.search(r"Canvas Name:\s*(.+)", normalized_response, re.IGNORECASE)
-        data["canvas_name"] = canvas_name_match.group(1).strip(" **") if canvas_name_match else "N/A"
-        if data["canvas_name"] == "N/A":
+        canvas_name_match = re.search(r"Canvas Name:\s*(.+)", response)
+        if canvas_name_match:
+            data["canvas_name"] = canvas_name_match.group(1).strip().strip("**")
+        else:
             logger.warning("Canvas Name not found in the response.")
 
         # Extract Canvas Description
-        canvas_description_match = re.search(r"Canvas Description:\s*(.+)", normalized_response, re.IGNORECASE)
-        data["canvas_description"] = canvas_description_match.group(1).strip(" **") if canvas_description_match else "N/A"
-        if data["canvas_description"] == "N/A":
+        canvas_description_match = re.search(r"Canvas Description:\s*(.+)", response)
+        if canvas_description_match:
+            data["canvas_description"] = canvas_description_match.group(1).strip().strip("**")
+        else:
             logger.warning("Canvas Description not found in the response.")
 
         # Extract Hexagons Dynamically
-        hexagon_sections = re.split(r"(Top|Bottom) Hexagon \d+:", normalized_response, flags=re.IGNORECASE)
+        hexagon_sections = re.split(r"(?P<position>Top|Bottom) Hexagon \d+:", response)
+
         for i in range(1, len(hexagon_sections), 2):
-            position = hexagon_sections[i].strip().capitalize()
+            position = hexagon_sections[i].strip()
             content = hexagon_sections[i + 1].strip()
 
             # Extract Title, Description, and Key Elements
-            title_match = re.search(r"\*\*Title:\s*(.+?)\*\*", content, re.IGNORECASE)
-            description_match = re.search(r"\*\*Description:\s*(.+?)\*\*", content, re.IGNORECASE)
-            key_elements_match = re.search(r"\*\*Key Elements:\s*(.+?)\*\*", content, re.IGNORECASE)
+            title_match = re.search(r"\*\*Title:\s*(.+?)\*\*", content)
+            description_match = re.search(r"\*\*Description:\s*(.+?)\*\*", content)
+            key_elements_match = re.search(r"\*\*Key Elements:\s*(.+?)\*\*", content)
 
             hexagon = {
-                "title": title_match.group(1).strip() if title_match else "N/A",
-                "description": description_match.group(1).strip() if description_match else "N/A",
+                "title": title_match.group(1).strip() if title_match else None,
+                "description": description_match.group(1).strip() if description_match else None,
                 "key_elements": [
                     el.strip() for el in key_elements_match.group(1).split(",")
-                ] if key_elements_match else ["N/A"],
+                ] if key_elements_match else [],
             }
 
             # Append to Top or Bottom Hexagons
@@ -2182,33 +2183,17 @@ def parse_plain_text_response(response):
             elif position == "Bottom":
                 data["bottom_hexagons"].append(hexagon)
 
-        # Validate the parsed data to handle missing or None values
-        data = validate_parsed_data(data)
+        # Log Missing Hexagons
+        if not data["top_hexagons"]:
+            logger.warning("'top_hexagons' is missing or empty.")
+        if not data["bottom_hexagons"]:
+            logger.warning("'bottom_hexagons' is missing or empty.")
 
         return data
 
     except Exception as e:
         logger.error(f"Error parsing response: {str(e)}")
-        logger.error(f"Full response for debugging:\n{response}")
         raise ValueError(f"Parsing error: {str(e)}")
-
-
-def normalize_response(response):
-    """Normalize the response to handle inconsistencies."""
-    # Remove extra spaces and unify punctuation for consistent matching
-    response = re.sub(r"\s*:\s*", ": ", response)  # Ensure consistent spacing after colons
-    response = re.sub(r"\s{2,}", " ", response)  # Replace multiple spaces with a single space
-    response = re.sub(r"\*\*", "**", response)  # Remove inconsistent spacing in asterisks
-    return response.strip()
-
-
-def validate_parsed_data(data):
-    """Ensure parsed data contains no None or invalid values."""
-    for hexagon in data["top_hexagons"] + data["bottom_hexagons"]:
-        hexagon["title"] = hexagon["title"] or "N/A"
-        hexagon["description"] = hexagon["description"] or "N/A"
-        hexagon["key_elements"] = hexagon["key_elements"] or ["N/A"]
-    return data
 
 
         
