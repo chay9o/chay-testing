@@ -2168,9 +2168,9 @@ def parse_plain_text_response(response):
             content = hexagon_sections[i + 1].strip()
 
             # Extract Title, Description, and Key Elements
-            title_match = re.search(r"\*\*Title:\s*(.+?)\*\*", content)
-            description_match = re.search(r"\*\*Description:\s*(.+?)\*\*", content)
-            key_elements_match = re.search(r"\*\*Key Elements:\s*(.+?)\*\*", content)
+            title_match = re.search(r"Title:\s*(.+)", content)
+            description_match = re.search(r"Description:\s*(.+)", content)
+            key_elements_match = re.search(r"Key Elements:\s*(.+)", content)
 
             hexagon = {
                 "title": title_match.group(1).strip() if title_match else None,
