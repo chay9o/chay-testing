@@ -2098,6 +2098,7 @@ def process_prompts4(final_content, language):
         
         canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
+        refine_and_generate_presentation(canvas_data, language)
         
         template_type = canvas_data.get("template_type", None)
         if not template_type:
@@ -2124,6 +2125,49 @@ def process_prompts4(final_content, language):
     except Exception as e:
         logger.error(f"Task failed: {str(e)}")
         raise ValueError(f"Task failed: {str(e)}")
+
+def refine_and_generate_presentation(canvas_data, language):
+    try:
+        # Load the new system prompt for refining the response
+        with open("new_prompt.txt", "r") as file:
+            new_prompt_content = file.read()
+
+        system_prompt = new_prompt_content.replace("{canvas_data}", str(canvas_data)).replace("{language}", language)
+
+        # Use Together API
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Refine this canvas data for presentation:\n{canvas_data}"}
+        ]
+        
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=8192,
+            temperature=0.4,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            top_p=0.7,
+            top_k=50,
+            repetition_penalty=1,
+            stream=True
+        )
+
+        refined_response = ""
+        for chunk in response:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                refined_response += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                refined_response += chunk.choices[0].message.content
+
+        print(f"Refined response: {refined_response}")
+        # Handle the refined response as needed (e.g., storing or further processing)
+
+    except Exception as e:
+        logger.error(f"Refinement task failed: {str(e)}")
+        raise ValueError(f"Refinement task failed: {str(e)}")
 
 def clean_asterisks(text):
     """
@@ -2213,22 +2257,6 @@ def parse_plain_text_response(response):
     except Exception as e:
         logger.error(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
-
-
-        
-def extract_json_from_response(response_text):
-    json_start = response_text.find("{")
-    json_end = response_text.rfind("}") + 1
-    if json_start != -1 and json_end != -1:
-        json_string = response_text[json_start:json_end]
-        try:
-            return json.loads(json_string)
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode JSON: {str(e)}")
-            raise ValueError(f"Failed to decode JSON: {str(e)}")
-    else:
-        logger.error("No valid JSON output found in the LLM response")
-        raise ValueError("No valid JSON output found in the LLM response")
         
 # Example functions to handle each template type
 def handle_template_type_1(canvas_data):
