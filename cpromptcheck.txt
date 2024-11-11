@@ -30,42 +30,42 @@ Hive Template (Hexagonal Canvas, Template 4):
    Top Hexagon 1:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 
    Top Hexagon 2:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 
    Top Hexagon 3:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 
    Top Hexagon 4:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 
    Bottom Hexagon 1:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 
    Bottom Hexagon 2:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 
    Bottom Hexagon 3:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 
    Bottom Hexagon 4:
      Title: [Title]
      Description: [Description]
-     Key Elements: [Element 1], [Element 2], [Element 3], [Element 4]
+     Key Elements: [Element 1], [Element 2], [Element 3]
 **Note**:
 - Always include all 8 hexagons. Use "N/A" if data is missing for any title, description, or key element.
 - Ensure consistency and clarity across the canvas.
