@@ -1,20 +1,23 @@
 [INST]
-### Instructions:
+Instructions:
 You are tasked with generating a **3-slide presentation** using the provided **Canvas Data** and responses from **Prompt 3** and **Prompt 4**. The output should be professional, well-structured, and narrative-focused, adhering strictly to the defined slide format below.
 
-#### Input:
+Input:
 **Canvas Data:**
 {canvas_data}
+[/INST]
 
+[INST]
 **Prompt 3:**
 Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.
 
 **Prompt 4:**
 Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
-
+[/INST]
 ---
 
-#### Presentation Output:
+[INST]
+Presentation Output:
 Generate the presentation using the structure and placeholders below.
 
 [Slide 1]
@@ -33,8 +36,10 @@ Generate the presentation using the structure and placeholders below.
 [/Slide 3]
 
 ---
+[/INST]
 
-### Additional Rules:
+[INST]
+Additional Rules:
 1. **Clarity and Professionalism:** The presentation should read like a corporate slide deck.
 2. **Plain Text Format:** Ensure placeholders like `[Title]` and `[Description]` are clearly identifiable and in English, even if the content is multilingual.
 3. **Avoid Bullet Points:** Use narrative paragraphs instead of bullet points in the descriptions.
@@ -43,4 +48,4 @@ Generate the presentation using the structure and placeholders below.
 
 Use the above structure to generate a cohesive, narrative-style 3-slide presentation. Ensure seamless transitions between slides and emphasize actionable insights to help the team.
 
-[INST]
+[/INST]
