@@ -2201,8 +2201,15 @@ def parse_plain_text_response(response):
         if not data["bottom_hexagons"]:
             logger.warning("'bottom_hexagons' is missing or empty.")
 
-        return data
+        data = {key: clean_asterisks(value) if isinstance(value, str) else value for key, value in data.items()}
+        for hex_list in ['top_hexagons', 'bottom_hexagons']:
+            for hexagon in data[hex_list]:
+                hexagon['title'] = clean_asterisks(hexagon['title'])
+                hexagon['description'] = clean_asterisks(hexagon['description'])
+                hexagon['key_elements'] = [clean_asterisks(k) for k in hexagon['key_elements']]
 
+        return data
+        
     except Exception as e:
         logger.error(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
