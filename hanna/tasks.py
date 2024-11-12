@@ -2615,45 +2615,48 @@ def handle_template_type_3(canvas_data):
 
     # Assign each section to a box placeholder dynamically
     for i, section in enumerate(sections):
-        placeholder = f"box{i + 1}"  # e.g., box1, box2, ..., box6
-        # Combine title, description, and key elements into one replacement value
-        replacement_dict[placeholder] = (
-            f"{section.get('title', section.get('circle', ''))}\n\n"  # Add title
-            f"{section.get('description', '')}\n"  # Add description
-            + "\n- " + "\n- ".join(section.get("key_elements", []))  # Add key elements as bullet points
-            if section.get("key_elements") else ""  # Add only if key elements exist
-        )
+        placeholder = f"box{i + 1}"  # Placeholder for the box, e.g., box1, box2, ..., box6
+        title = section.get("title", section.get("circle", ""))
+        description = section.get("description", "")
+        key_elements = "\n- " + "\n- ".join(section.get("key_elements", [])) if section.get("key_elements") else ""
+        
+        # Combine title, description, and key elements into a single text block
+        replacement_dict[placeholder] = f"{title}\n\n{description}{key_elements}"
     
-    # Apply replacements consistently
+    # Step 2: Apply replacements and handle formatting
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 for placeholder, replacement in replacement_dict.items():
                     if placeholder in shape.text:
-                        shape.text = replacement  # Replace text with the combined content
+                        shape.text = replacement  # Replace the placeholder with combined text
     
-                        # Apply formatting to the updated content
+                        # Apply formatting to the updated text
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
     
                             for paragraph in shape.text_frame.paragraphs:
-                                # Set alignment and font styling for each part of the combined text
+                                # Extract the paragraph text
                                 content = paragraph.text.strip()
+    
+                                # Check the type of content and apply formatting
                                 if content.startswith("-"):  # Key elements (bullet points)
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(12)  # Smaller font for key elements
+                                        run.font.size = Pt(12)  # Small font for key elements
                                         run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-                                elif len(content) > 50:  # Likely a description
+    
+                                elif len(content) > 50:  # Description (longer content)
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(14)  # Medium font for descriptions
+                                        run.font.size = Pt(14)  # Medium font size
                                         run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-                                else:  # Title
+    
+                                else:  # Title (shorter content)
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
-                                        run.font.size = Pt(16)  # Larger font for titles
+                                        run.font.size = Pt(16)  # Larger font size
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
 
     # Iterate through slides and apply replacements
