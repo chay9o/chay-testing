@@ -2458,7 +2458,7 @@ def parse_plain_text_respons(response):
 def handle_template_type_1(canvas_data):
     #presentation = Presentation("Progression Canvas.pptx")
     print(f"Handling template type 1 with data: {canvas_data}")
-    presentation = Presentation("Hex Canvas Design (3).pptx")
+    presentation = Presentation("Hex Canvas Design (6).pptx")
 
     if not canvas_data.get("sections"):
         raise ValueError("Sections data is missing for Progression Canvas")
@@ -2522,7 +2522,7 @@ def handle_template_type_1(canvas_data):
 def handle_template_type_2(canvas_data):
     #presentation = Presentation("Grid Canvas.pptx")
     print(f"Handling template type 2 with data: {canvas_data}")
-    presentation = Presentation("Hex Canvas Design (3).pptx")
+    presentation = Presentation("Hex Canvas Design (6).pptx")
 
     if not canvas_data.get("sections"):
         raise ValueError("Sections data is missing for Grid Layout Canvas")
