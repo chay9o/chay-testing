@@ -2046,9 +2046,10 @@ def process_single_prompt3(prompt, chat_history, language, model_name=None):
 
 
 
+user_data_store = {}
 
 @shared_task
-def process_prompts4(final_content, language):
+def process_prompts4(final_content, language, user_id):
     try:
         # Load system prompt from the text file
         with open("cpromptcheck.txt", "r") as file:
@@ -2095,8 +2096,8 @@ def process_prompts4(final_content, language):
 
             # Print the full response text for debugging
         #print("Full LLM Response:\n", generated_text)
-        
-        canvas_data = parse_plain_text_response(generated_response)
+        canvas_data = parse_plain_text_response_with_user_id(generated_response, user_id)
+        #canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
         refine_and_generate_presentation(canvas_data, language)
         
@@ -2104,15 +2105,16 @@ def process_prompts4(final_content, language):
         if not template_type:
             raise ValueError("Template type not found in the response")
 
-        response_data = {"final_text": canvas_data, "template_type": template_type}
+        #response_data = {"final_text": canvas_data, "template_type": template_type}
+        response_data = {"user_id": user_id, "final_text": canvas_data, "template_type": template_type}
         pptx_base64 = None
         #canvas_data = json_response
             # Based on the template type, forward to the appropriate function
-        if template_type == 1:
+        if template_type == "1":
             handle_template_type_1(canvas_data)
-        elif template_type == 2:
+        elif template_type == "2":
             handle_template_type_2(canvas_data)
-        elif template_type == 3:
+        elif template_type == "3":
             handle_template_type_3(canvas_data)
         elif template_type == "4":
             pptx_data = handle_template_type_4(canvas_data)
@@ -2120,11 +2122,16 @@ def process_prompts4(final_content, language):
         else:
             #logger.error(f"Unknown template type: {template_type}")
             raise ValueError(f"Unknown template type: {template_type}")
+
+        del user_data_store[user_id]
+        
         return response_data
         
     except Exception as e:
-        logger.error(f"Task failed: {str(e)}")
-        raise ValueError(f"Task failed: {str(e)}")
+        logger.error(f"Task failed for user {user_id}: {str(e)}")
+        if user_id in user_data_store:
+            del user_data_store[user_id]
+        raise ValueError(f"Task failed for user {user_id}: {str(e)}")
 
 def generate_dynamic_presentation(refined_response):
     """
@@ -2229,7 +2236,142 @@ def clean_asterisks(text):
     return text.replace("*", "").strip()
 
 
+def parse_plain_text_response_with_user_id(response, user_id):
+    """Parse the plain text response dynamically with user isolation."""
+    # Call the existing parser
+    parsed_data = parse_plain_text_response(response)
+
+    # Add to global data store
+    user_data_store[user_id] = parsed_data
+    return parsed_data
+    
+
 def parse_plain_text_response(response):
+    """Parse the plain text response dynamically."""
+    data = {
+        "template_type": None,
+        "canvas_name": None,
+        "canvas_description": None,
+        "top_hexagons": [],
+        "bottom_hexagons": [],
+        "sections": [],  # For other template types (1, 2, 3)
+    }
+
+    try:
+        clean_response = clean_asterisks(response)
+        logger.info(clean_response)
+
+        # Extract Template Type
+        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", clean_response)
+        if template_type_match:
+            data["template_type"] = template_type_match.group(1).strip()
+        else:
+            logger.warning("Template Type not found in the response.")
+
+        # Extract Canvas Name
+        canvas_name_match = re.search(r"Canvas Name:\s*(.+)", clean_response)
+        if canvas_name_match:
+            data["canvas_name"] = canvas_name_match.group(1).strip().strip("**")
+        else:
+            logger.warning("Canvas Name not found in the response.")
+
+        # Extract Canvas Description
+        canvas_description_match = re.search(r"Canvas Description:\s*(.+)", clean_response)
+        if canvas_description_match:
+            data["canvas_description"] = canvas_description_match.group(1).strip().strip("**")
+        else:
+            logger.warning("Canvas Description not found in the response.")
+
+        # Handle Hive Template (Template 4)
+        if data["template_type"] == "4":
+            hexagon_sections = re.split(r"(?P<position>Top|Bottom) Hexagon \d+:", clean_response)
+            for i in range(1, len(hexagon_sections), 2):
+                position = hexagon_sections[i].strip()
+                content = hexagon_sections[i + 1].strip()
+
+                # Extract Title, Description, and Key Elements
+                title_match = re.search(r"Title:\s*(.+)", content)
+                description_match = re.search(r"Description:\s*(.+)", content)
+                key_elements_match = re.search(r"Key Elements:\s*(.+)", content)
+
+                hexagon = {
+                    "title": title_match.group(1).strip() if title_match else None,
+                    "description": description_match.group(1).strip() if description_match else None,
+                    "key_elements": [
+                        el.strip() for el in key_elements_match.group(1).split(",")
+                    ] if key_elements_match else [],
+                }
+
+                # Append to Top or Bottom Hexagons
+                if position == "Top":
+                    data["top_hexagons"].append(hexagon)
+                elif position == "Bottom":
+                    data["bottom_hexagons"].append(hexagon)
+
+        # Handle Progression Canvas (Template 1)
+        elif data["template_type"] == "1":
+            for i in range(1, 8):  # Iterate over columns 1 to 7
+                column_match = re.search(
+                    rf"Column {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    clean_response,
+                    re.DOTALL,
+                )
+                if column_match:
+                    data["sections"].append({
+                        "column": f"Column {i}",
+                        "title": column_match.group(1).strip(),
+                        "description": column_match.group(2).strip(),
+                        "key_elements": [el.strip() for el in column_match.group(3).split(",")],
+                    })
+
+        # Handle Grid Layout Canvas (Template 2)
+        elif data["template_type"] == "2":
+            for area in ["Top Left Area", "Top Right Area", "Bottom Left Area", "Bottom Right Area"]:
+                area_match = re.search(
+                    rf"{area}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    clean_response,
+                    re.DOTALL,
+                )
+                if area_match:
+                    data["sections"].append({
+                        "area": area,
+                        "title": area_match.group(1).strip(),
+                        "description": area_match.group(2).strip(),
+                        "key_elements": [el.strip() for el in area_match.group(3).split(",")],
+                    })
+
+        # Handle Circular Layout Canvas (Template 3)
+        elif data["template_type"] == "3":
+            # Central Circle
+            central_match = re.search(r"Central Circle:\s*Issue/Goal:\s*(.+)", clean_response)
+            if central_match:
+                data["sections"].append({
+                    "circle": "Central Circle",
+                    "issue_goal": central_match.group(1).strip(),
+                })
+
+            # Supporting Circles
+            for i in range(1, 6):  # Iterate over Supporting Circle 1 to 5
+                circle_match = re.search(
+                    rf"Supporting Circle {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    clean_response,
+                    re.DOTALL,
+                )
+                if circle_match:
+                    data["sections"].append({
+                        "circle": f"Supporting Circle {i}",
+                        "title": circle_match.group(1).strip(),
+                        "description": circle_match.group(2).strip(),
+                        "key_elements": [el.strip() for el in circle_match.group(3).split(",")],
+                    })
+
+        return data
+
+    except Exception as e:
+        logger.error(f"Error parsing response: {str(e)}")
+        raise ValueError(f"Parsing error: {str(e)}")
+        
+def parse_plain_text_respons(response):
     """Parse the plain text response dynamically."""
     data = {
         "template_type": None,
@@ -2311,13 +2453,201 @@ def parse_plain_text_response(response):
         
 # Example functions to handle each template type
 def handle_template_type_1(canvas_data):
+    #presentation = Presentation("Progression Canvas.pptx")
     print(f"Handling template type 1 with data: {canvas_data}")
+    presentation = Presentation("Hex Canvas Design (3).pptx")
+
+    if not canvas_data.get("sections"):
+        raise ValueError("Sections data is missing for Progression Canvas")
+
+    # Build replacement dictionary including cut1 and cut2
+    replacement_dict = {
+        "cut1": canvas_data["canvas_name"],
+        "cut2": canvas_data["canvas_description"],
+    }
+
+    for idx, section in enumerate(canvas_data["sections"], start=1):
+        replacement_dict[f"column{idx}_title"] = section.get("title", "N/A")
+        replacement_dict[f"column{idx}_description"] = section.get("description", "N/A")
+        replacement_dict[f"column{idx}_key_elements"] = "\n- ".join(section.get("key_elements", []))
+
+    def apply_replacements(slide, replacement_dict):
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, replacement in replacement_dict.items():
+                    if placeholder in shape.text:
+                        shape.text = shape.text.replace(placeholder, replacement)
+
+                        # Formatting logic
+                        if placeholder in ["cut1", "cut2"]:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.CENTER
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                    run.font.size = Pt(20 if placeholder == "cut1" else 14)
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                        elif placeholder.startswith("column") and "title" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.CENTER
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                    run.font.size = Pt(16)
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                        elif placeholder.startswith("column") and "description" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.LEFT
+                                for run in paragraph.runs:
+                                    run.font.size = Pt(14)
+                                    run.font.color.rgb = RGBColor(50, 50, 50)
+                        elif placeholder.startswith("column") and "key_elements" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.LEFT
+                                for run in paragraph.runs:
+                                    run.font.size = Pt(12)
+                                    run.font.color.rgb = RGBColor(50, 50, 50)
+
+    for slide in presentation.slides:
+        apply_replacements(slide, replacement_dict)
+
+    # Save presentation
+    pptx_stream = BytesIO()
+    presentation.save(pptx_stream)
+    pptx_stream.seek(0)
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
+    return {"pptx_base64": pptx_base64}
 
 def handle_template_type_2(canvas_data):
+    #presentation = Presentation("Grid Canvas.pptx")
     print(f"Handling template type 2 with data: {canvas_data}")
+    presentation = Presentation("Hex Canvas Design (3).pptx")
+
+    if not canvas_data.get("sections"):
+        raise ValueError("Sections data is missing for Grid Layout Canvas")
+
+    # Build replacement dictionary including cut1 and cut2
+    replacement_dict = {
+        "cut1": canvas_data["canvas_name"],
+        "cut2": canvas_data["canvas_description"],
+    }
+
+    for section in canvas_data["sections"]:
+        area_key = section.get("area", "").replace(" ", "").lower()
+        replacement_dict[f"{area_key}_title"] = section.get("title", "N/A")
+        replacement_dict[f"{area_key}_description"] = section.get("description", "N/A")
+        replacement_dict[f"{area_key}_key_elements"] = "\n- ".join(section.get("key_elements", []))
+
+    def apply_replacements(slide, replacement_dict):
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, replacement in replacement_dict.items():
+                    if placeholder in shape.text:
+                        shape.text = shape.text.replace(placeholder, replacement)
+
+                        # Formatting logic
+                        if placeholder in ["cut1", "cut2"]:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.CENTER
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                    run.font.size = Pt(20 if placeholder == "cut1" else 14)
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                        elif "title" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.CENTER
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                    run.font.size = Pt(16)
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                        elif "description" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.LEFT
+                                for run in paragraph.runs:
+                                    run.font.size = Pt(14)
+                                    run.font.color.rgb = RGBColor(50, 50, 50)
+                        elif "key_elements" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.LEFT
+                                for run in paragraph.runs:
+                                    run.font.size = Pt(12)
+                                    run.font.color.rgb = RGBColor(50, 50, 50)
+
+    for slide in presentation.slides:
+        apply_replacements(slide, replacement_dict)
+
+    # Save presentation
+    pptx_stream = BytesIO()
+    presentation.save(pptx_stream)
+    pptx_stream.seek(0)
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
+    return {"pptx_base64": pptx_base64}
 
 def handle_template_type_3(canvas_data):
+    #presentation = Presentation("Circular Canvas.pptx")
     print(f"Handling template type 3 with data: {canvas_data}")
+    presentation = Presentation("Hex Canvas Design (6).pptx")
+
+    if not canvas_data.get("sections"):
+        raise ValueError("Sections data is missing for Circular Layout Canvas")
+
+    # Build replacement dictionary including cut1 and cut2
+    replacement_dict = {
+        "cut1": canvas_data["canvas_name"],
+        "cut2": canvas_data["canvas_description"],
+    }
+
+    for section in canvas_data["sections"]:
+        if section.get("circle") == "Central Circle":
+            replacement_dict["central_circle_issue_goal"] = section.get("issue_goal", "N/A")
+        elif section.get("circle", "").startswith("Supporting Circle"):
+            circle_key = section.get("circle", "").replace(" ", "").lower()
+            replacement_dict[f"{circle_key}_title"] = section.get("title", "N/A")
+            replacement_dict[f"{circle_key}_description"] = section.get("description", "N/A")
+            replacement_dict[f"{circle_key}_key_elements"] = "\n- ".join(section.get("key_elements", []))
+
+    def apply_replacements(slide, replacement_dict):
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, replacement in replacement_dict.items():
+                    if placeholder in shape.text:
+                        shape.text = shape.text.replace(placeholder, replacement)
+
+                        # Formatting logic
+                        if placeholder in ["cut1", "cut2"]:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.CENTER
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                    run.font.size = Pt(20 if placeholder == "cut1" else 14)
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                        elif "title" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.CENTER
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                    run.font.size = Pt(16)
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                        elif "description" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.LEFT
+                                for run in paragraph.runs:
+                                    run.font.size = Pt(14)
+                                    run.font.color.rgb = RGBColor(50, 50, 50)
+                        elif "key_elements" in placeholder:
+                            for paragraph in shape.text_frame.paragraphs:
+                                paragraph.alignment = PP_ALIGN.LEFT
+                                for run in paragraph.runs:
+                                    run.font.size = Pt(12)
+                                    run.font.color.rgb = RGBColor(50, 50, 50)
+
+    for slide in presentation.slides:
+        apply_replacements(slide, replacement_dict)
+
+    # Save presentation
+    pptx_stream = BytesIO()
+    presentation.save(pptx_stream)
+    pptx_stream.seek(0)
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
+    return {"pptx_base64": pptx_base64}
 
 def handle_template_type_4(canvas_data):
     presentation = Presentation("Hex Canvas Design (3).pptx")
