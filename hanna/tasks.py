@@ -2638,14 +2638,14 @@ def handle_template_type_3(canvas_data):
 
     
     # Print the replacement_dict to verify its contents
-    print("==== START OF BOX OUTPUT ====")
-    for box, data in replacement_dict.items():
-        print(f"{box} Data:")
-        print(f"Title: {data['title']}")
-        print(f"Description: {data['description']}")
-        print(f"Key Elements: {', '.join(data['key_elements'])}")
-        print()
-    print("==== END OF BOX OUTPUT ====")
+    print("==== START OF REPLACEMENT DICTIONARY ====")
+    for key, value in replacement_dict.items():
+        if isinstance(value, dict):
+            print(f"{key}: {value['title']} | {value['description']} | {', '.join(value['key_elements'])}")
+        else:
+            print(f"{key}: {value}")
+    print("==== END OF REPLACEMENT DICTIONARY ====")
+
     print(f"hi{replacement_dict}")
     # Build the replacement dictionary dynamically from sections
     
