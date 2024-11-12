@@ -1057,7 +1057,7 @@ def stinsight_step6(request):
             task = process_prompts_3.apply_async(args=[final_content, language])
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
-            response_data = trigger_ppt_generation(final_content, language)
+            response_data = trigger_ppt_generation(final_content, language, user_id)
             if 'error' in response_data:
                 return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return JsonResponse(response_data, status=status.HTTP_202_ACCEPTED)
@@ -1069,10 +1069,10 @@ def stinsight_step6(request):
         print(e)
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def trigger_ppt_generation(final_content, language):
+def trigger_ppt_generation(final_content, language, user_id):
     try:
         # Trigger the asynchronous task for PPT generation
-        task = process_prompts4.apply_async(args=[final_content, language])
+        task = process_prompts4.apply_async(args=[final_content, language, user_id])
         return {'task_id': task.id, 'status': 'PPT generation initiated'}
     except Exception as e:
         logger.error(f"Error in trigger_ppt_generation: {e}")
@@ -1088,8 +1088,10 @@ def generate_ppt_for_option4(request):
         data = json.loads(request.body)
         final_content = data.get('final_content')
         language = data.get('language')
+        user_id = data.get('user_id')
+        
 
-        response_data = trigger_ppt_generation(final_content, language)
+        response_data = trigger_ppt_generation(final_content, language, user_id)
         if 'error' in response_data:
             return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
