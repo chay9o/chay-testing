@@ -2460,20 +2460,24 @@ def handle_template_type_1(canvas_data):
     print(f"Handling template type 1 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (6).pptx")
 
-    if not canvas_data.get("sections"):
-        raise ValueError("Sections data is missing for Progression Canvas")
+    if not canvas_data.get("columns"):
+        raise ValueError("Columns data is missing for Progression Canvas")
 
-    # Build replacement dictionary including cut1 and cut2
-    replacement_dict = {
+    # Build replacement dictionaries
+    replacement_dict_slide1 = {
         "cut1": canvas_data["canvas_name"],
         "cut2": canvas_data["canvas_description"],
     }
+    for idx, column in enumerate(canvas_data["columns"], start=1):
+        replacement_dict_slide1[f"box{idx}"] = column.get("title", "N/A")
 
-    for idx, section in enumerate(canvas_data["sections"], start=1):
-        replacement_dict[f"column{idx}_title"] = section.get("title", "N/A")
-        replacement_dict[f"column{idx}_description"] = section.get("description", "N/A")
-        replacement_dict[f"column{idx}_key_elements"] = "\n- ".join(section.get("key_elements", []))
-
+    replacement_dict_slide2 = {}
+    for idx, column in enumerate(canvas_data["columns"], start=1):
+        replacement_dict_slide2[f"box{idx}"] = (
+            f"{column.get('title', 'N/A')}\n\n"
+            f"{column.get('description', 'N/A')}\n- "
+            + "\n- ".join(column.get("key_elements", []))
+        )
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
@@ -2524,14 +2528,24 @@ def handle_template_type_2(canvas_data):
     print(f"Handling template type 2 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (6).pptx")
 
-    if not canvas_data.get("sections"):
-        raise ValueError("Sections data is missing for Grid Layout Canvas")
+    if not canvas_data.get("areas"):
+        raise ValueError("Areas data is missing for Grid Layout Canvas")
 
-    # Build replacement dictionary including cut1 and cut2
-    replacement_dict = {
+    # Build replacement dictionaries
+    replacement_dict_slide1 = {
         "cut1": canvas_data["canvas_name"],
         "cut2": canvas_data["canvas_description"],
     }
+    for idx, area in enumerate(canvas_data["areas"], start=1):
+        replacement_dict_slide1[f"box{idx}"] = area.get("title", "N/A")
+
+    replacement_dict_slide2 = {}
+    for idx, area in enumerate(canvas_data["areas"], start=1):
+        replacement_dict_slide2[f"box{idx}"] = (
+            f"{area.get('title', 'N/A')}\n\n"
+            f"{area.get('description', 'N/A')}\n- "
+            + "\n- ".join(area.get("key_elements", []))
+        )
 
     for section in canvas_data["sections"]:
         area_key = section.get("area", "").replace(" ", "").lower()
@@ -2589,14 +2603,25 @@ def handle_template_type_3(canvas_data):
     print(f"Handling template type 3 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (6).pptx")
 
-    if not canvas_data.get("sections"):
-        raise ValueError("Sections data is missing for Circular Layout Canvas")
+    if not canvas_data.get("circles"):
+        raise ValueError("Circles data is missing for Circular Layout Canvas")
 
-    # Build replacement dictionary including cut1 and cut2
-    replacement_dict = {
+    # Build replacement dictionaries
+    replacement_dict_slide1 = {
         "cut1": canvas_data["canvas_name"],
         "cut2": canvas_data["canvas_description"],
+        "central_circle": canvas_data["circles"][0].get("issue_goal", "N/A"),
     }
+    for idx, circle in enumerate(canvas_data["circles"][1:], start=1):
+        replacement_dict_slide1[f"circle{idx}"] = circle.get("title", "N/A")
+
+    replacement_dict_slide2 = {}
+    for idx, circle in enumerate(canvas_data["circles"][1:], start=1):
+        replacement_dict_slide2[f"circle{idx}"] = (
+            f"{circle.get('title', 'N/A')}\n\n"
+            f"{circle.get('description', 'N/A')}\n- "
+            + "\n- ".join(circle.get("key_elements", []))
+        )
 
     for section in canvas_data["sections"]:
         if section.get("circle") == "Central Circle":
