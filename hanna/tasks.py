@@ -2643,56 +2643,54 @@ def handle_template_type_3(canvas_data):
     
 
     # Assign each section to a box placeholder dynamically
-    for i, section in enumerate(sections):
-        placeholder = f"box{i + 1}"  # Placeholder for the box, e.g., box1, box2, ..., box6
-        title = section.get("title", section.get("circle", ""))
-        description = section.get("description", "")
-        key_elements = "\n- " + "\n- ".join(section.get("key_elements", [])) if section.get("key_elements") else ""
-        
-        # Combine title, description, and key elements into a single text block
-        replacement_dict[placeholder] = f"{title}\n\n{description}{key_elements}"
+   
     
     # Step 2: Apply replacements and handle formatting
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
-                for placeholder, replacement in replacement_dict.items():
+                for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
-                        shape.text = replacement  # Replace the placeholder with combined text
-    
+                        # Combine title, description, and key elements into a single formatted text
+                        formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
+                        shape.text = formatted_text  # Replace placeholder with combined text
+
                         # Apply formatting to the updated text
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
-    
+
                             for paragraph in shape.text_frame.paragraphs:
                                 # Extract the paragraph text
                                 content = paragraph.text.strip()
-    
-                                # Check the type of content and apply formatting
-                                if content.startswith("-"):  # Key elements (bullet points)
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(12)  # Small font for key elements
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-    
-                                elif len(content) > 50:  # Description (longer content)
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(14)  # Medium font size
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-    
-                                else:  # Title (shorter content)
+
+                                # Title formatting
+                                if content == data['title']:
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
-                                        run.font.size = Pt(16)  # Larger font size
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+                                        run.font.size = Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+
+                                # Description formatting
+                                elif content == data['description']:
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(14)
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
+
+                                # Key elements (bullets) formatting
+                                elif content.startswith("-"):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    paragraph.level = 1  # Indent for key elements
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
         apply_replacements(slide, replacement_dict)
 
-    # Save the presentation and return
+    # Save the presentation and return as base64
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)
