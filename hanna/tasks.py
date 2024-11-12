@@ -2111,11 +2111,14 @@ def process_prompts4(final_content, language, user_id):
         #canvas_data = json_response
             # Based on the template type, forward to the appropriate function
         if template_type == "1":
-            handle_template_type_1(canvas_data)
+            pptx_data = handle_template_type_1(canvas_data)
+            response_data.update(pptx_data) 
         elif template_type == "2":
-            handle_template_type_2(canvas_data)
+            pptx_data = handle_template_type_2(canvas_data)
+            response_data.update(pptx_data) 
         elif template_type == "3":
-            handle_template_type_3(canvas_data)
+            pptx_data = handle_template_type_3(canvas_data)
+            response_data.update(pptx_data) 
         elif template_type == "4":
             pptx_data = handle_template_type_4(canvas_data)
             response_data.update(pptx_data) 
