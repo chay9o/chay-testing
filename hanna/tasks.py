@@ -7,6 +7,7 @@ from pptx import Presentation
 from pptx.util import Pt, Inches
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
+from pptx.enum.shapes import MSO_SHAPE  
 from django.core.files.storage import default_storage
 from django.conf import settings
 import os
@@ -2639,6 +2640,7 @@ def handle_template_type_3(canvas_data):
         print(f"Key Elements: {', '.join(data['key_elements'])}")
         print()
     print("==== END OF BOX OUTPUT ====")
+    print(f"hi{replacement_dict}")
     # Build the replacement dictionary dynamically from sections
     
 
