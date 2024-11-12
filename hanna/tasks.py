@@ -2606,8 +2606,8 @@ def handle_template_type_3(canvas_data):
     canvas_name = canvas_data.get('canvas_name', '')
     canvas_description = canvas_data.get('canvas_description', '')
     sections = canvas_data.get('sections', [])
-    "box1": canvas_data['sections']['circle']['Supporting Circle 1']['title'], # type: ignore
-    print("iasi{box1}")
+    box1 = canvas_data.get('sections', {}).get('circle', {}).get('Supporting Circle 1', {}).get('title', 'Default Value')
+    print(f"iasi{box1}")
     # Build the replacement dictionary dynamically from sections
     
 
