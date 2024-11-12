@@ -2606,6 +2606,10 @@ def handle_template_type_3(canvas_data):
     canvas_name = canvas_data.get('canvas_name', '')
     canvas_description = canvas_data.get('canvas_description', '')
     sections = canvas_data.get('sections', [])
+    print("Debugging sections:")
+    for section in sections:
+        print(section)
+        print()
     replacement_dict = {}  # Dictionary to store all box data
     
     # Iterate through the list to extract data for all supporting circles
@@ -2618,12 +2622,14 @@ def handle_template_type_3(canvas_data):
             }
     
     # Print the replacement_dict to verify its contents
+    print("==== START OF BOX OUTPUT ====")
     for box, data in replacement_dict.items():
         print(f"{box} Data:")
         print(f"Title: {data['title']}")
         print(f"Description: {data['description']}")
         print(f"Key Elements: {', '.join(data['key_elements'])}")
         print()
+    print("==== END OF BOX OUTPUT ====")
     
     # Build the replacement dictionary dynamically from sections
     
