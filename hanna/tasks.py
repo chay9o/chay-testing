@@ -2625,43 +2625,43 @@ def handle_template_type_3(canvas_data):
 
     # Apply replacements consistently
     def apply_replacements(slide, replacement_dict):
-    for shape in slide.shapes:
-        if hasattr(shape, "text"):
-            for placeholder, replacement in replacement_dict.items():
-                if placeholder in shape.text:
-                    shape.text = shape.text.replace(placeholder, replacement)
-
-                    # Check if the shape has a text frame for applying formatting
-                    if hasattr(shape, "text_frame") and shape.text_frame is not None:
-                        shape.text_frame.word_wrap = True
-
-                        for paragraph in shape.text_frame.paragraphs:
-                            # Alignment and font formatting based on placeholder type
-                            if placeholder in ["cut1", "cut2"]:
-                                paragraph.alignment = PP_ALIGN.CENTER
-                                for run in paragraph.runs:
-                                    run.font.bold = True
-                                    run.font.size = Pt(20 if placeholder == "cut1" else 14)
-                                    run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
-
-                            elif "title" in placeholder or "box" in placeholder:
-                                paragraph.alignment = PP_ALIGN.CENTER
-                                for run in paragraph.runs:
-                                    run.font.bold = True
-                                    run.font.size = Pt(16)  # Slightly larger font for titles
-                                    run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
-
-                            elif "description" in placeholder:
-                                paragraph.alignment = PP_ALIGN.LEFT
-                                for run in paragraph.runs:
-                                    run.font.size = Pt(14)  # Medium font size for descriptions
-                                    run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-
-                            elif "key_elements" in placeholder:
-                                paragraph.alignment = PP_ALIGN.LEFT
-                                for run in paragraph.runs:
-                                    run.font.size = Pt(12)  # Small font size for key elements
-                                    run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, replacement in replacement_dict.items():
+                    if placeholder in shape.text:
+                        shape.text = shape.text.replace(placeholder, replacement)
+    
+                        # Check if the shape has a text frame for applying formatting
+                        if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                            shape.text_frame.word_wrap = True
+    
+                            for paragraph in shape.text_frame.paragraphs:
+                                # Alignment and font formatting based on placeholder type
+                                if placeholder in ["cut1", "cut2"]:
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(20 if placeholder == "cut1" else 14)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+    
+                                elif "title" in placeholder or "box" in placeholder:
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(16)  # Slightly larger font for titles
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+    
+                                elif "description" in placeholder:
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(14)  # Medium font size for descriptions
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
+    
+                                elif "key_elements" in placeholder:
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)  # Small font size for key elements
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
