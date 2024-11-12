@@ -2606,16 +2606,21 @@ def handle_template_type_3(canvas_data):
     canvas_name = canvas_data.get('canvas_name', '')
     canvas_description = canvas_data.get('canvas_description', '')
     sections = canvas_data.get('sections', [])
-    sections = canvas_data.get('sections', [])
-    box1 = 'Default Value'
+    #sections = canvas_data.get('sections', [])
+    box1 = {'title': 'Default Title', 'description': 'Default Description', 'key_elements': ['Default Key Elements']}
     
     # Iterate through the list to find the relevant section
     for section in sections:
         if section.get('circle') == 'Supporting Circle 1':  # Check the 'circle' key
-            box1 = section.get('title', 'Default Value')
-            break  # Exit the loop once found
+            box1 = {
+                'title': section.get('title', 'Default Title'),
+                'description': section.get('description', 'Default Description'),
+                'key_elements': section.get('key_elements', ['Default Key Elements'])
+            }
+            break  # Exit the loop once the desired section is found
     
-    print(f"iasi{box1}")
+    # Print the extracted data
+    print(f"Box1 Data:\nTitle: {box1['title']}\nDescription: {box1['description']}\nKey Elements: {', '.join(box1['key_elements'])}")
     
     # Build the replacement dictionary dynamically from sections
     
