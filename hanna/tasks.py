@@ -2623,7 +2623,7 @@ def handle_template_type_3(canvas_data):
                 cleaned_key_elements.append(element.strip())
     
             # Add cleaned data to replacement dictionary
-            replacement_dict[f"Box{box_counter}"] = {
+            replacement_dict[f"box{box_counter}"] = {
                 "title": section.get("title", "Default Title"),
                 "description": section.get("description", "Default Description"),
                 "key_elements": cleaned_key_elements,
