@@ -2626,7 +2626,7 @@ def handle_template_type_3(canvas_data):
             replacement_dict[f"box{box_counter}"] = {
                 "title": section.get("title", "Default Title"),
                 "description": section.get("description", "Default Description"),
-                "key_elements": cleaned_key_elements,
+                "key_elements": cleaned_key_elements[:3],
             }
             box_counter += 1
 
@@ -2642,10 +2642,6 @@ def handle_template_type_3(canvas_data):
     print("==== END OF BOX OUTPUT ====")
     print(f"hi{replacement_dict}")
     # Build the replacement dictionary dynamically from sections
-    
-
-    # Assign each section to a box placeholder dynamically
-   
     
     # Step 2: Apply replacements and handle formatting
     def apply_replacements(slide, replacement_dict):
@@ -2670,23 +2666,23 @@ def handle_template_type_3(canvas_data):
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
-                                        run.font.size = Pt(16)
+                                        run.font.size = Pt(14)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black
 
                                 # Description formatting
                                 elif content == data['description']:
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
+                                        run.font.size = Pt(11)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
                                 # Key elements (bullets) formatting
                                 elif content.startswith("-"):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     paragraph.level = 1  # Indent for key elements
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
+                                        run.font.size = Pt(11)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
