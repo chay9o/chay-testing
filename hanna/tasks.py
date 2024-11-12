@@ -2606,12 +2606,10 @@ def handle_template_type_3(canvas_data):
     canvas_name = canvas_data.get('canvas_name', '')
     canvas_description = canvas_data.get('canvas_description', '')
     sections = canvas_data.get('sections', [])
-
+    "box1": canvas_data['sections']['circle']['Supporting Circle 1']['title'], # type: ignore
+    print("iasi{box1}")
     # Build the replacement dictionary dynamically from sections
-    replacement_dict = {
-        "cut1": canvas_name,
-        "cut2": canvas_description,
-    }
+    
 
     # Assign each section to a box placeholder dynamically
     for i, section in enumerate(sections):
