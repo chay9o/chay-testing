@@ -2648,81 +2648,45 @@ def handle_template_type_3(canvas_data):
    
     
     # Step 2: Apply replacements and handle formatting
-    def apply_replacements(slide, replacement_dict, font_color_black=False):
-        """
-        Applies replacements for placeholders in the provided slide.
-        Handles grouped shapes, tables, and text formatting.
-        """
+    def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
-            # Handle regular text-containing shapes
             if hasattr(shape, "text"):
-                print(f"Checking shape text: {shape.text}")
-                for placeholder, replacement in replacement_dict.items():
+                for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
-                        print(f"Replacing '{placeholder}' with '{replacement}'")
-                        shape.text = shape.text.replace(placeholder, replacement)
-    
+                        # Combine title, description, and key elements into a single formatted text
+                        formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
+                        shape.text = formatted_text  # Replace placeholder with combined text
+
                         # Apply formatting to the updated text
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
+
                             for paragraph in shape.text_frame.paragraphs:
-                                # Determine formatting based on replacement content
+                                # Extract the paragraph text
                                 content = paragraph.text.strip()
-                                if content.startswith("-"):  # Key elements (bullet points)
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(12)  # Smaller font for key elements
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-                                elif len(content) > 50:  # Description (longer content)
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(14)  # Medium font size
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-                                else:  # Titles (shorter content)
+
+                                # Title formatting
+                                if content == data['title']:
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
-                                        run.font.size = Pt(16)  # Larger font size
-                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
-    
-            # Handle text in tables
-            elif shape.has_table:
-                for row in shape.table.rows:
-                    for cell in row.cells:
-                        if hasattr(cell, "text"):
-                            print(f"Checking table cell: {cell.text}")
-                            for placeholder, replacement in replacement_dict.items():
-                                if placeholder in cell.text:
-                                    print(f"Replacing '{placeholder}' in table with '{replacement}'")
-                                    cell.text = cell.text.replace(placeholder, replacement)
-                                    if hasattr(cell, "text_frame"):
-                                        for paragraph in cell.text_frame.paragraphs:
-                                            paragraph.alignment = PP_ALIGN.LEFT
-                                            for run in paragraph.runs:
-                                                run.font.size = Pt(12)  # Adjust font size
-                                                run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-    
-            # Handle grouped shapes (recursively check shapes within the group)
-            elif shape.shape_type == MSO_SHAPE.GROUP:
-                for grouped_shape in shape.shapes:
-                    if hasattr(grouped_shape, "text"):
-                        print(f"Checking grouped shape text: {grouped_shape.text}")
-                        for placeholder, replacement in replacement_dict.items():
-                            if placeholder in grouped_shape.text:
-                                print(f"Replacing '{placeholder}' in grouped shape with '{replacement}'")
-                                grouped_shape.text = grouped_shape.text.replace(placeholder, replacement)
-                                if hasattr(grouped_shape, "text_frame"):
-                                    grouped_shape.text_frame.word_wrap = True
-                                    for paragraph in grouped_shape.text_frame.paragraphs:
-                                        paragraph.alignment = PP_ALIGN.LEFT
-                                        for run in paragraph.runs:
-                                            run.font.size = Pt(12)  # Adjust font size
-                                            run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-    
-            # Log non-text shapes for troubleshooting
-            else:
-                print(f"Non-text shape encountered: Type={shape.shape_type}")
+                                        run.font.size = Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
 
+                                # Description formatting
+                                elif content == data['description']:
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(14)
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
+
+                                # Key elements (bullets) formatting
+                                elif content.startswith("-"):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    paragraph.level = 1  # Indent for key elements
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
