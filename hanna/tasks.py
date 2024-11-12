@@ -2607,11 +2607,17 @@ def handle_template_type_3(canvas_data):
     canvas_name = canvas_data.get('canvas_name', '')
     canvas_description = canvas_data.get('canvas_description', '')
     sections = canvas_data.get('sections', [])
-    replacement_dict = {}  # Dictionary to store all box data
+    replacement_dict = {
+        "cut1": canvas_name,
+        "cut2": canvas_description
+    }  # Dictionary to store all box data
     box_counter = 1
     
     for section in sections:
-        if section.get("circle", "").startswith("Supporting Circle"):
+        if section.get("circle", "") == "Central Circle":
+            # Handle central circle separately
+            replacement_dict["box"] = section.get("issue_goal", "Default Issue/Goal")
+        elif section.get("circle", "").startswith("Supporting Circle"):
             raw_key_elements = section.get("key_elements", [])
             cleaned_key_elements = []
             
@@ -2649,40 +2655,46 @@ def handle_template_type_3(canvas_data):
             if hasattr(shape, "text"):
                 for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
-                        # Combine title, description, and key elements into a single formatted text
-                        formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
-                        shape.text = formatted_text  # Replace placeholder with combined text
+                        if isinstance(data, dict):  # Handle boxes
+                            formatted_text = (
+                                f"{data['title']}\n\n{data['description']}\n- " +
+                                "\n- ".join(data['key_elements'])
+                            )
+                        else:  # Handle simple placeholders like cut1, cut2, box_center
+                            formatted_text = data
+                        shape.text = formatted_text  # Replace placeholder
 
-                        # Apply formatting to the updated text
+                        # Apply formatting
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
-
                             for paragraph in shape.text_frame.paragraphs:
-                                # Extract the paragraph text
                                 content = paragraph.text.strip()
 
-                                # Title formatting
-                                if content == data['title']:
+                                # Formatting for different types of content
+                                if placeholder == "box":
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(14)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-
-                                # Description formatting
-                                elif content == data['description']:
-                                    paragraph.alignment = PP_ALIGN.LEFT
+                                elif placeholder == "cut1" or placeholder == "cut2":
+                                    paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(11)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-
-                                # Key elements (bullets) formatting
-                                elif content.startswith("-"):
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    paragraph.level = 1  # Indent for key elements
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(11)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                        run.font.bold = True
+                                        run.font.size = Pt(20)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                elif placeholder.startswith("box"):
+                                    if content.startswith("-"):
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        paragraph.level = 1  # Bullet points
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(11)
+                                            run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
+                                    else:
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(11)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
