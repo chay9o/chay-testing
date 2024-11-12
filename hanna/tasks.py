@@ -2615,11 +2615,13 @@ def handle_template_type_3(canvas_data):
 
     # Assign each section to a box placeholder dynamically
     for i, section in enumerate(sections):
-        placeholder_title = f"box{i + 1}"  # e.g., box1, box2, ..., box6
-        replacement_dict[placeholder_title] = (
+        placeholder = f"box{i + 1}"  # e.g., box1, box2, ..., box6
+        # Combine title, description, and key elements into one replacement value
+        replacement_dict[placeholder] = (
             f"{section.get('title', section.get('circle', ''))}\n\n"  # Add title
             f"{section.get('description', '')}\n"  # Add description
-            + "\n- ".join(section.get("key_elements", []))  # Add key elements as bullet points
+            + "\n- " + "\n- ".join(section.get("key_elements", []))  # Add key elements as bullet points
+            if section.get("key_elements") else ""  # Add only if key elements exist
         )
     
     # Apply replacements consistently
@@ -2628,39 +2630,31 @@ def handle_template_type_3(canvas_data):
             if hasattr(shape, "text"):
                 for placeholder, replacement in replacement_dict.items():
                     if placeholder in shape.text:
-                        shape.text = replacement  # Replace with combined title, description, and key elements
-                        
-                        # Check if the shape has a text frame for applying formatting
+                        shape.text = replacement  # Replace text with the combined content
+    
+                        # Apply formatting to the updated content
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
     
                             for paragraph in shape.text_frame.paragraphs:
-                                # Alignment and font formatting based on placeholder type
-                                if placeholder in ["cut1", "cut2"]:
+                                # Set alignment and font styling for each part of the combined text
+                                content = paragraph.text.strip()
+                                if content.startswith("-"):  # Key elements (bullet points)
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)  # Smaller font for key elements
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
+                                elif len(content) > 50:  # Likely a description
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(14)  # Medium font for descriptions
+                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
+                                else:  # Title
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
-                                        run.font.size = Pt(20 if placeholder == "cut1" else 14)
+                                        run.font.size = Pt(16)  # Larger font for titles
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
-    
-                                elif "box" in placeholder:  # Handle title, description, and key elements
-                                    content = paragraph.text.strip()
-                                    if content.startswith("-"):  # Key element
-                                        paragraph.alignment = PP_ALIGN.LEFT
-                                        for run in paragraph.runs:
-                                            run.font.size = Pt(12)  # Small font size for key elements
-                                            run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-                                    elif len(content) > 50:  # Description
-                                        paragraph.alignment = PP_ALIGN.LEFT
-                                        for run in paragraph.runs:
-                                            run.font.size = Pt(14)  # Medium font size for descriptions
-                                            run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
-                                    else:  # Title
-                                        paragraph.alignment = PP_ALIGN.CENTER
-                                        for run in paragraph.runs:
-                                            run.font.bold = True
-                                            run.font.size = Pt(16)  # Larger font for titles
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
