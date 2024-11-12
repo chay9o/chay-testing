@@ -2615,53 +2615,61 @@ def handle_template_type_3(canvas_data):
 
     # Assign each section to a box placeholder dynamically
     for i, section in enumerate(sections):
-        placeholder_title = f"box{i + 1}"  # e.g., box1, box2, ..., box6
-        placeholder_description = f"description{i + 1}"  # For description text if needed
-        replacement_dict[placeholder_title] = section.get("title", section.get("circle", ""))
-        replacement_dict[placeholder_description] = (
-            f"{section.get('description', '')}\n"
-            + "\n- ".join(section.get("key_elements", []))
+        # Construct the content for the placeholder `box{i}`
+        replacement_dict[f"box{i + 1}"] = (
+            f"{section.get('title', section.get('circle', ''))}\n\n"  # Title
+            f"{section.get('description', '')}\n\n"  # Description
+            + "\n- " + "\n- ".join(section.get("key_elements", []))  # Key Elements as bullets
         )
 
     # Apply replacements consistently
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
-            if hasattr(shape, "text"):
+            if hasattr(shape, "text") and shape.text.strip():
                 for placeholder, replacement in replacement_dict.items():
                     if placeholder in shape.text:
+                        # Replace placeholder with the combined content
                         shape.text = shape.text.replace(placeholder, replacement)
     
-                        # Check if the shape has a text frame for applying formatting
+                        # Apply formatting based on content structure
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
     
                             for paragraph in shape.text_frame.paragraphs:
-                                # Alignment and font formatting based on placeholder type
-                                if placeholder in ["cut1", "cut2"]:
+                                text_content = paragraph.text.strip()
+    
+                                # Check if the paragraph is a title
+                                if text_content in [
+                                    section.get('title', section.get('circle', ''))
+                                    for section in sections
+                                ]:
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
-                                        run.font.size = Pt(20 if placeholder == "cut1" else 14)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+                                        run.font.size = Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)
+                                    continue
     
-                                elif "title" in placeholder or "box" in placeholder:
-                                    paragraph.alignment = PP_ALIGN.CENTER
-                                    for run in paragraph.runs:
-                                        run.font.bold = True
-                                        run.font.size = Pt(16)  # Slightly larger font for titles
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
-    
-                                elif "description" in placeholder:
+                                # Check if the paragraph is a description
+                                if text_content in [section.get('description', '') for section in sections]:
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(14)  # Medium font size for descriptions
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
+                                        run.font.size = Pt(14)
+                                        run.font.color.rgb = RGBColor(50, 50, 50)
+                                    continue
     
-                                elif "key_elements" in placeholder:
+                                # Check if the paragraph contains key elements
+                                if any(
+                                    key in text_content
+                                    for section in sections
+                                    for key in section.get("key_elements", [])
+                                ):
                                     paragraph.alignment = PP_ALIGN.LEFT
+                                    paragraph.level = 1  # Indent for key elements
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(12)  # Small font size for key elements
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray color
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(50, 50, 50)
+                                    continue
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
