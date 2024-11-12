@@ -2611,22 +2611,23 @@ def handle_template_type_3(canvas_data):
     
     for section in sections:
         if section.get('circle', '').startswith('Supporting Circle'):  # Match "Supporting Circle"
-            # Extract and clean key elements
             raw_key_elements = section.get('key_elements', [])
             
-            # Filter out references to subsequent sections (e.g., "Supporting Circle X")
-            cleaned_key_elements = [
-                ke.split("\n\n")[0].strip() for ke in raw_key_elements
-                if not ke.strip().startswith("Supporting Circle")
-            ]
+            # Clean key elements to remove concatenated data for other circles
+            cleaned_key_elements = []
+            for element in raw_key_elements:
+                # Split on "\n\nSupporting Circle" to isolate current circle's key elements
+                split_elements = element.split("\n\nSupporting Circle")[0]
+                cleaned_key_elements.append(split_elements.strip())
     
-            # Add data to replacement dictionary
+            # Add cleaned data to replacement dictionary
             replacement_dict[f"Box{box_counter}"] = {
                 'title': section.get('title', 'Default Title'),
                 'description': section.get('description', 'Default Description'),
                 'key_elements': cleaned_key_elements
             }
             box_counter += 1  # Increment the box counter
+
     
     # Print the replacement_dict to verify its contents
     print("==== START OF BOX OUTPUT ====")
