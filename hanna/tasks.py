@@ -2610,23 +2610,24 @@ def handle_template_type_3(canvas_data):
     box_counter = 1
     
     for section in sections:
-        if section.get('circle', '').startswith('Supporting Circle'):  # Match "Supporting Circle"
-            raw_key_elements = section.get('key_elements', [])
-            
-            # Clean key elements to remove concatenated data for other circles
+        if section.get("circle", "").startswith("Supporting Circle"):
+            raw_key_elements = section.get("key_elements", [])
             cleaned_key_elements = []
+            
+            # Iterate through raw key elements and stop parsing when a new section starts
             for element in raw_key_elements:
-                # Split on "\n\nSupporting Circle" to isolate current circle's key elements
-                split_elements = element.split("\n\nSupporting Circle")[0]
-                cleaned_key_elements.append(split_elements.strip())
+                # Stop parsing if subsequent circle information is detected
+                if "Supporting Circle" in element:
+                    break
+                cleaned_key_elements.append(element.strip())
     
             # Add cleaned data to replacement dictionary
             replacement_dict[f"Box{box_counter}"] = {
-                'title': section.get('title', 'Default Title'),
-                'description': section.get('description', 'Default Description'),
-                'key_elements': cleaned_key_elements
+                "title": section.get("title", "Default Title"),
+                "description": section.get("description", "Default Description"),
+                "key_elements": cleaned_key_elements,
             }
-            box_counter += 1  # Increment the box counter
+            box_counter += 1
 
     
     # Print the replacement_dict to verify its contents
