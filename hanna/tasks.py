@@ -2606,20 +2606,21 @@ def handle_template_type_3(canvas_data):
     canvas_name = canvas_data.get('canvas_name', '')
     canvas_description = canvas_data.get('canvas_description', '')
     sections = canvas_data.get('sections', [])
-    print("Debugging sections:")
-    for section in sections:
-        print(section)
-        print()
     replacement_dict = {}  # Dictionary to store all box data
+    box_counter = 1
     
-    # Iterate through the list to extract data for all supporting circles
-    for idx, section in enumerate(sections, start=1):
+    for section in sections:
         if section.get('circle', '').startswith('Supporting Circle'):  # Match "Supporting Circle"
-            replacement_dict[f"Box{idx}"] = {
+            # Clean and extract only the intended key elements
+            raw_key_elements = section.get('key_elements', ['Default Key Elements'])
+            cleaned_key_elements = [ke.strip() for ke in raw_key_elements if not ke.startswith("Supporting Circle")]
+    
+            replacement_dict[f"Box{box_counter}"] = {
                 'title': section.get('title', 'Default Title'),
                 'description': section.get('description', 'Default Description'),
-                'key_elements': section.get('key_elements', ['Default Key Elements'])
+                'key_elements': cleaned_key_elements
             }
+            box_counter += 1
     
     # Print the replacement_dict to verify its contents
     print("==== START OF BOX OUTPUT ====")
@@ -2630,7 +2631,6 @@ def handle_template_type_3(canvas_data):
         print(f"Key Elements: {', '.join(data['key_elements'])}")
         print()
     print("==== END OF BOX OUTPUT ====")
-    
     # Build the replacement dictionary dynamically from sections
     
 
