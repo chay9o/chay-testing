@@ -2263,7 +2263,7 @@ def parse_plain_text_response(response):
 
     try:
         clean_response = clean_asterisks(response)
-        logger.info(clean_response)
+        logger.info(f"Cleaned Response chay:\n{clean_response}")
 
         # Extract Template Type
         template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", clean_response)
@@ -2315,8 +2315,8 @@ def parse_plain_text_response(response):
         # Handle Progression Canvas (Template 1)
         elif data["template_type"] == "1":
             column_pattern = re.compile(
-                r"Column (\d+):\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+?)(?=\nColumn|\Z)",
-                re.DOTALL | re.MULTILINE,
+                r"Column (\d+):\s+Title:\s*(.+?)\s+Description:\s*(.+?)\s+Key Elements:\s*(.+?)(?=\nColumn|\Z)",
+                re.DOTALL,
             )
             columns = column_pattern.findall(clean_response)
             logger.info(f"Found Columns: {columns}")
