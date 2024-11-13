@@ -2314,8 +2314,9 @@ def parse_plain_text_response(response):
 
         # Handle Progression Canvas (Template 1)
         elif data["template_type"] == "1":
+            logger.info(f"Found data: {clean_response}")
             column_pattern = re.compile(
-                r"Column (\d+):\s+Title:\s*(.+?)\s+Description:\s*(.+?)\s+Key Elements:\s*(.+?)(?=\nColumn|\Z)",
+                r"Column (\d+):\s*Title:\s*(.+?)\s+Description:\s*(.+?)\s+Key Elements:\s*(.+?)(?=\nColumn|\Z)",
                 re.DOTALL,
             )
             columns = column_pattern.findall(clean_response)
@@ -2329,6 +2330,7 @@ def parse_plain_text_response(response):
                         "description": description.strip(),
                         "key_elements": [el.strip() for el in key_elements.split(",")],
                     })
+                logger.info(f"Parsed Sections for Template 1: {data['sections']}")
             else:
                 logger.warning("No columns found for Template 1.")
                     
