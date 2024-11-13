@@ -2775,7 +2775,7 @@ def handle_template_type_3(canvas_data):
     apply_replacements(presentation.slides[0], replacement_dict_slide2, font_color_black=True)
 
     # Apply replacements for Slide 2 (titles, descriptions, key elements, white font)
-    apply_replacements(presentation.slides[1], replacement_dict_slide1, font_color_black=False)
+    apply_replacements(presentation.slides[1], replacement_dict_slide1, font_color_black=True)
 
     # Save the presentation and return as base64
     pptx_stream = BytesIO()
