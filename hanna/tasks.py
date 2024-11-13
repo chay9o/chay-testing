@@ -2316,18 +2316,20 @@ def parse_plain_text_response(response):
         elif data["template_type"] == "1":
             for i in range(1, 8):  # Iterate over columns 1 to 7
                 column_match = re.search(
-                    rf"Column {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    rf"\*\*Column {i}:\*\*\s*(.*?)\*\*\n\s*\*\*Title:\*\*\s*(.+?)\n\s*\*\*Description:\*\*\s*(.+?)\n\s*\*\*Key Elements:\*\*\s*(.+)",
                     clean_response,
                     re.DOTALL,
                 )
                 if column_match:
                     data["sections"].append({
                         "column": f"Column {i}",
-                        "title": column_match.group(1).strip(),
-                        "description": column_match.group(2).strip(),
-                        "key_elements": [el.strip() for el in column_match.group(3).split(",")],
+                        "title": column_match.group(2).strip(),
+                        "description": column_match.group(3).strip(),
+                        "key_elements": [el.strip() for el in column_match.group(4).split(",")],
                     })
-
+                else:
+                    logger.warning(f"Column {i} not found in the response.")
+                    
         # Handle Grid Layout Canvas (Template 2)
         elif data["template_type"] == "2":
             for area in ["Top Left Area", "Top Right Area", "Bottom Left Area", "Bottom Right Area"]:
