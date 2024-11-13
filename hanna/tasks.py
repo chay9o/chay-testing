@@ -2465,33 +2465,25 @@ def handle_template_type_1(canvas_data):
     canvas_description = canvas_data.get("canvas_description", "")
     sections = canvas_data.get("sections", [])
 
-    # Prepare the replacement dictionary
+    # Prepare replacement dictionary
     replacement_dict = {
         "cut1": canvas_name,
-        "cut2": canvas_description
+        "cut2": canvas_description,
     }
 
-    # Add data for the 7 boxes
-    box_counter = 1
+    # Dynamically map columns to placeholders (box1, box2, ..., box7)
     for section in sections:
-        if box_counter > 7:
-            break  # Ensure we only process up to 7 boxes
-        raw_key_elements = section.get("key_elements", [])
-        cleaned_key_elements = []
+        column = section.get("column", "")  # Extract column identifier
+        if column.startswith("Column "):  # Ensure it matches the expected format
+            column_number = column.split(" ")[1]  # Extract the column number
+            placeholder = f"box{column_number}"  # Map to placeholders like box1, box2, etc.
+            replacement_dict[placeholder] = {
+                "title": section.get("title", "Default Title"),
+                "description": section.get("description", "Default Description"),
+                "key_elements": section.get("key_elements", [])[:4],  # Limit key elements to 4
+            }
 
-        # Clean up key elements and stop parsing if a new section starts
-        for element in raw_key_elements:
-            cleaned_key_elements.append(element.strip())
-
-        # Add box data to replacement dictionary
-        replacement_dict[f"box{box_counter}"] = {
-            "title": section.get("title", "Default Title"),
-            "description": section.get("description", "Default Description"),
-            "key_elements": cleaned_key_elements[:3],  # Limit key elements to 3
-        }
-        box_counter += 1
-
-    # Print the replacement dictionary for debugging
+    # Debugging: Print the replacement dictionary
     print("==== TEMPLATE 1 REPLACEMENT DATA ====")
     for key, value in replacement_dict.items():
         if isinstance(value, dict):
@@ -2502,29 +2494,30 @@ def handle_template_type_1(canvas_data):
 
     # Function to apply replacements and formatting
     def apply_replacements(slide, replacement_dict):
-        """
-        Applies replacements for placeholders in the provided slide.
-        Handles formatting dynamically based on the placeholder type.
-        """
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
                         # Replace placeholder with content
                         if isinstance(data, dict):
-                            formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
+                            # Format for titles, descriptions, and key elements
+                            formatted_text = (
+                                f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
+                            )
                         else:
+                            # Format for cut1 and cut2
                             formatted_text = data
 
-                        # Replace the placeholder text
-                        shape.text = formatted_text
+                        shape.text = formatted_text  # Replace the text
 
-                        # Apply formatting to the updated text
+                        # Apply formatting
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                            shape.text_frame.word_wrap = True
+
                             for paragraph in shape.text_frame.paragraphs:
                                 content = paragraph.text.strip()
 
-                                # Formatting for canvas name and description
+                                # Format canvas name and description
                                 if placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
@@ -2537,7 +2530,7 @@ def handle_template_type_1(canvas_data):
                                         run.font.size = Pt(16)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
-                                # Formatting for box titles
+                                # Format column titles
                                 elif content == data.get("title", ""):
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
@@ -2545,22 +2538,22 @@ def handle_template_type_1(canvas_data):
                                         run.font.size = Pt(14)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black
 
-                                # Formatting for descriptions
+                                # Format descriptions
                                 elif content == data.get("description", ""):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
-                                # Formatting for key elements
+                                # Format key elements
                                 elif content.startswith("-"):
                                     paragraph.alignment = PP_ALIGN.LEFT
-                                    paragraph.level = 1  # Indentation for key elements
+                                    paragraph.level = 1  # Indent for key elements
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
-    # Apply replacements to the slide
+    # Apply replacements to all slides
     for slide in presentation.slides:
         apply_replacements(slide, replacement_dict)
 
@@ -2568,7 +2561,7 @@ def handle_template_type_1(canvas_data):
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)
-    pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode('utf-8')
 
     print("Template 1 processing complete.")
     return {"pptx_base64": pptx_base64}
