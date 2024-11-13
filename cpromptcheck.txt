@@ -51,7 +51,99 @@ Bottom Right Area:
 
 [/INST]
 
+[INST]
+#### 3. **Circular Layout Canvas (Template 3):**
+   - Places the central issue or goal in the middle, surrounded by five concentric circles.
+   - Each circle represents a specific aspect or category of the situation.
+   - Ideal for evaluating interconnected dimensions of the problem.
 
+### Plain Text Output Format:
+Template Type: "3"
+Canvas Name: [Canvas name]
+Canvas Description: [Brief description]
+
+Central Circle:
+  Issue/Goal: [One-line description of the central issue or goal]
+
+Supporting Circle 1:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
+
+Supporting Circle 2:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
+
+Supporting Circle 3:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
+
+Supporting Circle 4:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
+
+Supporting Circle 5:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
+
+[/INST]
+
+[INST]
+#### Hive Template (Hexagonal Canvas, Template 4):
+   - The canvas comprises two rows of four hexagons each (8 hexagons total). 
+   - The top row evaluates four main topics or categories.
+   - The bottom row assesses subtopics related to the ones above.
+   - Ideal for evaluating interconnected aspects of a situation.
+
+### Plain Text Output Format:
+Template Type: "4"
+Canvas Name: [Canvas name]
+Canvas Description: [Brief description]
+
+Top Hexagon 1:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
+Top Hexagon 2:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
+Top Hexagon 3:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
+Top Hexagon 4:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
+Bottom Hexagon 1:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
+Bottom Hexagon 2:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
+Bottom Hexagon 3:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+
+Bottom Hexagon 4:
+  Title: [Two-word title]
+  Description: [Concise description]
+  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3]
+[/INST]
 [INST]
 **Note**:
 - Always include all sections for the selected template.
