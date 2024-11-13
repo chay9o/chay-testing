@@ -2653,8 +2653,10 @@ def handle_template_type_3(canvas_data):
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
             if hasattr(shape, "text"):  # Ensure the shape has text
+                shape_text = shape.text.strip()  # Trim whitespace for accurate matching
                 for placeholder, replacement in replacement_dict.items():
-                    if placeholder in shape.text:
+                    # Match exact placeholders only
+                    if placeholder == shape_text:  # Exact match for placeholder
                         # Handle dictionary replacements for box1, box2, etc.
                         if isinstance(replacement, dict):
                             formatted_text = (
@@ -2665,8 +2667,8 @@ def handle_template_type_3(canvas_data):
                         else:
                             formatted_text = replacement  # Use plain text for cut1, cut2, etc.
     
-                        # Replace placeholder with formatted text
-                        shape.text = shape.text.replace(placeholder, formatted_text)
+                        # Replace the entire placeholder text with formatted text
+                        shape.text = formatted_text
     
                         # Apply specific formatting based on placeholder type
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
@@ -2693,8 +2695,9 @@ def handle_template_type_3(canvas_data):
                                 elif placeholder.startswith("box"):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(12)
+                                        run.font.size = Pt(11)
                                         run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
+                                    
     # Apply replacements to each slide
     for slide in presentation.slides:
         apply_replacements(slide, replacement_dict)
