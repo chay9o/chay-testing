@@ -2652,139 +2652,129 @@ def handle_template_type_3(canvas_data):
     print(f"Handling template type 3 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (6).pptx")
 
-    canvas_name = canvas_data.get('canvas_name', '')
-    canvas_description = canvas_data.get('canvas_description', '')
-    sections = canvas_data.get('sections', [])
-    replacement_dict = {}  # Dictionary to store all box data
+    canvas_name = canvas_data.get("canvas_name", "")
+    canvas_description = canvas_data.get("canvas_description", "")
+    sections = canvas_data.get("sections", [])
+
+    # Prepare the replacement dictionary
+    replacement_dict_slide1 = {"cut1": canvas_name, "cut2": canvas_description}
+    replacement_dict_slide2 = {"cut1": canvas_name, "cut2": canvas_description}
+
     box_counter = 1
-    replacement_dict['cut1'] = canvas_name
-    replacement_dict['cut2'] = canvas_description
     for section in sections:
         if section.get("circle") == "Central Circle":
-            replacement_dict["center_circle"] = {
+            replacement_dict_slide1["center_circle"] = {
                 "title": section.get("issue_goal", "Central Goal"),
             }
+            replacement_dict_slide2["center_circle"] = replacement_dict_slide1["center_circle"]
 
-    
-    for section in sections:
-        if section.get("circle", "").startswith("Supporting Circle"):
+        elif section.get("circle", "").startswith("Supporting Circle"):
             raw_key_elements = section.get("key_elements", [])
             cleaned_key_elements = []
-            
-            # Iterate through raw key elements and stop parsing when a new section starts
+
+            # Clean up key elements and stop parsing if new section starts
             for element in raw_key_elements:
-                # Stop parsing if subsequent circle information is detected
                 if "Supporting Circle" in element:
                     break
                 cleaned_key_elements.append(element.strip())
-    
-            # Add cleaned data to replacement dictionary
-            replacement_dict[f"box{box_counter}"] = {
+
+            # Add to replacement dictionaries
+            replacement_dict_slide1[f"box{box_counter}"] = {"title": section.get("title", "Default Title")}
+            replacement_dict_slide2[f"box{box_counter}"] = {
                 "title": section.get("title", "Default Title"),
                 "description": section.get("description", "Default Description"),
                 "key_elements": cleaned_key_elements[:3],
             }
             box_counter += 1
 
-    
-    # Print the replacement_dict to verify its contents
-    print("==== START OF BOX OUTPUT ====")
-    for box, data in replacement_dict.items():
-        print(f"{box} Data:")
-        if isinstance(data, dict):
-            print(f"Title: {data['title']}")
-            if 'description' in data:
-                print(f"Description: {data['description']}")
-            if 'key_elements' in data:
-                print(f"Key Elements: {', '.join(data['key_elements'])}")
-        else:
-            print(f"Content: {data}")
-        print()
-    print("==== END OF BOX OUTPUT ====")
-    print(f"hi{replacement_dict}")
-    # Build the replacement dictionary dynamically from sections
-    
-    # Step 2: Apply replacements and handle formatting
-    def apply_replacements(slide, replacement_dict):
+    # Print the replacement dictionaries for debugging
+    print("==== SLIDE 1 REPLACEMENT DATA ====")
+    print(replacement_dict_slide1)
+    print("==== SLIDE 2 REPLACEMENT DATA ====")
+    print(replacement_dict_slide2)
+
+    # Function to apply replacements and formatting
+    def apply_replacements(slide, replacement_dict, font_color_black=True):
+        """
+        Applies replacements for placeholders in the provided slide.
+        Handles formatting dynamically based on the placeholder type.
+        """
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
-                        # Replace placeholder with appropriate content
+                        # Replace placeholder with content
                         if isinstance(data, dict):
-                            if 'description' in data and 'key_elements' in data:
-                                formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
+                            if "description" in data and "key_elements" in data:
+                                formatted_text = (
+                                    f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
+                                )
                             else:
-                                formatted_text = data['title']
+                                formatted_text = data["title"]
                         else:
                             formatted_text = data
-    
-                        shape.text = formatted_text  # Replace placeholder with text
-    
+
+                        # Replace the placeholder text
+                        shape.text = formatted_text
+
                         # Apply formatting to the updated text
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
-                            shape.text_frame.word_wrap = True
-    
                             for paragraph in shape.text_frame.paragraphs:
-                                # Extract the paragraph text
                                 content = paragraph.text.strip()
-    
-                                # Check if data is a dictionary and apply formatting for title and description
-                                if isinstance(data, dict):
-                                    if placeholder == "center_circle" and content == data.get('title', ''):
-                                        # Specific formatting for center_circle
-                                        paragraph.alignment = PP_ALIGN.CENTER
-                                        for run in paragraph.runs:
-                                            run.font.bold = True
-                                            run.font.size = Pt(16)  # Larger size for center_circle
-                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White
-                                
-                                    elif content == data.get('title', ''):
-                                        # Formatting for Supporting Circle titles
-                                        paragraph.alignment = PP_ALIGN.CENTER
-                                        for run in paragraph.runs:
-                                            run.font.bold = True
-                                            run.font.size = Pt(14)  # Standard size for titles
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                                
-                                    elif content == data.get('description', ''):
-                                        # Formatting for descriptions
-                                        paragraph.alignment = PP_ALIGN.LEFT
-                                        for run in paragraph.runs:
-                                            run.font.size = Pt(12)
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-                                
-                                    elif content.startswith("-"):
-                                        # Formatting for key elements
-                                        paragraph.alignment = PP_ALIGN.LEFT
-                                        paragraph.level = 1  # Indent for key elements
-                                        for run in paragraph.runs:
-                                            run.font.size = Pt(12)
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
-                                
-                                # Apply formatting for cut1 and cut2 (strings)
-                                elif placeholder == "cut1":
+                                # Formatting for canvas name and description
+                                if placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(20)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Dark Blue
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
                                 elif placeholder == "cut2":
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(16)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
 
-    # Iterate through slides and apply replacements
-    for slide in presentation.slides:
-        apply_replacements(slide, replacement_dict)
+                                # Formatting for titles
+                                elif content == data.get("title", ""):
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(14)
+                                        run.font.color.rgb = (
+                                            RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        )
+
+                                # Formatting for descriptions
+                                elif content == data.get("description", ""):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = (
+                                            RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        )
+
+                                # Formatting for key elements
+                                elif content.startswith("-"):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    paragraph.level = 1  # Indentation for key elements
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = (
+                                            RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        )
+
+    # Apply replacements for Slide 1 (titles only, black font)
+    apply_replacements(presentation.slides[0], replacement_dict_slide1, font_color_black=True)
+
+    # Apply replacements for Slide 2 (titles, descriptions, key elements, white font)
+    apply_replacements(presentation.slides[1], replacement_dict_slide2, font_color_black=True)
 
     # Save the presentation and return as base64
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)
-    pptx_base64 = base64.b64encode(pptx_stream.read()).decode('utf-8')
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
 
     print("Template 3 processing complete.")
     return {"pptx_base64": pptx_base64}
