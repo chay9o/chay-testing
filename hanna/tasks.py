@@ -2717,9 +2717,12 @@ def handle_template_type_3(canvas_data):
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
                                 elif placeholder == "center_circle":
                                     paragraph.alignment = PP_ALIGN.CENTER
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(18)
-                                        run.font.color.rgb = RGBColor(255, 255, 255)  # Gray
+                                    paragraph.text = ""  # Clear existing text
+                                    run = paragraph.add_run(data.get('title', ''))  # Add the new text
+                                    run.font.bold = True
+                                    run.font.size = Pt(18)  # Apply font size
+                                    run.font.color.rgb = RGBColor(255, 255, 255)  # Apply white font color
+                                    run.font.color.theme_color = None  # Disable theme color
 
 
     # Iterate through slides and apply replacements
