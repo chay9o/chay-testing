@@ -2688,7 +2688,7 @@ def handle_template_type_3(canvas_data):
                                         for run in paragraph.runs:
                                             run.font.bold = True
                                             run.font.size = Pt(14)
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                            run.font.color.rgb = RGBColor(0, 255, 255)  # Black
     
                                     elif content == data.get('description', ''):
                                         paragraph.alignment = PP_ALIGN.LEFT
