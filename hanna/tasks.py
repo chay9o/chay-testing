@@ -2652,47 +2652,50 @@ def handle_template_type_3(canvas_data):
     # Step 2: Apply replacements and handle formatting
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
-            if hasattr(shape, "text"):  # Ensure the shape has text
-                original_text = shape.text.strip()  # Get the current text in the shape
+            if hasattr(shape, "text"):  # Check if the shape has text
+                original_text = shape.text.strip()  # Capture the original text
     
                 for placeholder, replacement in replacement_dict.items():
-                    # Match the entire placeholder text only
-                    if original_text == placeholder:
+                    # Match exact placeholder
+                    if placeholder in original_text:
+                        # Clear the shape's text before replacement
+                        shape.text = ""  
+    
+                        # Format the replacement value
                         if isinstance(replacement, dict):
-                            # Format the dictionary replacement properly
+                            # Join title, description, and key elements for boxes
                             formatted_text = (
                                 f"{replacement['title']} | "
                                 f"{replacement['description']} | "
                                 ", ".join(replacement['key_elements'])
                             )
                         else:
-                            formatted_text = replacement  # For non-dict replacements (e.g., cut1, cut2)
+                            formatted_text = replacement  # Plain text for cut1, cut2, etc.
     
-                        # Replace placeholder text with the properly formatted replacement
+                        # Replace placeholder with formatted text
                         shape.text = formatted_text
     
-                        # Apply specific formatting for the replaced content
-                        if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                        # Apply formatting for specific placeholders
+                        if hasattr(shape, "text_frame") and shape.text_frame:
                             shape.text_frame.word_wrap = True
                             for paragraph in shape.text_frame.paragraphs:
-                                # Format based on placeholder type
-                                if placeholder == "cut1":
+                                if placeholder.startswith("cut1"):
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(20)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                                elif placeholder == "cut2":
+                                        run.font.color.rgb = RGBColor(0, 0, 0)
+                                elif placeholder.startswith("cut2"):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(80, 80, 80)  # Dark gray
+                                        run.font.color.rgb = RGBColor(80, 80, 80)
                                 elif placeholder.startswith("box"):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
-                        break  # Break to avoid redundant replacements
+                                        run.font.color.rgb = RGBColor(50, 50, 50)
+                        break  # Stop further replacements for this placeholder
 
                                     
     # Apply replacements to each slide
