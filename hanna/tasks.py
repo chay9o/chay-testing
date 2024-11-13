@@ -2611,6 +2611,12 @@ def handle_template_type_3(canvas_data):
     box_counter = 1
     replacement_dict['cut1'] = canvas_name
     replacement_dict['cut2'] = canvas_description
+    for section in sections:
+        if section.get("circle") == "Central Circle":
+            replacement_dict["center_circle"] = {
+                "title": section.get("issue_goal", "Central Goal"),
+            }
+
     
     for section in sections:
         if section.get("circle", "").startswith("Supporting Circle"):
@@ -2639,8 +2645,10 @@ def handle_template_type_3(canvas_data):
         print(f"{box} Data:")
         if isinstance(data, dict):
             print(f"Title: {data['title']}")
-            print(f"Description: {data['description']}")
-            print(f"Key Elements: {', '.join(data['key_elements'])}")
+            if 'description' in data:
+                print(f"Description: {data['description']}")
+            if 'key_elements' in data:
+                print(f"Key Elements: {', '.join(data['key_elements'])}")
         else:
             print(f"Content: {data}")
         print()
@@ -2656,7 +2664,10 @@ def handle_template_type_3(canvas_data):
                     if placeholder in shape.text:
                         # Replace placeholder with appropriate content
                         if isinstance(data, dict):
-                            formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
+                            if 'description' in data and 'key_elements' in data:
+                                formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
+                            else:
+                                formatted_text = data['title']
                         else:
                             formatted_text = data
     
@@ -2682,14 +2693,14 @@ def handle_template_type_3(canvas_data):
                                     elif content == data.get('description', ''):
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         for run in paragraph.runs:
-                                            run.font.size = Pt(11)
+                                            run.font.size = Pt(12)
                                             run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
     
                                     elif content.startswith("-"):
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         paragraph.level = 1  # Indent for key elements
                                         for run in paragraph.runs:
-                                            run.font.size = Pt(11)
+                                            run.font.size = Pt(12)
                                             run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
                                 
                                 # Apply formatting for cut1 and cut2 (strings)
@@ -2704,7 +2715,7 @@ def handle_template_type_3(canvas_data):
                                     for run in paragraph.runs:
                                         run.font.size = Pt(16)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-                                elif placeholder == "box":
+                                elif placeholder == "center_circle":
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.size = Pt(11)
