@@ -2652,10 +2652,10 @@ def handle_template_type_3(canvas_data):
     # Step 2: Apply replacements and handle formatting
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
-            if hasattr(shape, "text"):
+            if hasattr(shape, "text"):  # Ensure the shape has text
                 for placeholder, replacement in replacement_dict.items():
                     if placeholder in shape.text:
-                        # If the replacement is a dictionary (for box1, box2, etc.), format it as required
+                        # Handle dictionary replacements for box1, box2, etc.
                         if isinstance(replacement, dict):
                             formatted_text = (
                                 f"{replacement['title']} | "
@@ -2663,44 +2663,37 @@ def handle_template_type_3(canvas_data):
                                 ", ".join(replacement['key_elements'])
                             )
                         else:
-                            formatted_text = replacement
+                            formatted_text = replacement  # Use plain text for cut1, cut2, etc.
     
-                        # Replace the placeholder with the formatted text
+                        # Replace placeholder with formatted text
                         shape.text = shape.text.replace(placeholder, formatted_text)
     
-                        # Apply formatting to the updated text
+                        # Apply specific formatting based on placeholder type
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
-    
                             for paragraph in shape.text_frame.paragraphs:
-                                # Extract the paragraph text
                                 content = paragraph.text.strip()
     
-                                # Title formatting
-                                if content == replacement_dict.get("cut1", ""):
+                                # Formatting for cut1
+                                if placeholder == "cut1" and content == replacement_dict["cut1"]:
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
-                                        run.font.size = Pt(18)
+                                        run.font.size = Pt(20)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black
     
-                                # Description formatting
-                                elif content == replacement_dict.get("cut2", ""):
+                                # Formatting for cut2
+                                elif placeholder == "cut2" and content == replacement_dict["cut2"]:
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(14)
                                         run.font.color.rgb = RGBColor(80, 80, 80)  # Dark gray
     
-                                # Box content formatting
-                                elif any(
-                                    content.startswith(f"{replacement['title']} |")
-                                    for key, replacement in replacement_dict.items()
-                                    if isinstance(replacement, dict)
-                                ):
+                                # Formatting for box placeholders (box1, box2, etc.)
+                                elif placeholder.startswith("box"):
                                     paragraph.alignment = PP_ALIGN.LEFT
-                                    paragraph.level = 0
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(11)
+                                        run.font.size = Pt(12)
                                         run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
     # Apply replacements to each slide
     for slide in presentation.slides:
