@@ -2581,7 +2581,7 @@ def handle_template_type_2(canvas_data):
     print("==== END OF BOX OUTPUT ====")
 
     # Step 2: Apply replacements and handle formatting
-    def apply_replacements(slide, replacement_dict):
+    def apply_replacements(slide, replacement_dict, font_color_black):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 for placeholder, data in replacement_dict.items():
