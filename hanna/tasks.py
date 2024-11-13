@@ -2526,7 +2526,7 @@ def handle_template_type_1(canvas_data):
 
 def handle_template_type_2(canvas_data):
     print(f"Handling template type 2 with data: {canvas_data}")
-    presentation = Presentation("Hex Canvas Design (5).pptx")  # Use the appropriate template for type 2
+    presentation = Presentation("Hex Canvas Design (7).pptx")  # Use the appropriate template for type 2
 
     canvas_name = canvas_data.get('canvas_name', '')
     canvas_description = canvas_data.get('canvas_description', '')
@@ -2609,18 +2609,18 @@ def handle_template_type_2(canvas_data):
                                         for run in paragraph.runs:
                                             run.font.bold = True
                                             run.font.size = Pt(14)  # Standard size for titles
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # Black
                                     elif content == data.get('description', ''):
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # Gray
                                     elif content.startswith("-"):
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         paragraph.level = 1  # Indent for key elements
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
-                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                            run.font.color.rgb = RGBColor(255, 255, 255) # Gray
 
                                 elif placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.LEFT
