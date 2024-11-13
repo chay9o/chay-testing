@@ -2317,34 +2317,40 @@ def parse_plain_text_response(response):
             try:
                 logger.info(f"Found data: {clean_response}")
         
-                # Iterate through each column (1 to 7 assumed)
-                for i in range(1, 8):  # Assuming 7 columns as per the input
-                    column_match = re.search(
-                        rf"Column {i}:\s*Title:\s*(.+?)\s+Description:\s*(.+?)\s+Key Elements:\s*(.+?)(?=\nColumn|\Z)",
-                        clean_response,
-                        re.DOTALL
-                    )
-                    if column_match:
-                        title = column_match.group(1).strip()
-                        description = column_match.group(2).strip()
-                        key_elements = [
-                            el.strip() for el in column_match.group(3).split(",")
-                        ]
+                lines = clean_response.split("\n")
+
+                # Temporary storage for columns
+                current_column = {}
+                for line in lines:
+                    line = line.strip()
         
-                        # Append parsed column data to sections
-                        data["sections"].append({
-                            "column": f"Column {i}",
-                            "title": title,
-                            "description": description,
-                            "key_elements": key_elements,
-                        })
-                    else:
-                        logger.warning(f"Column {i} not found in the response.")
-                
-                if not data["sections"]:
-                    logger.warning("No columns were successfully parsed for Template 1.")
-                else:
-                    logger.info(f"Parsed Sections for Template 1: {data['sections']}")
+                    # Match Column Header
+                    if line.startswith("Column") and "Title:" in line:
+                        # Save the previous column (if exists)
+                        if current_column:
+                            data["sections"].append(current_column)
+                            current_column = {}
+        
+                        # Extract column number and title
+                        column_header = line.split(":", 1)
+                        column_number = column_header[0].strip()
+                        title = column_header[1].replace("Title:", "").strip()
+                        current_column = {"column": column_number, "title": title}
+        
+                    # Match Description
+                    elif line.startswith("Description:") and current_column:
+                        current_column["description"] = line.replace("Description:", "").strip()
+        
+                    # Match Key Elements
+                    elif line.startswith("Key Elements:") and current_column:
+                        key_elements = line.replace("Key Elements:", "").strip()
+                        current_column["key_elements"] = [el.strip() for el in key_elements.split(",")]
+        
+                # Add the last column if it exists
+                if current_column:
+                    data["sections"].append(current_column)
+        
+                logger.info(f"Parsed Sections for Template 1: {data['sections']}")
             except Exception as e:
                 logger.error(f"Error parsing Template 1: {str(e)}")
                 raise ValueError(f"Parsing error for Template 1: {str(e)}")
