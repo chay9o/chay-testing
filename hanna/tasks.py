@@ -2698,7 +2698,7 @@ def handle_template_type_3(canvas_data):
     
                                     elif content.startswith("-"):
                                         paragraph.alignment = PP_ALIGN.LEFT
-                                        paragraph.level = 2  # Indent for key elements
+                                        paragraph.level = 1  # Indent for key elements
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
                                             run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
