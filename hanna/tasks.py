@@ -2659,42 +2659,41 @@ def handle_template_type_3(canvas_data):
                             formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
                         else:
                             formatted_text = data
-                        
+    
                         shape.text = formatted_text  # Replace placeholder with text
-
+    
                         # Apply formatting to the updated text
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
-
+    
                             for paragraph in shape.text_frame.paragraphs:
                                 # Extract the paragraph text
                                 content = paragraph.text.strip()
-
-                                # Title formatting
-                                if content == data.get('title', ''):
-                                    paragraph.alignment = PP_ALIGN.CENTER
-                                    for run in paragraph.runs:
-                                        run.font.bold = True
-                                        run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-
-                                # Description formatting
-                                elif content == data.get('description', ''):
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(11)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-
-                                # Key elements (bullets) formatting
-                                elif content.startswith("-"):
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    paragraph.level = 1  # Indent for key elements
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(11)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-
-                                # Formatting for cut1 and cut2
-                                if placeholder == "cut1":
+    
+                                # Check if data is a dictionary and apply formatting for title and description
+                                if isinstance(data, dict):
+                                    if content == data.get('title', ''):
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+    
+                                    elif content == data.get('description', ''):
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(11)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+    
+                                    elif content.startswith("-"):
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        paragraph.level = 1  # Indent for key elements
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(11)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                
+                                # Apply formatting for cut1 and cut2 (strings)
+                                elif placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
