@@ -2609,18 +2609,18 @@ def handle_template_type_2(canvas_data):
                                         for run in paragraph.runs:
                                             run.font.bold = True
                                             run.font.size = Pt(14)  # Standard size for titles
-                                            run.font.color.rgb = RGBColor(255, 255, 255)  # Black
+                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
                                     elif content == data.get('description', ''):
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
-                                            run.font.color.rgb = RGBColor(255, 255, 255)  # Gray
+                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
                                     elif content.startswith("-"):
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         paragraph.level = 1  # Indent for key elements
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
-                                            run.font.color.rgb = RGBColor(255, 255, 255) # Gray
+                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
 
                                 elif placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.LEFT
@@ -2635,8 +2635,8 @@ def handle_template_type_2(canvas_data):
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
     # Iterate through slides and apply replacements
-    for slide in presentation.slides:
-        apply_replacements(slide, replacement_dict)
+    apply_replacements(presentation.slides[0], replacement_dict, font_color_black=True)  # Black font for Slide 1
+    apply_replacements(presentation.slides[1], replacement_dict, font_color_black=False)  # White font for Slide 2
 
     # Save the presentation and return as base64
     pptx_stream = BytesIO()
