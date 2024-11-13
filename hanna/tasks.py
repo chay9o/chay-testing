@@ -2653,50 +2653,47 @@ def handle_template_type_3(canvas_data):
     def apply_replacements(slide, replacement_dict):
         for shape in slide.shapes:
             if hasattr(shape, "text"):  # Ensure the shape has text
-                shape_text = shape.text.strip()  # Trim whitespace for accurate matching
+                original_text = shape.text.strip()  # Get the current text in the shape
+    
                 for placeholder, replacement in replacement_dict.items():
-                    # Match exact placeholders only
-                    if placeholder == shape_text:  # Exact match for placeholder
-                        # Handle dictionary replacements for box1, box2, etc.
+                    # Match the entire placeholder text only
+                    if original_text == placeholder:
                         if isinstance(replacement, dict):
+                            # Format the dictionary replacement properly
                             formatted_text = (
                                 f"{replacement['title']} | "
                                 f"{replacement['description']} | "
                                 ", ".join(replacement['key_elements'])
                             )
                         else:
-                            formatted_text = replacement  # Use plain text for cut1, cut2, etc.
+                            formatted_text = replacement  # For non-dict replacements (e.g., cut1, cut2)
     
-                        # Replace the entire placeholder text with formatted text
+                        # Replace placeholder text with the properly formatted replacement
                         shape.text = formatted_text
     
-                        # Apply specific formatting based on placeholder type
+                        # Apply specific formatting for the replaced content
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
                             for paragraph in shape.text_frame.paragraphs:
-                                content = paragraph.text.strip()
-    
-                                # Formatting for cut1
-                                if placeholder == "cut1" and content == replacement_dict["cut1"]:
+                                # Format based on placeholder type
+                                if placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(20)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-    
-                                # Formatting for cut2
-                                elif placeholder == "cut2" and content == replacement_dict["cut2"]:
+                                elif placeholder == "cut2":
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(14)
                                         run.font.color.rgb = RGBColor(80, 80, 80)  # Dark gray
-    
-                                # Formatting for box placeholders (box1, box2, etc.)
                                 elif placeholder.startswith("box"):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(11)
+                                        run.font.size = Pt(12)
                                         run.font.color.rgb = RGBColor(50, 50, 50)  # Gray
+                        break  # Break to avoid redundant replacements
+
                                     
     # Apply replacements to each slide
     for slide in presentation.slides:
