@@ -2314,25 +2314,34 @@ def parse_plain_text_response(response):
 
         # Handle Progression Canvas (Template 1)
         elif data["template_type"] == "1":
-            logger.info(f"Found data: {clean_response}")
-            column_pattern = re.compile(
-                r"Column (\d+):\s*Title:\s*(.+?)\s+Description:\s*(.+?)\s+Key Elements:\s*(.+?)(?=\nColumn|\Z)",
-                re.DOTALL,
-            )
-            columns = column_pattern.findall(clean_response)
-            logger.info(f"Found Columns: {columns}")
-            if columns:
-                for column in columns:
-                    column_number, title, description, key_elements = column
-                    data["sections"].append({
-                        "column": f"Column {column_number.strip()}",
-                        "title": title.strip(),
-                        "description": description.strip(),
-                        "key_elements": [el.strip() for el in key_elements.split(",")],
-                    })
+            try:
+                logger.info(f"Found data: {clean_response}")
+        
+                # Iterate through each column (1 to 7 assumed)
+                for i in range(1, 8):  # Assuming 7 columns as per the input
+                    column_match = re.search(
+                        rf"Column {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                        clean_response,
+                        re.DOTALL
+                    )
+                    if column_match:
+                        title = column_match.group(1).strip()
+                        description = column_match.group(2).strip()
+                        key_elements = [
+                            el.strip() for el in column_match.group(3).split(",")
+                        ]
+        
+                        # Append parsed column data to sections
+                        data["sections"].append({
+                            "column": f"Column {i}",
+                            "title": title,
+                            "description": description,
+                            "key_elements": key_elements,
+                        })
+                    else:
+                        logger.warning(f"Column {i} not found in the response.")
+                
                 logger.info(f"Parsed Sections for Template 1: {data['sections']}")
-            else:
-                logger.warning("No columns found for Template 1.")
                     
         # Handle Grid Layout Canvas (Template 2)
         elif data["template_type"] == "2":
