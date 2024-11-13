@@ -2315,10 +2315,11 @@ def parse_plain_text_response(response):
         # Handle Progression Canvas (Template 1)
         elif data["template_type"] == "1":
             column_pattern = re.compile(
-                r"Column (\d+):\s*Title:\s*(.+?)\n\s*Description:\s*(.+?)\n\s*Key Elements:\s*(.+)",
-                re.DOTALL,
+                r"Column (\d+):\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+?)(?=\nColumn|\Z)",
+                re.DOTALL | re.MULTILINE,
             )
             columns = column_pattern.findall(clean_response)
+            logger.info(f"Found Columns: {columns}")
             if columns:
                 for column in columns:
                     column_number, title, description, key_elements = column
