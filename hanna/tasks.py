@@ -2323,7 +2323,7 @@ def parse_plain_text_response(response):
                 for column in columns:
                     column_number, title, description, key_elements = column
                     data["sections"].append({
-                        "column": f"Column {column_number}",
+                        "column": f"Column {column_number.strip()}",
                         "title": title.strip(),
                         "description": description.strip(),
                         "key_elements": [el.strip() for el in key_elements.split(",")],
