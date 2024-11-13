@@ -2694,16 +2694,22 @@ def handle_template_type_3(canvas_data):
                                 
                                 # Apply formatting for cut1 and cut2 (strings)
                                 elif placeholder == "cut1":
-                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(20)
-                                        run.font.color.rgb = RGBColor(0, 0, 128)  # Dark Blue
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Dark Blue
                                 elif placeholder == "cut2":
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(80, 80, 80)  # Gray
+                                        run.font.size = Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                elif placeholder == "box":
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(11)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
