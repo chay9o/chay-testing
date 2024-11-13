@@ -2688,7 +2688,7 @@ def handle_template_type_3(canvas_data):
                                         paragraph.alignment = PP_ALIGN.CENTER
                                         for run in paragraph.runs:
                                             run.font.bold = True
-                                            run.font.size = Pt(18)  # Larger size for center_circle
+                                            run.font.size = Pt(16)  # Larger size for center_circle
                                             run.font.color.rgb = RGBColor(255, 255, 255)  # White
                                 
                                     elif content == data.get('title', ''):
