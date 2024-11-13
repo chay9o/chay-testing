@@ -2345,7 +2345,7 @@ def parse_plain_text_response(response):
                     logger.warning("No columns were successfully parsed for Template 1.")
                 else:
                     logger.info(f"Parsed Sections for Template 1: {data['sections']}")
-                    except Exception as e:
+            except Exception as e:
                 logger.error(f"Error parsing Template 1: {str(e)}")
                 raise ValueError(f"Parsing error for Template 1: {str(e)}")
                     
