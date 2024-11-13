@@ -2698,7 +2698,7 @@ def handle_template_type_3(canvas_data):
     
                                     elif content.startswith("-"):
                                         paragraph.alignment = PP_ALIGN.LEFT
-                                        paragraph.level = 1  # Indent for key elements
+                                        paragraph.level = 2  # Indent for key elements
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
                                             run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
@@ -2718,8 +2718,8 @@ def handle_template_type_3(canvas_data):
                                 elif placeholder == "center_circle":
                                     paragraph.alignment = PP_ALIGN.CENTER
                                     for run in paragraph.runs:
-                                        run.font.size = Pt(11)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                        run.font.size = Pt(18)
+                                        run.font.color.rgb = RGBColor(255, 255, 255)  # Gray
 
 
     # Iterate through slides and apply replacements
