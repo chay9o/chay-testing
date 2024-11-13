@@ -2471,16 +2471,16 @@ def handle_template_type_1(canvas_data):
         "cut2": canvas_description,
     }
 
-    # Dynamically map columns to placeholders (box1, box2, ..., box7)
+    # Map columns to placeholders dynamically
     for section in sections:
         column = section.get("column", "")  # Extract column identifier
-        if column.startswith("Column "):  # Ensure it matches the expected format
-            column_number = column.split(" ")[1]  # Extract the column number
+        if column.startswith("Column "):  # Match expected column format
+            column_number = column.split(" ")[1]  # Extract column number
             placeholder = f"box{column_number}"  # Map to placeholders like box1, box2, etc.
             replacement_dict[placeholder] = {
                 "title": section.get("title", "Default Title"),
                 "description": section.get("description", "Default Description"),
-                "key_elements": section.get("key_elements", [])[:4],  # Limit key elements to 4
+                "key_elements": section.get("key_elements", [])[:5],  # Limit key elements to 5
             }
 
     # Debugging: Print the replacement dictionary
@@ -2528,7 +2528,7 @@ def handle_template_type_1(canvas_data):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(16)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                        run.font.color.rgb = RGBColor(128, 128, 128)  # Gray
 
                                 # Format column titles
                                 elif content == data.get("title", ""):
@@ -2561,7 +2561,7 @@ def handle_template_type_1(canvas_data):
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)
-    pptx_base64 = base64.b64encode(pptx_stream.read()).decode('utf-8')
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
 
     print("Template 1 processing complete.")
     return {"pptx_base64": pptx_base64}
