@@ -2683,25 +2683,37 @@ def handle_template_type_3(canvas_data):
     
                                 # Check if data is a dictionary and apply formatting for title and description
                                 if isinstance(data, dict):
-                                    if content == data.get('title', ''):
+                                    if placeholder == "center_circle" and content == data.get('title', ''):
+                                        # Specific formatting for center_circle
                                         paragraph.alignment = PP_ALIGN.CENTER
                                         for run in paragraph.runs:
                                             run.font.bold = True
-                                            run.font.size = Pt(14)
-                                            run.font.color.rgb = RGBColor(0, 255, 255)  # Black
-    
+                                            run.font.size = Pt(18)  # Larger size for center_circle
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                
+                                    elif content == data.get('title', ''):
+                                        # Formatting for Supporting Circle titles
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)  # Standard size for titles
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                
                                     elif content == data.get('description', ''):
+                                        # Formatting for descriptions
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
                                             run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-    
+                                
                                     elif content.startswith("-"):
+                                        # Formatting for key elements
                                         paragraph.alignment = PP_ALIGN.LEFT
                                         paragraph.level = 1  # Indent for key elements
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
                                             run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+
                                 
                                 # Apply formatting for cut1 and cut2 (strings)
                                 elif placeholder == "cut1":
@@ -2715,15 +2727,6 @@ def handle_template_type_3(canvas_data):
                                     for run in paragraph.runs:
                                         run.font.size = Pt(16)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-                                elif placeholder == "center_circle":
-                                    paragraph.alignment = PP_ALIGN.CENTER
-                                    paragraph.text = ""  # Clear existing text
-                                    run = paragraph.add_run(data.get('title', ''))  # Add the new text
-                                    run.font.bold = True
-                                    run.font.size = Pt(18)  # Apply font size
-                                    run.font.color.rgb = RGBColor(255, 255, 255)  # Apply white font color
-                                    run.font.color.theme_color = None  # Disable theme color
-
 
     # Iterate through slides and apply replacements
     for slide in presentation.slides:
