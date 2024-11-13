@@ -2459,69 +2459,118 @@ def parse_plain_text_respons(response):
 def handle_template_type_1(canvas_data):
     #presentation = Presentation("Progression Canvas.pptx")
     print(f"Handling template type 1 with data: {canvas_data}")
-    presentation = Presentation("Hex Canvas Design (6).pptx")
+    presentation = Presentation("Hex Canvas Design (5).pptx")
 
-    if not canvas_data.get("columns"):
-        raise ValueError("Columns data is missing for Progression Canvas")
+    canvas_name = canvas_data.get("canvas_name", "")
+    canvas_description = canvas_data.get("canvas_description", "")
+    sections = canvas_data.get("sections", [])
 
-    # Build replacement dictionaries
-    replacement_dict_slide1 = {
-        "cut1": canvas_data["canvas_name"],
-        "cut2": canvas_data["canvas_description"],
+    # Prepare the replacement dictionary
+    replacement_dict = {
+        "cut1": canvas_name,
+        "cut2": canvas_description
     }
-    for idx, column in enumerate(canvas_data["columns"], start=1):
-        replacement_dict_slide1[f"box{idx}"] = column.get("title", "N/A")
 
-    replacement_dict_slide2 = {}
-    for idx, column in enumerate(canvas_data["columns"], start=1):
-        replacement_dict_slide2[f"box{idx}"] = (
-            f"{column.get('title', 'N/A')}\n\n"
-            f"{column.get('description', 'N/A')}\n- "
-            + "\n- ".join(column.get("key_elements", []))
-        )
+    # Add data for the 7 boxes
+    box_counter = 1
+    for section in sections:
+        if box_counter > 7:
+            break  # Ensure we only process up to 7 boxes
+        raw_key_elements = section.get("key_elements", [])
+        cleaned_key_elements = []
+
+        # Clean up key elements and stop parsing if a new section starts
+        for element in raw_key_elements:
+            cleaned_key_elements.append(element.strip())
+
+        # Add box data to replacement dictionary
+        replacement_dict[f"box{box_counter}"] = {
+            "title": section.get("title", "Default Title"),
+            "description": section.get("description", "Default Description"),
+            "key_elements": cleaned_key_elements[:3],  # Limit key elements to 3
+        }
+        box_counter += 1
+
+    # Print the replacement dictionary for debugging
+    print("==== TEMPLATE 1 REPLACEMENT DATA ====")
+    for key, value in replacement_dict.items():
+        if isinstance(value, dict):
+            print(f"{key}: Title: {value['title']}, Description: {value['description']}, Key Elements: {', '.join(value['key_elements'])}")
+        else:
+            print(f"{key}: {value}")
+    print("==== END OF REPLACEMENT DATA ====")
+
+    # Function to apply replacements and formatting
     def apply_replacements(slide, replacement_dict):
+        """
+        Applies replacements for placeholders in the provided slide.
+        Handles formatting dynamically based on the placeholder type.
+        """
         for shape in slide.shapes:
             if hasattr(shape, "text"):
-                for placeholder, replacement in replacement_dict.items():
+                for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
-                        shape.text = shape.text.replace(placeholder, replacement)
+                        # Replace placeholder with content
+                        if isinstance(data, dict):
+                            formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
+                        else:
+                            formatted_text = data
 
-                        # Formatting logic
-                        if placeholder in ["cut1", "cut2"]:
-                            for paragraph in shape.text_frame.paragraphs:
-                                paragraph.alignment = PP_ALIGN.CENTER
-                                for run in paragraph.runs:
-                                    run.font.bold = True
-                                    run.font.size = Pt(20 if placeholder == "cut1" else 14)
-                                    run.font.color.rgb = RGBColor(0, 0, 0)
-                        elif placeholder.startswith("column") and "title" in placeholder:
-                            for paragraph in shape.text_frame.paragraphs:
-                                paragraph.alignment = PP_ALIGN.CENTER
-                                for run in paragraph.runs:
-                                    run.font.bold = True
-                                    run.font.size = Pt(16)
-                                    run.font.color.rgb = RGBColor(0, 0, 0)
-                        elif placeholder.startswith("column") and "description" in placeholder:
-                            for paragraph in shape.text_frame.paragraphs:
-                                paragraph.alignment = PP_ALIGN.LEFT
-                                for run in paragraph.runs:
-                                    run.font.size = Pt(14)
-                                    run.font.color.rgb = RGBColor(50, 50, 50)
-                        elif placeholder.startswith("column") and "key_elements" in placeholder:
-                            for paragraph in shape.text_frame.paragraphs:
-                                paragraph.alignment = PP_ALIGN.LEFT
-                                for run in paragraph.runs:
-                                    run.font.size = Pt(12)
-                                    run.font.color.rgb = RGBColor(50, 50, 50)
+                        # Replace the placeholder text
+                        shape.text = formatted_text
 
+                        # Apply formatting to the updated text
+                        if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                            for paragraph in shape.text_frame.paragraphs:
+                                content = paragraph.text.strip()
+
+                                # Formatting for canvas name and description
+                                if placeholder == "cut1":
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(20)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                elif placeholder == "cut2":
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+
+                                # Formatting for box titles
+                                elif content == data.get("title", ""):
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(14)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+
+                                # Formatting for descriptions
+                                elif content == data.get("description", ""):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+
+                                # Formatting for key elements
+                                elif content.startswith("-"):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    paragraph.level = 1  # Indentation for key elements
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+
+    # Apply replacements to the slide
     for slide in presentation.slides:
         apply_replacements(slide, replacement_dict)
 
-    # Save presentation
+    # Save the presentation and return as base64
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
     pptx_stream.seek(0)
     pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
+
+    print("Template 1 processing complete.")
     return {"pptx_base64": pptx_base64}
 
 def handle_template_type_2(canvas_data):
