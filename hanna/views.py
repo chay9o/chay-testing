@@ -257,30 +257,64 @@ def classify_text_with_llm_together(query_text):
     return generated_text
     
 @csrf_exempt
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import logging
+
+logger = logging.getLogger(__name__)
+
+@csrf_exempt
 def webhook_handler(request):
     if request.method == "POST":
         try:
+            # Parse the request body
             data = json.loads(request.body)
+            
+            # Extract required fields
             query = data.get("query")
             source = data.get("source")
-            company_id = data.get("collection")  
-            initiative_id = data.get("entity")  
-            date = data.get("date")
-            # Perform classification or analytics logging
-            print(f"Received query from {source}: {query}")
+            company_id = data.get("collection", None)
+            initiative_id = data.get("entity", None)
+            date = data.get("date", None)
+
+            if not query:
+                return JsonResponse({"error": "Missing 'query' in the request"}, status=400)
+
+            # Log received query
+            logger.info(f"Received query from {source}: {query}")
+
+            # Call LLM classification function
             classification_result = classify_text_with_llm_together(query)
-            print(f"classification:{classification_result}")
+
+            # Parse classification result
             try:
                 classification_data = json.loads(classification_result)
-                areas = classification_data.get("areas", {})
+                areas = classification_data.get("areas", [])
+                logger.info(f"Classification result: {classification_data}")
             except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse classification result: {classification_result}")
                 return JsonResponse({"error": f"Failed to parse classification result: {str(e)}"}, status=500)
 
+            # Return success response
+            return JsonResponse({
+                "query": query,
+                "source": source,
+                "company_id": company_id,
+                "initiative_id": initiative_id,
+                "date": date,
+                "classification": areas,
+            }, status=200)
+
         except json.JSONDecodeError:
+            logger.error("Invalid JSON received in request")
             return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
+            logger.exception("Unexpected error occurred")
             return JsonResponse({"error": str(e)}, status=500)
-    return JsonResponse({"error": "Invalid request"}, status=400)
+
+    return JsonResponse({"error": "Invalid request method. Only POST allowed."}, status=400)
+
 
 @csrf_exempt
 def view_classifications(request):
