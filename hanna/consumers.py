@@ -135,24 +135,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
         pass
 
     async def generate_response(self, is_trained_data_used):
-        final_response = ""
-        partial_response = ""
+        final_response = ""  # To store the complete response
         while True:
-            next_token = await self.que.get()
-            if next_token == job_done:
+            next_token = await self.que.get()  # Get the next token from the queue
+            if next_token == job_done:  # Check if processing is done
                 break
-            # Filter out tokens that include metadata or unwanted information
+            # Filter out unwanted tokens like metadata
             if next_token.startswith('content=') or next_token.startswith('id=') or next_token.startswith('response_metadata='):
                 continue
-            partial_response += str(next_token)
+            # Append the token to the final response
             final_response += str(next_token)
-            await self.send(text_data=json.dumps({"message": partial_response}))
-            partial_response = ""
+            # Send the token as a partial response
+            await self.send(text_data=json.dumps({"message": next_token}))
+        
+        # Send the final response to the client
         await self.send(text_data=json.dumps({
-            "message": "job done",
-            "query_count": 1,  # Always 1 for a single query
+            "message": final_response,
+            "query_count": 1,  # Always 1 for single query
             "is_trained_data_used": 1 if is_trained_data_used else 0
         }))
+        # Send a "job done" message
+        await self.send(text_data=json.dumps({"message": "job done"}))
 
     async def handle_response(self, response, is_trained_data_used):
         final_response = ""
@@ -380,7 +383,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                  'company_prompt': company_prompt,
                                  'initiative_prompt': initiative_prompt}, config=config)
 
-        await self.handle_response(response, is_trained_data_used)
+        #await self.handle_response(response, is_trained_data_used)
         await self.generate_response(is_trained_data_used)
 
 
