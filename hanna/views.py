@@ -295,7 +295,7 @@ def webhook_handler(request):
                 "company_id": company_id,
                 "initiative_id": initiative_id,
                 "date": date,
-                "classification": areas,
+                "areas": areas,
             }, status=200)
 
         except json.JSONDecodeError:
