@@ -158,10 +158,7 @@ This is only applicable if the user asks about situations in companies in which 
             final_response += str(next_token)
             await self.send(text_data=json.dumps({"message": partial_response}))
             partial_response = ""
-        await self.send(text_data=json.dumps({
-            "query_count": 1,  # Always 1 for a single query
-            "is_trained_data_used": 1 if is_trained_data_used else 0  # True/False converted to 1/0
-        }))
+        
         await self.send(text_data=json.dumps({"message": "job done"}))
 
     async def handle_response(self, response, is_trained_data_used):
