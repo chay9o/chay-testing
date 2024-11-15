@@ -159,7 +159,6 @@ This is only applicable if the user asks about situations in companies in which 
             await self.send(text_data=json.dumps({"message": partial_response}))
             partial_response = ""
         await self.send(text_data=json.dumps({
-            "message": final_response,
             "query_count": 1,  # Always 1 for a single query
             "is_trained_data_used": 1 if is_trained_data_used else 0  # True/False converted to 1/0
         }))
