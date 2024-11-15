@@ -144,7 +144,7 @@ This is only applicable if the user asks about situations in companies in which 
     async def disconnect(self, close_code):
         pass
 
-    async def generate_response(self):
+    async def generate_response(self, is_trained_data_used):
         final_response = ""
         partial_response = ""
         while True:
@@ -158,9 +158,14 @@ This is only applicable if the user asks about situations in companies in which 
             final_response += str(next_token)
             await self.send(text_data=json.dumps({"message": partial_response}))
             partial_response = ""
+        await self.send(text_data=json.dumps({
+            "message": final_response,
+            "query_count": 1,  # Always 1 for a single query
+            "is_trained_data_used": 1 if is_trained_data_used else 0  # True/False converted to 1/0
+        }))
         await self.send(text_data=json.dumps({"message": "job done"}))
 
-    async def handle_response(self, response):
+    async def handle_response(self, response, is_trained_data_used):
         final_response = ""
         async for res in self._convert_to_async_iter(response):
             # Log the type of res for debugging purposes
@@ -175,7 +180,11 @@ This is only applicable if the user asks about situations in companies in which 
 
             final_response += res_text
 
-        await self.send(text_data=json.dumps({"message": final_response}))
+        await self.send(text_data=json.dumps({
+            "message": final_response,
+            "query_count": 1,  # Always 1 for a single query
+            "is_trained_data_used": 1 if is_trained_data_used else 0  # True/False converted to 1/0
+        }))
         await self.send(text_data=json.dumps({"message": "job done"}))
 
     async def _convert_to_async_iter(self, generator):
@@ -185,6 +194,7 @@ This is only applicable if the user asks about situations in companies in which 
 
     async def receive(self, text_data=None, bytes_data=None):
         retriever = ""
+        is_trained_data_used = False  # Initialize this flag
 
         master_vector = []
         company_vector = []
@@ -250,6 +260,7 @@ This is only applicable if the user asks about situations in companies in which 
                     "Context Required" in cat:
 
                 # if "Context Required" not in cat:
+                is_trained_data_used = True
                 #     mode = 0
 
                 master_vector = mv.search_master_vectors(query=query, class_="MV001")
@@ -262,6 +273,7 @@ This is only applicable if the user asks about situations in companies in which 
                 #     mode = 0
                 # if "Personal Information" in cat:
                 #     mode = 0.2
+                is_trained_data_used = True
 
                 company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
@@ -410,8 +422,8 @@ This is only applicable if the user asks about situations in companies in which 
                                  'company_prompt': f"[INST] {company_prompt} [/INST]" if company_prompt.strip() != "" else "",
                                  'initiative_prompt': f"[INST] {initiative_prompt} [/INST]" if initiative_prompt.strip() != "" else ""}, config=config)
 
-        task_1 = asyncio.create_task(self.handle_response(response))
-        task_2 = asyncio.create_task(self.generate_response())
+        task_1 = asyncio.create_task(self.handle_response(response, is_trained_data_used))
+        task_2 = asyncio.create_task(self.generate_response(is_trained_data_used))
 
         await task_1
         await task_2
