@@ -127,15 +127,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 description="The temperature of the LLM",
             )
         )
-        self.counters = {"total_queries": 0, "trained_data_queries": 0}
-
+    
     async def connect(self):
         await self.accept()
 
     async def disconnect(self, close_code):
         pass
 
-    async def generate_response(self):
+    async def generate_response(self, is_trained_data_used):
         final_response = ""
         partial_response = ""
         while True:
@@ -149,16 +148,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
             final_response += str(next_token)
             await self.send(text_data=json.dumps({"message": partial_response}))
             partial_response = ""
-        await self.send(text_data=json.dumps({"message": "job done"}))
+        await self.send(text_data=json.dumps({
+            "message": "job done",
+            "query_count": 1,  # Always 1 for a single query
+            "is_trained_data_used": 1 if is_trained_data_used else 0
+        }))
 
-    async def handle_response(self, response):
+    async def handle_response(self, response, is_trained_data_used):
         final_response = ""
         async for res in self._convert_to_async_iter(response):
             res_text = str(res)
             if res_text.startswith('content=') or res_text.startswith('id=') or res_text.startswith('response_metadata='):
                 continue
             final_response += res_text
-        await self.send(text_data=json.dumps({"message": final_response}))
+        await self.send(text_data=json.dumps({
+            "message": final_response,
+            "query_count": 1,  # Always 1 for a single query
+            "is_trained_data_used": 1 if is_trained_data_used else 0
+        }))
         await self.send(text_data=json.dumps({"message": "job done"}))
 
     async def _convert_to_async_iter(self, generator):
@@ -166,25 +173,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             yield item
             await asyncio.sleep(0)
 
-    # New query counters
-    async def increment_counter(self, counter_type):
-        """
-        Increment the specified counter (e.g., total_queries, trained_data_queries).
-        :param counter_type: Type of counter to increment (e.g., 'total_queries', 'trained_data_queries')
-        """
-        # Placeholder for the actual implementation
-        if counter_type in self.counters:
-            self.counters[counter_type] += 1
-        else:
-            self.counters[counter_type] = 1  # Initialize if it doesn't exist
-        log_info_async(f"Incremented {counter_type} to {self.counters[counter_type]}")
-        print(f"{counter_type} count: {self.counters[counter_type]}")
-
-    async def increment_query_counter(self):
-        await self.increment_counter("total_queries")
-
-    async def increment_trained_data_counter(self):
-        await self.increment_counter("trained_data_queries")
 
     async def receive(self, text_data=None, bytes_data=None):
         logging.info("Received message in ChatConsumer")
@@ -219,15 +207,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         initiative_prompt = data.get('initiativePrompt', '')
         command_stop = data.get('command_stop', False)
         
-        #payload = {"query": query,"collection":collection,"entity":entity,"current_date":current_date, "source": "HANA chatbot"}
-        #send_data_to_webhook.delay(payload)  # Send to Celery queue
-        
         log_info_async(f"data: {data}")
 
-        # Increment query counter
-        #await self.send_query_counter_to_view("total_queries")
-        await self.increment_query_counter()
-        
+
         # Flag for trained data usage
         is_trained_data_used = False
 
@@ -269,8 +251,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
-                    #await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
-                    await self.increment_trained_data_counter()
+
 
             elif "Individuals" in cat or "Personal Information" in cat:
 
@@ -280,8 +261,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 if company_vector or initiative_vector or member_vector:
                     is_trained_data_used = True
-                    #await self.send_query_counter_to_view(company_id, initiative_id, "trained_data_queries")
-                    await self.increment_trained_data_counter()
+
 
             if 2 <= len(keywords_list) <= 3:
 
@@ -400,8 +380,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                  'company_prompt': company_prompt,
                                  'initiative_prompt': initiative_prompt}, config=config)
 
-        task_1 = asyncio.create_task(self.handle_response(response))
-        task_2 = asyncio.create_task(self.generate_response())
+        task_1 = asyncio.create_task(self.handle_response(response, is_trained_data_used))
+        task_2 = asyncio.create_task(self.generate_response(is_trained_data_used))
 
         await task_1
         await task_2
