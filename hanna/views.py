@@ -260,53 +260,32 @@ def classify_text_with_llm_together(query_text):
 def webhook_handler(request):
     if request.method == "POST":
         try:
-            # Parse the request body
             data = json.loads(request.body)
-            
-            # Extract required fields
             query = data.get("query")
             source = data.get("source")
-            company_id = data.get("collection", None)
-            initiative_id = data.get("entity", None)
-            date = data.get("date", None)
-
-            if not query:
-                return JsonResponse({"error": "Missing 'query' in the request"}, status=400)
-
-            # Log received query
-            logger.info(f"Received query from {source}: {query}")
-
-            # Call LLM classification function
+            company_id = data.get("collection")  
+            initiative_id = data.get("entity")  
+            date = data.get("date")
+            # Perform classification or analytics logging
+            print(f"Received query from {source}: {query}")
             classification_result = classify_text_with_llm_together(query)
-
-            # Parse classification result
+            print(f"classification:{classification_result}")
             try:
                 classification_data = json.loads(classification_result)
-                areas = classification_data.get("areas", [])
-                logger.info(f"Classification result: {classification_data}")
+                areas = classification_data.get("areas", {})
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse classification result: {classification_result}")
                 return JsonResponse({"error": f"Failed to parse classification result: {str(e)}"}, status=500)
 
-            # Return success response
-            return JsonResponse({
-                "query": query,
-                "source": source,
-                "company_id": company_id,
-                "initiative_id": initiative_id,
-                "date": date,
-                "areas": areas,
-            }, status=200)
-
-        except json.JSONDecodeError:
-            logger.error("Invalid JSON received in request")
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+            if result.get("status") == "success":
+                return JsonResponse({
+                    "status": "success",
+                    "result": classification_data  # Return classification result
+                }, status=200)
+            else:
+                return JsonResponse({"error": "Error storing data"}, status=500)
         except Exception as e:
-            logger.exception("Unexpected error occurred")
             return JsonResponse({"error": str(e)}, status=500)
-
-    return JsonResponse({"error": "Invalid request method. Only POST allowed."}, status=400)
-
+    return JsonResponse({"error": "Invalid request"}, status=400)
 
 @csrf_exempt
 def view_classifications(request):
