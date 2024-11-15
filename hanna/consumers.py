@@ -380,11 +380,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                  'company_prompt': company_prompt,
                                  'initiative_prompt': initiative_prompt}, config=config)
 
-        task_1 = asyncio.create_task(self.handle_response(response, is_trained_data_used))
-        task_2 = asyncio.create_task(self.generate_response(is_trained_data_used))
-
-        await task_1
-        await task_2
+        await self.handle_response(response, is_trained_data_used)
+        await self.generate_response(is_trained_data_used)
 
 
 
