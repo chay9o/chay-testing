@@ -257,14 +257,6 @@ def classify_text_with_llm_together(query_text):
     return generated_text
     
 @csrf_exempt
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import logging
-
-logger = logging.getLogger(__name__)
-
-@csrf_exempt
 def webhook_handler(request):
     if request.method == "POST":
         try:
