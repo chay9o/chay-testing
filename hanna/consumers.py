@@ -255,25 +255,28 @@ This is only applicable if the user asks about situations in companies in which 
                     "Definitional Questions" in cat or \
                     "Context Required" in cat:
 
-                # if "Context Required" not in cat:
-                is_trained_data_used = True
+
                 #     mode = 0
 
                 master_vector = mv.search_master_vectors(query=query, class_="MV001")
                 company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
                 member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids, user_id=user_id)
+                        
+                if company_vector or initiative_vector or member_vector:
+                    is_trained_data_used = True
 
             elif "Individuals" in cat or "Personal Information" in cat:
                 # if "Individuals" in cat:
                 #     mode = 0
-                # if "Personal Information" in cat:
-                #     mode = 0.2
-                is_trained_data_used = True
+  
 
                 company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
                 member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids, user_id=user_id)
+
+                if company_vector or initiative_vector or member_vector:
+                    is_trained_data_used = True
 
             # if "Greeting" in cat:
             #     mode = 0.4
