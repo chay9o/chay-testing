@@ -281,7 +281,7 @@ def webhook_handler(request):
             # Return classification data to the user
             return JsonResponse({
                 "status": "success",
-                "classification_data": classification_data
+                "areas": classification_data
             }, status=200)
 
         except json.JSONDecodeError:
