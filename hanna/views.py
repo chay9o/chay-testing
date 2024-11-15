@@ -280,7 +280,6 @@ def webhook_handler(request):
 
             # Return classification data to the user
             return JsonResponse({
-                "status": "success",
                 "areas": classification_data
             }, status=200)
 
