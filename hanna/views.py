@@ -266,37 +266,31 @@ def webhook_handler(request):
             company_id = data.get("collection")  
             initiative_id = data.get("entity")  
             date = data.get("date")
+            
             # Perform classification or analytics logging
             print(f"Received query from {source}: {query}")
             classification_result = classify_text_with_llm_together(query)
-            print(f"classification:{classification_result}")
+            print(f"classification: {classification_result}")
+            
             try:
                 classification_data = json.loads(classification_result)
                 areas = classification_data.get("areas", {})
             except json.JSONDecodeError as e:
                 return JsonResponse({"error": f"Failed to parse classification result: {str(e)}"}, status=500)
 
-            payload = {
-                "Company_ID": company_id,
-                "Initiative_ID": initiative_id,
-                "Date": date,  # Use the provided date from the payload
-                "areas": areas  # Parse classification JSON
-            }
-            print(payload)
-            result = insert_classification_data(payload)
-            if result.get("status") == "success":
-                return JsonResponse({
-                    "status": "success",
-                    "result": classification_data  # Return classification result
-                }, status=200)
-            else:
-                return JsonResponse({"error": "Error storing data"}, status=500)
+            # Return classification data to the user
+            return JsonResponse({
+                "status": "success",
+                "classification_data": classification_data
+            }, status=200)
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+    
     return JsonResponse({"error": "Invalid request"}, status=400)
+
 
 @csrf_exempt
 def view_classifications(request):
