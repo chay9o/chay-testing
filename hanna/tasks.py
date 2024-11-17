@@ -2101,7 +2101,7 @@ def process_prompts4(final_content, language, user_id):
         #canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
         smartnote_title = canvas_data.get("canvas_name", "Default Title")
-        smartnote_description = refine_and_generate_presentation(canvas_data, language)
+        smartnote_description = refine_and_generate_presentation(generated_response, language)
         
         template_type = canvas_data.get("template_type", None)
         if not template_type:
