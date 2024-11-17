@@ -2218,10 +2218,11 @@ def refine_and_generate_presentation(canvas_data, language):
 
         print(f"Refined response: {refined_response}")
         formatted_presentation = generate_dynamic_presentation(refined_response)
+        print("Generated 3-Slide Presentation:")
         print(formatted_presentation)
 
         # Example: Logging or returning the dynamic slides
-        print("Generated 3-Slide Presentation:")
+        print("Generated 3-Slide Pr:")
         for slide, content in formatted_presentation.items():
             print(f"[{slide}]")
             print(f"[Title] {content['Title']} [/Title]")
