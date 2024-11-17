@@ -2140,44 +2140,45 @@ def process_prompts4(final_content, language, user_id):
 def generate_dynamic_presentation(refined_response):
     """
     Dynamically generates a 3-slide presentation from the refined response.
+    Slide titles and descriptions are handled dynamically without predefined static names.
     """
     slides = {}
 
-    # Slide 1: Canvas Overview
+    # Dynamically extract slide content
     slides["Slide 1"] = {
-        "Title": "Canvas Overview",
-        "Description": extract_section(refined_response, "Canvas Overview")
+        "Title": extract_dynamic_section(refined_response, "Slide 1 Title"),
+        "Description": extract_dynamic_section(refined_response, "Slide 1 Description"),
     }
-
-    # Slide 2: Collaborative Session
     slides["Slide 2"] = {
-        "Title": "Collaborative Session",
-        "Description": extract_section(refined_response, "Collaborative Session")
+        "Title": extract_dynamic_section(refined_response, "Slide 2 Title"),
+        "Description": extract_dynamic_section(refined_response, "Slide 2 Description"),
     }
-
-    # Slide 3: Key Takeaways
     slides["Slide 3"] = {
-        "Title": "Key Takeaways",
-        "Description": extract_section(refined_response, "Key Takeaways")
+        "Title": extract_dynamic_section(refined_response, "Slide 3 Title"),
+        "Description": extract_dynamic_section(refined_response, "Slide 3 Description"),
     }
 
     return slides
 
-def extract_section(response, section_name):
+
+def extract_dynamic_section(response, section_name):
     """
-    Extracts the content of a specific section from the refined response.
+    Extracts the content of a specific section dynamically from the refined response.
+    This ensures flexibility for dynamic content generation.
     """
     try:
-        # Dynamically locate the section by its heading
-        pattern = rf"\*\*{section_name}\*\*\n\n(.*?)(?=\n\*\*|\Z)"
+        # Regular expression to dynamically locate section content
+        pattern = rf"\[{section_name}\](.*?)\[/{section_name}\]"
         match = re.search(pattern, response, re.DOTALL)
         if match:
             return match.group(1).strip()
         else:
-            raise ValueError(f"Section '{section_name}' not found in the response.")
+            return f"{section_name} content not found."
     except Exception as e:
         print(f"Error extracting section '{section_name}': {str(e)}")
-        return "Content not found."
+        return f"{section_name} content not found."
+
+
         
 def refine_and_generate_presentation(canvas_data, language):
     try:
@@ -2217,6 +2218,7 @@ def refine_and_generate_presentation(canvas_data, language):
 
         print(f"Refined response: {refined_response}")
         formatted_presentation = generate_dynamic_presentation(refined_response)
+        print(formatted_presentation)
 
         # Example: Logging or returning the dynamic slides
         print("Generated 3-Slide Presentation:")
@@ -2225,6 +2227,7 @@ def refine_and_generate_presentation(canvas_data, language):
             print(f"[Title] {content['Title']} [/Title]")
             print(f"[Description] {content['Description']} [/Description]")
             print(f"[/{slide}]")
+        return formatted_presentation
         # Handle the refined response as needed (e.g., storing or further processing)
 
     except Exception as e:
