@@ -2186,13 +2186,13 @@ def extract_dynamic_section(response, section_name):
 
 
         
-def refine_and_generate_presentation(canvas_data, language):
+def refine_and_generate_presentation(generated_response, language):
     try:
         # Load the new system prompt for refining the response
         with open("cpromptcheck2.txt", "r") as file:
             new_prompt_content = file.read()
 
-        system_prompt = new_prompt_content.replace("{canvas_data}", str(canvas_data)).replace("{language}", language)
+        system_prompt = new_prompt_content.replace("{generated_response}", str(generated_response)).replace("{language}", language)
 
         # Use Together API
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
