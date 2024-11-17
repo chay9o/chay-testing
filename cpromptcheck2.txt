@@ -1,55 +1,19 @@
-[INST]
-Instructions:
-You are tasked with generating a **3-slide presentation** using the provided **Canvas Data** and responses from **Prompt 3** and **Prompt 4**. The output should be professional, well-structured, and narrative-focused, adhering strictly to the defined slide format below.
+[INST]  
+**Instructions:**  
+You are tasked with generating **text content** using the provided **Canvas Data** and responses from **Prompt 3** and **Prompt 4**. The output should be professional, well-structured, and narrative-focused, adhering strictly to the defined format below.  
 
-Input:
-**Canvas Data:**
-{canvas_data}
-[/INST]
+**Input:**  
+**Canvas Data:**  
+{canvas_data}  
+[/INST]  
 
-[INST]
-**Prompt 3:**
-Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.
+[INST]  
+**Prompt 3:**  
+Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.  
 
-**Prompt 4:**
-Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
+**Prompt 4:**  
+Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.  
 
-**Slide 3 Guidance:**
-Summarize the critical insights and results derived from the canvas. Highlight actionable next steps to guide problem-solving and decision-making. Ensure this slide reflects the overall outcome of the situation analysis and collaborative session.
-
-[/INST]
-
-[INST]
-Presentation Output:
-Generate the presentation using the structure and placeholders below.
-
-[Slide 1]
-[Title] [/Title]
-[Description] {Narrative from Prompt 3} [/Description]
-[/Slide 1]
-
-[Slide 2]
-[Title] [/Title]
-[Description] {Narrative from Prompt 4} [/Description]
-[/Slide 2]
-
-[Slide 3]
-[Title] Key Insights and Next Steps [/Title]
-[Description] Summarize the insights derived from the canvas and session. Highlight actionable steps. [/Description]
-[/Slide 3]
-
----
-
-[INST]
-Additional Rules:
-1. **Clarity and Professionalism:** The presentation should read like a corporate slide deck.
-2. **Plain Text Format:** Ensure placeholders like `[Title]` and `[Description]` are clearly identifiable and in English, even if the content is multilingual.
-3. **Avoid Bullet Points:** Use narrative paragraphs instead of bullet points in the descriptions.
-4. **Critical Content:** Highlight objectives, stakeholders, actions, timeline, risks, and success metrics where relevant.
-5. **Ensure Structure:** Retain the exact keys (`[Title]`, `[Description]`, etc.) in the output for seamless parsing and integration.
-6. **Fallback Handling:** If any part of `{canvas_data}` is incomplete, mark missing elements as "N/A" and ensure narrative continuity.
-7. **Narrative Flow:** Ensure smooth transitions between slides by linking insights from Prompt 3 to Prompt 4 and then to Slide 3.
-
-Use the above structure to generate a cohesive, narrative-style 3-slide presentation. Ensure seamless transitions between slides and emphasize actionable insights to help the team.
-
-[/INST]
+**Guidance for Insights and Next Steps:**  
+Summarize the critical insights and results derived from the canvas. Highlight actionable next steps to guide problem-solving and decision-making. Ensure this section reflects the overall outcome of the situation analysis and collaborative session.  
+[/INST]  
