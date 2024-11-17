@@ -2200,7 +2200,7 @@ def refine_and_generate_presentation(generated_response, language):
         model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Refine this canvas data for presentation:\n{canvas_data}"}
+            {"role": "user", "content": f"Refine this canvas data for presentation:\n{generated_response}"}
         ]
         
         response = client.chat.completions.create(
