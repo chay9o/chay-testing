@@ -2118,16 +2118,16 @@ def process_prompts4(final_content, language, user_id):
         #canvas_data = json_response
             # Based on the template type, forward to the appropriate function
         if template_type == "1":
-            pptx_data = handle_template_type_1(canvas_data)
+            pptx_data = handle_template_type_1(canvas_data, smartnote_title, smartnote_description)
             response_data.update(pptx_data) 
         elif template_type == "2":
-            pptx_data = handle_template_type_2(canvas_data)
+            pptx_data = handle_template_type_2(canvas_data, smartnote_title, smartnote_description)
             response_data.update(pptx_data) 
         elif template_type == "3":
-            pptx_data = handle_template_type_3(canvas_data)
+            pptx_data = handle_template_type_3(canvas_data, smartnote_title, smartnote_description)
             response_data.update(pptx_data) 
         elif template_type == "4":
-            pptx_data = handle_template_type_4(canvas_data)
+            pptx_data = handle_template_type_4(canvas_data, smartnote_title, smartnote_description)
             response_data.update(pptx_data) 
         else:
             #logger.error(f"Unknown template type: {template_type}")
@@ -2493,7 +2493,7 @@ def parse_plain_text_respons(response):
         raise ValueError(f"Parsing error: {str(e)}")
         
 # Example functions to handle each template type
-def handle_template_type_1(canvas_data):
+def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
     #presentation = Presentation("Progression Canvas.pptx")
     print(f"Handling template type 1 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (5).pptx")
@@ -2601,9 +2601,12 @@ def handle_template_type_1(canvas_data):
     pptx_base64 = base64.b64encode(pptx_stream.read()).decode('utf-8')
 
     print("Template 1 processing complete.")
-    return {"pptx_base64": pptx_base64}
-
-def handle_template_type_2(canvas_data):
+    return {
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description
+    }
+def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
     print(f"Handling template type 2 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (7).pptx")  # Use the appropriate template for type 2
 
@@ -2724,9 +2727,13 @@ def handle_template_type_2(canvas_data):
     pptx_base64 = base64.b64encode(pptx_stream.read()).decode('utf-8')
 
     print("Template 2 processing complete.")
-    return {"pptx_base64": pptx_base64}
+    return {
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description
+    }
     
-def handle_template_type_3(canvas_data):
+def handle_template_type_3(canvas_data, smartnote_title, smartnote_description):
     #presentation = Presentation("Circular Canvas.pptx")
     print(f"Handling template type 3 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (6).pptx")
@@ -2863,9 +2870,13 @@ def handle_template_type_3(canvas_data):
     pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
 
     print("Template 3 processing complete.")
-    return {"pptx_base64": pptx_base64}
+    return {
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description
+    }
     
-def handle_template_type_4(canvas_data):
+def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
     presentation = Presentation("Hex Canvas Design (3).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
     if "top_hexagons" not in canvas_data or not canvas_data["top_hexagons"]:
@@ -3010,7 +3021,9 @@ def handle_template_type_4(canvas_data):
     log_memory_usage("Save Presentation")
     print("done")
     return {
-        'pptx_base64': pptx_base64,
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description
     }
     
     
