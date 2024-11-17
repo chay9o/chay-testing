@@ -1,19 +1,22 @@
 [INST]  
-**Instructions:**  
-You are tasked with generating **text content** using the provided **Canvas Data** and responses from **Prompt 3** and **Prompt 4**. The output should be professional, well-structured, and narrative-focused, adhering strictly to the defined format below.  
+Instructions: 
+You are tasked with generating **text content** using the provided **generated_response** and responses from **Prompt 3** and **Prompt 4**. The output should be professional, well-structured, and narrative-focused, adhering strictly to the defined format below.  
 
-**Input:**  
-**Canvas Data:**  
-{canvas_data}  
+Input:  
+{generated_response}  
 [/INST]  
 
 [INST]  
-**Prompt 3:**  
+Prompt 3:
 Explain the canvas to someone who is new to using it. Mention the name of the canvas and focus on a narrative format without bullet points. Use clear language to explain how to work with the canvas effectively.  
+[/INST]  
 
-**Prompt 4:**  
+[INST] 
+Prompt 4: 
 Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.  
+[/INST]  
 
-**Guidance for Insights and Next Steps:**  
+[INST] 
+Guidance for Insights and Next Steps:
 Summarize the critical insights and results derived from the canvas. Highlight actionable next steps to guide problem-solving and decision-making. Ensure this section reflects the overall outcome of the situation analysis and collaborative session.  
 [/INST]  
