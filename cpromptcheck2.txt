@@ -13,30 +13,32 @@ Explain the canvas to someone who is new to using it. Mention the name of the ca
 
 **Prompt 4:**
 Explain how to run a collaborative session using this canvas for the proposed situation. Minimize the use of bullet points and focus on a narrative format. Add a suitable title and provide clear guidance on facilitating the session.
+
+**Slide 3 Guidance:**
+Summarize the critical insights and results derived from the canvas. Highlight actionable next steps to guide problem-solving and decision-making. Ensure this slide reflects the overall outcome of the situation analysis and collaborative session.
+
 [/INST]
----
 
 [INST]
 Presentation Output:
 Generate the presentation using the structure and placeholders below.
 
 [Slide 1]
-[Title] Canvas Overview [/Title]
-[Description] {Narrative from Prompt 3: Clearly describe the canvas's name, purpose, and how to use it effectively.} [/Description]
+[Title] [/Title]
+[Description] {Narrative from Prompt 3} [/Description]
 [/Slide 1]
 
 [Slide 2]
-[Title] Collaborative Session [/Title]
-[Description] {Narrative from Prompt 4: Provide detailed guidance on how to facilitate a collaborative session using the canvas.} [/Description]
+[Title] [/Title]
+[Description] {Narrative from Prompt 4} [/Description]
 [/Slide 2]
 
 [Slide 3]
-[Title] Key Takeaways [/Title]
-[Description] {Summarize the benefits and actionable insights of using the canvas for the team.} [/Description]
+[Title] Key Insights and Next Steps [/Title]
+[Description] Summarize the insights derived from the canvas and session. Highlight actionable steps. [/Description]
 [/Slide 3]
 
 ---
-[/INST]
 
 [INST]
 Additional Rules:
@@ -45,6 +47,8 @@ Additional Rules:
 3. **Avoid Bullet Points:** Use narrative paragraphs instead of bullet points in the descriptions.
 4. **Critical Content:** Highlight objectives, stakeholders, actions, timeline, risks, and success metrics where relevant.
 5. **Ensure Structure:** Retain the exact keys (`[Title]`, `[Description]`, etc.) in the output for seamless parsing and integration.
+6. **Fallback Handling:** If any part of `{canvas_data}` is incomplete, mark missing elements as "N/A" and ensure narrative continuity.
+7. **Narrative Flow:** Ensure smooth transitions between slides by linking insights from Prompt 3 to Prompt 4 and then to Slide 3.
 
 Use the above structure to generate a cohesive, narrative-style 3-slide presentation. Ensure seamless transitions between slides and emphasize actionable insights to help the team.
 
