@@ -1,5 +1,9 @@
 Classify the following text into relevant business areas based on the provided categories. The text may belong to more than one area. For each area, return a 1 if applicable and a 0 if not. Output the result as a JSON object.
 
+[INST]
+Do not add any ``` (backticks) at the start or end, and only follow the provided structure. Except for that, no extra characters should be added.
+[/INST]
+
 Here are the categories:
 
 Strategy – Is the text related to long-term goals, planning, market positioning, competitive advantage, or strategic decision-making?
@@ -18,7 +22,7 @@ Technology – Does the text involve digital transformation, automation, or the 
 Classify the following text:
 
 {query_text}
-
+[INST]
 Return the classification in this format:
 {
   "areas": {
@@ -37,3 +41,4 @@ Return the classification in this format:
     "Technology": 0
   }
 }
+[/INST]
