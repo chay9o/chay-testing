@@ -2701,6 +2701,14 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
                                         run.font.size = Pt(36)  # Font size 36
                                         run.font.color.rgb = RGBColor(255, 255, 255)  # White
                                     continue
+
+                                if slide == presentation.slides[1] and placeholder in ["cut1", "cut2"]:
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.bold = True if placeholder == "cut1" else False
+                                        run.font.size = Pt(20) if placeholder == "cut1" else Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                    continue
     
                                 # Apply formatting based on placeholders
                                 if isinstance(data, dict):
