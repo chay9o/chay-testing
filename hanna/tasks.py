@@ -2654,7 +2654,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
 
     canvas_name = canvas_data.get("canvas_name", "")
     canvas_description = canvas_data.get("canvas_description", "")
-    sections = canvas_data.get("sections", [])
+    sections = canvas_data.get("columns", [])
 
     # Prepare replacement dictionary
     replacement_dict = {
@@ -2663,15 +2663,15 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
     }
 
     # Dynamically map columns to placeholders (box1, box2, ..., box7)
-    for section in sections:
-        column = section.get("column", "")  # Extract column identifier
-        if column.startswith("Column "):  # Ensure it matches the expected format
-            column_number = column.split(" ")[1]  # Extract the column number
+    for column in columns:
+        column_id = column.get("column", "")  # Extract column identifier
+        if column_id.startswith("Column "):  # Ensure it matches the expected format
+            column_number = column_id.split(" ")[1]  # Extract the column number
             placeholder = f"box{column_number}"  # Map to placeholders like box1, box2, etc.
             replacement_dict[placeholder] = {
-                "title": section.get("title", "Default Title"),
-                "description": section.get("description", "Default Description"),
-                "key_elements": section.get("key_elements", [])[:4],  # Limit key elements to 4
+                "title": column.get("title", "Default Title"),
+                "description": column.get("description", "Default Description"),
+                "key_elements": column.get("key_elements", [])[:4],  # Limit key elements to 4
             }
 
     # Debugging: Print the replacement dictionary
@@ -2760,6 +2760,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
         "smartnote_title": smartnote_title,
         "smartnote_description": smartnote_description
     }
+    
 def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
     print(f"Handling template type 2 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (7).pptx")  # Use the appropriate template for type 2
