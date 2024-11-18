@@ -3053,7 +3053,7 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
                                     continue
     
                                 # Title condition for other slides
-                                if slide in [presentation.slides[0], presentation.slides[1]]:
+                                if slide in [presentation.slides[1], presentation.slides[2]]:
                                     if text_content in [
                                         hexagon['title'] for hexagon in canvas_data['top_hexagons']
                                     ] + [
