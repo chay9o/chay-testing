@@ -2687,72 +2687,74 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
     print("==== END OF REPLACEMENT DATA ====")
 
     # Function to apply replacements and formatting
-    def apply_replacements(slide, replacement_dict):
+    def apply_replacements(slide, replacement_dict, slide_index):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
                         # Replace placeholder with content
                         if isinstance(data, dict):
-                            # Format for titles, descriptions, and key elements
                             formatted_text = (
                                 f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
                             )
                         else:
-                            # Format for cut1 and cut2
                             formatted_text = data
 
-                        shape.text = formatted_text  # Replace the text
+                        shape.text = formatted_text
 
                         # Apply formatting
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
                             shape.text_frame.margin_left = Inches(0.10)
                             shape.text_frame.margin_right = Inches(0.10)
-    
 
                             for paragraph in shape.text_frame.paragraphs:
                                 content = paragraph.text.strip()
 
-                                # Format canvas name and description
-                                if placeholder == "cut1":
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.bold = True
-                                        run.font.size = Pt(20)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                                elif placeholder == "cut2":
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(16)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                # Slide-specific formatting
+                                if slide_index == 0:  # Slide 1
+                                    if placeholder == "cut1":
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(36)
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White
 
-                                # Format column titles
-                                elif content == data.get("title", ""):
-                                    paragraph.alignment = PP_ALIGN.CENTER
-                                    for run in paragraph.runs:
-                                        run.font.bold = True
-                                        run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                elif slide_index == 1:  # Slide 2
+                                    if placeholder in ["cut1", "cut2"]:
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(20)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                    else:
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(12)
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White
 
-                                # Format descriptions
-                                elif content == data.get("description", ""):
+                                elif slide_index == 2:  # Slide 3
+                                    if placeholder in ["cut1", "cut2", "title"]:
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+
+                                # Preserve existing formatting for descriptions and key elements
+                                if content == data.get("description", ""):
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-
-                                # Format key elements
                                 elif content.startswith("-"):
                                     paragraph.alignment = PP_ALIGN.LEFT
-                                    #paragraph.level = 1  # Indent for key elements
                                     for run in paragraph.runs:
                                         run.font.size = Pt(12)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
-    # Apply replacements to all slides
-    for slide in presentation.slides:
-        apply_replacements(slide, replacement_dict)
+    # Apply replacements and formatting for each slide
+    for index, slide in enumerate(presentation.slides):
+        apply_replacements(slide, replacement_dict, index)
 
     # Save the presentation and return as base64
     pptx_stream = BytesIO()
