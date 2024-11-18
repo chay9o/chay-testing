@@ -3018,7 +3018,6 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
                                         paragraph.alignment = PP_ALIGN.CENTER  # Center align
                                         for run in paragraph.runs:
                                             run.font.size = Pt(36)  # Font size 36
-                                            run.font.bold = True   # Bold text
                                             run.font.name = "Arial"
                                             run.font.color.rgb = RGBColor(255, 255, 255)  # White font
                                     elif slide in [presentation.slides[1], presentation.slides[2]]:  # Logic for slide[1] and slide[2]
