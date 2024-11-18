@@ -2260,7 +2260,7 @@ def parse_plain_text_response_with_user_id(response, user_id):
     return parsed_data
     
 
-def parse_plain_text_response(response):
+def parse_plain_text_responsed(response):
     """Parse the plain text response dynamically."""
     data = {
         "template_type": None,
@@ -2269,6 +2269,7 @@ def parse_plain_text_response(response):
         "top_hexagons": [],
         "bottom_hexagons": [],
         "sections": [],  # For other template types (1, 2, 3)
+        "columns": [], 
     }
 
     try:
@@ -2405,6 +2406,159 @@ def parse_plain_text_response(response):
                         "description": circle_match.group(2).strip(),
                         "key_elements": [el.strip() for el in circle_match.group(3).split(",")],
                     })
+
+        return data
+
+    except Exception as e:
+        logger.error(f"Error parsing response: {str(e)}")
+        raise ValueError(f"Parsing error: {str(e)}")
+
+def parse_plain_text_response(response):
+    """Parse the plain text response dynamically."""
+    data = {
+        "template_type": None,
+        "canvas_name": None,
+        "canvas_description": None,
+        "top_hexagons": [],
+        "bottom_hexagons": [],
+        "sections": [],  # For other template types (2, 3, 4)
+        "columns": [],  # For Template 1 (Progression Canvas)
+    }
+
+    try:
+        clean_response = clean_asterisks(response)
+        logger.info(f"Cleaned Response chay:\n{clean_response}")
+
+        # Extract Template Type
+        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", clean_response)
+        if template_type_match:
+            data["template_type"] = template_type_match.group(1).strip()
+        else:
+            logger.warning("Template Type not found in the response.")
+
+        # Extract Canvas Name
+        canvas_name_match = re.search(r"Canvas Name:\s*(.+)", clean_response)
+        if canvas_name_match:
+            data["canvas_name"] = canvas_name_match.group(1).strip().strip("**")
+        else:
+            logger.warning("Canvas Name not found in the response.")
+
+        # Extract Canvas Description
+        canvas_description_match = re.search(r"Canvas Description:\s*(.+)", clean_response)
+        if canvas_description_match:
+            data["canvas_description"] = canvas_description_match.group(1).strip().strip("**")
+        else:
+            logger.warning("Canvas Description not found in the response.")
+
+        # Handle Progression Canvas (Template 1)
+        if data["template_type"] == "1":
+            logger.info(f"Found data: {clean_response}")
+
+            lines = clean_response.split("\n")
+            current_column = {}
+            for line in lines:
+                line = line.strip()
+
+                # Match Column Header
+                column_match = re.match(r"Column (\d+):", line)
+                if column_match:
+                    # Save the previous column if it exists
+                    if current_column:
+                        data["columns"].append(current_column)
+                        current_column = {}
+
+                    # Start a new column
+                    column_number = column_match.group(1)
+                    current_column["column"] = f"Column {column_number}"
+                    current_column["title"] = None
+                    current_column["description"] = None
+                    current_column["key_elements"] = []
+
+                # Match Title
+                elif line.startswith("Title:") and current_column:
+                    current_column["title"] = line.replace("Title:", "").strip()
+
+                # Match Description
+                elif line.startswith("Description:") and current_column:
+                    current_column["description"] = line.replace("Description:", "").strip()
+
+                # Match Key Elements
+                elif line.startswith("Key Elements:") and current_column:
+                    key_elements = line.replace("Key Elements:", "").strip()
+                    current_column["key_elements"] = [el.strip() for el in key_elements.split(",")]
+
+            # Add the last column if it exists
+            if current_column:
+                data["columns"].append(current_column)
+
+            logger.info(f"Parsed Columns for Template 1: {data['columns']}")
+
+        # Handle Grid Layout Canvas (Template 2)
+        elif data["template_type"] == "2":
+            for area in ["Top Left Area", "Top Right Area", "Bottom Left Area", "Bottom Right Area"]:
+                area_match = re.search(
+                    rf"{area}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    clean_response,
+                    re.DOTALL,
+                )
+                if area_match:
+                    data["sections"].append({
+                        "area": area,
+                        "title": area_match.group(1).strip(),
+                        "description": area_match.group(2).strip(),
+                        "key_elements": [el.strip() for el in area_match.group(3).split(",")],
+                    })
+
+        # Handle Circular Layout Canvas (Template 3)
+        elif data["template_type"] == "3":
+            # Central Circle
+            central_match = re.search(r"Central Circle:\s*Issue/Goal:\s*(.+)", clean_response)
+            if central_match:
+                data["sections"].append({
+                    "circle": "Central Circle",
+                    "issue_goal": central_match.group(1).strip(),
+                })
+
+            # Supporting Circles
+            for i in range(1, 6):  # Iterate over Supporting Circle 1 to 5
+                circle_match = re.search(
+                    rf"Supporting Circle {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    clean_response,
+                    re.DOTALL,
+                )
+                if circle_match:
+                    data["sections"].append({
+                        "circle": f"Supporting Circle {i}",
+                        "title": circle_match.group(1).strip(),
+                        "description": circle_match.group(2).strip(),
+                        "key_elements": [el.strip() for el in circle_match.group(3).split(",")],
+                    })
+
+        # Handle Hive Template (Template 4)
+        elif data["template_type"] == "4":
+            hexagon_sections = re.split(r"(?P<position>Top|Bottom) Hexagon \d+:", clean_response)
+            for i in range(1, len(hexagon_sections), 2):
+                position = hexagon_sections[i].strip()
+                content = hexagon_sections[i + 1].strip()
+
+                # Extract Title, Description, and Key Elements
+                title_match = re.search(r"Title:\s*(.+)", content)
+                description_match = re.search(r"Description:\s*(.+)", content)
+                key_elements_match = re.search(r"Key Elements:\s*(.+)", content)
+
+                hexagon = {
+                    "title": title_match.group(1).strip() if title_match else None,
+                    "description": description_match.group(1).strip() if description_match else None,
+                    "key_elements": [
+                        el.strip() for el in key_elements_match.group(1).split(",")
+                    ] if key_elements_match else [],
+                }
+
+                # Append to Top or Bottom Hexagons
+                if position == "Top":
+                    data["top_hexagons"].append(hexagon)
+                elif position == "Bottom":
+                    data["bottom_hexagons"].append(hexagon)
 
         return data
 
