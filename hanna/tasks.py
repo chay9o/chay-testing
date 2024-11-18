@@ -2691,11 +2691,16 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
             if hasattr(shape, "text"):
                 for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
-                        formatted_text = (
-                            f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
-                            if isinstance(data, dict) and not replace_titles_only
-                            else (data if isinstance(data, str) else data.get("title", ""))
-                        )
+                        # Generate formatted text
+                        if slide_index == 2 and isinstance(data, dict):
+                            # For Slide 3 (slide[2]), only include titles, no descriptions or key elements
+                            formatted_text = data.get("title", "")
+                        else:
+                            formatted_text = (
+                                f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
+                                if isinstance(data, dict) and not replace_titles_only
+                                else (data if isinstance(data, str) else data.get("title", ""))
+                            )
                         shape.text = formatted_text
 
                         # Apply formatting
@@ -2746,7 +2751,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
                                                 run.font.size = Pt(12)
                                                 run.font.color.rgb = RGBColor(255, 255, 255)  # White
 
-                                # Slide 3: Replace `cut1`, `cut2`, and titles
+                                # Slide 3: Replace `cut1`, `cut2`, and titles only
                                 elif slide_index == 2:
                                     if placeholder == "cut1":
                                         paragraph.alignment = PP_ALIGN.LEFT
