@@ -2693,6 +2693,15 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
                                 # Extract the paragraph text
                                 content = paragraph.text.strip()
     
+                                # Specific formatting for Slide 0's cut1
+                                if placeholder == "cut1" and specific_placeholder == "cut1" and slide == presentation.slides[0]:
+                                    paragraph.alignment = PP_ALIGN.CENTER  # Center alignment
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(36)  # Font size 36
+                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                    continue
+    
                                 # Apply formatting based on placeholders
                                 if isinstance(data, dict):
                                     if content == data.get('title', ''):
@@ -2727,8 +2736,8 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
     
     # Apply replacements for each slide
-    apply_replacements(presentation.slides[1], replacement_dict, font_color_black=True, replace_titles_only=True)  # Replace only titles for Slide 1
-    apply_replacements(presentation.slides[2], replacement_dict, font_color_black=False, replace_titles_only=False)  # Replace all content for Slide 2
+    apply_replacements(presentation.slides[2], replacement_dict, font_color_black=True, replace_titles_only=True)  # Replace only titles for Slide 1
+    apply_replacements(presentation.slides[1], replacement_dict, font_color_black=False, replace_titles_only=False)  # Replace all content for Slide 2
     apply_replacements(presentation.slides[0], replacement_dict, font_color_black=True, specific_placeholder="cut1")  # Replace only 'cut1' for Slide 3
 
     # Save the presentation and return as base64
