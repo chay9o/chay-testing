@@ -3011,7 +3011,7 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
     
                             for paragraph in shape.text_frame.paragraphs:
                                 text_content = paragraph.text.strip()
-                                
+    
                                 # Handle cut1 and cut2 replacements
                                 if placeholder == "cut1":
                                     for run in paragraph.runs:
@@ -3036,7 +3036,8 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
                                         for run in paragraph.runs:
                                             run.font.bold = True
                                             run.font.size = Pt(14)
-                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                            run.font.name = "Arial"
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Ensure font is black
                                         continue
     
                                 # Description alignment and styling
@@ -3101,6 +3102,7 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
         "smartnote_title": smartnote_title,
         "smartnote_description": smartnote_description
     }
+
 
     
     
