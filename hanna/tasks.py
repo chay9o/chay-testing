@@ -2815,7 +2815,7 @@ def handle_template_type_3(canvas_data, smartnote_title, smartnote_description):
     print(replacement_dict_slide2)
 
     # Function to apply replacements and formatting
-    def apply_replacements(slide, replacement_dict, font_color_black=True):
+    def apply_replacements(slide, replacement_dict, font_color_black=True, slide_num=None):
         """
         Applies replacements for placeholders in the provided slide.
         Handles formatting dynamically based on the placeholder type.
@@ -2843,9 +2843,16 @@ def handle_template_type_3(canvas_data, smartnote_title, smartnote_description):
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             for paragraph in shape.text_frame.paragraphs:
                                 content = paragraph.text.strip()
+                                if slide_num == 0 and placeholder == "cut1":
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(36)  # Font size 36
+                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                # Formatting for other slides and placeholders
 
                                 # Formatting for canvas name and description
-                                if placeholder == "cut1":
+                                elif placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.bold = True
@@ -2898,7 +2905,7 @@ def handle_template_type_3(canvas_data, smartnote_title, smartnote_description):
 
     # Apply replacements for Slide 2 (titles, descriptions, key elements, white font)
     apply_replacements(presentation.slides[2], replacement_dict_slide1, font_color_black=True)
-    apply_replacements(presentation.slides[0], replacement_dict_slide3)
+    apply_replacements(presentation.slides[0], replacement_dict_slide3, slide_num=0)
 
     # Save the presentation and return as base64
     pptx_stream = BytesIO()
