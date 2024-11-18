@@ -2706,6 +2706,8 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
                         # Apply formatting
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
+                            shape.text_frame.margin_left = Inches(0.10)
+                            shape.text_frame.margin_right = Inches(0.10)
                             for paragraph in shape.text_frame.paragraphs:
                                 content = paragraph.text.strip()
 
@@ -2746,7 +2748,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
                                                 run.font.color.rgb = RGBColor(255, 255, 255)  # White
                                         elif content.startswith("-"):
                                             paragraph.alignment = PP_ALIGN.LEFT
-                                            paragraph.level = 1  # Indent for key elements
+                                            #paragraph.level = 1  # Indent for key elements
                                             for run in paragraph.runs:
                                                 run.font.size = Pt(12)
                                                 run.font.color.rgb = RGBColor(255, 255, 255)  # White
