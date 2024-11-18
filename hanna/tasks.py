@@ -2994,46 +2994,46 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
     }
     
     # Iterate through slides and apply formatting for 'cut1', 'cut2', hexagon titles, descriptions, and key elements
+    # Iterate through slides and apply formatting for 'cut1', 'cut2', hexagon titles, descriptions, and key elements
     def apply_replacements(slide, replacement_dict, font_color_black=False):
-        """
-        Applies replacements for placeholders in the provided slide.
-        Adjusts formatting based on the placeholder type.
-        """
         for shape in slide.shapes:
             if hasattr(shape, "text"):
-                print(f"Checking shape text: {shape.text}")
                 for placeholder, replacement in replacement_dict.items():
                     if placeholder in shape.text:
-                        print(f"Replacing placeholder '{placeholder}' with '{replacement}'")
                         shape.text = shape.text.replace(placeholder, replacement)
     
-                        # Apply text formatting
+                        # Formatting and styling as per original code
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
                             shape.text_frame.auto_size = True
+                            shape.text_frame.margin_left = Inches(0.20)
+                            shape.text_frame.margin_right = Inches(0.20)
     
                             for paragraph in shape.text_frame.paragraphs:
                                 text_content = paragraph.text.strip()
-    
-                                # Apply specific styles for cut1 and cut2
+                                
+                                # First, handle cut1 and cut2 explicitly to avoid interference with description conditions
                                 if placeholder == "cut1":
                                     for run in paragraph.runs:
                                         run.font.size = Pt(20)
-                                        run.font.bold = True
+                                        run.font.bold = True  # Larger font for cut1
                                         run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                                    continue
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
+                                    continue  # Skip further processing for this paragraph
     
                                 elif placeholder == "cut2":
                                     for run in paragraph.runs:
                                         run.font.size = Pt(14)
-                                        run.font.bold = True
+                                        run.font.bold = True  # Smaller font for cut2
                                         run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                                    continue
-    
-                                # Description formatting
-                                if replacement in text_content:
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
+                                    continue  # Skip further processing for this paragraph
+                                
+                                # Description alignment and styling
+                                if any(
+                                    text_content == hexagon['description'] or hexagon['description'] in text_content
+                                    for hexagon in canvas_data['top_hexagons'] + canvas_data['bottom_hexagons']
+                                ):
                                     paragraph.level = 0
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
@@ -3041,20 +3041,40 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
                                         run.font.color.rgb = RGBColor(255, 255, 255)
                                     continue
     
-                                # Title formatting: Center-align and make bold
-                                if replacement in replacement_dict.values():
-                                    paragraph.alignment = PP_ALIGN.CENTER
+                                # Title condition: Center-align titles and make bold
+                                if slide in [presentation.slides[0], presentation.slides[1]]:
+                                    if text_content in [
+                                        hexagon['title'] for hexagon in canvas_data['top_hexagons']
+                                    ] + [
+                                        hexagon['title'] for hexagon in canvas_data['bottom_hexagons']
+                                    ]:
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        continue
+
+    
+                                # Key elements: Indent key elements to level 1
+                                if any(
+                                    key in text_content
+                                    for hexagon in canvas_data['top_hexagons'] + canvas_data['bottom_hexagons']
+                                    for key in hexagon['key_elements']
+                                ):
+                                    paragraph.level = 1
+                                    paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
-                                        run.font.bold = True
-                                        run.font.size = Pt(14)
-                                        run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(255, 255, 255)
                                     continue
     
-                                # Default formatting for unhandled cases
+                                # Default font and color adjustments for other cases
                                 for run in paragraph.runs:
                                     run.font.size = Pt(11)
                                     run.font.name = "Arial"
-                                    run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                    run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
+
 
     apply_replacements(presentation.slides[2], replacement_dict_slide1, font_color_black=True)  # Slide 1: Titles only, black font
     apply_replacements(presentation.slides[1], replacement_dict_slide2)  # Slide 2: Titles, descriptions, key elements
