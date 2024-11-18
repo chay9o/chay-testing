@@ -2723,13 +2723,13 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
                                                 run.font.size = Pt(12)
                                                 run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
     
-                                elif placeholder == "cut1" and specific_placeholder == "cut1":
+                                elif placeholder == "cut1":
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.bold = True
                                         run.font.size = Pt(20)
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Dark Blue
-                                elif placeholder == "cut2" and specific_placeholder == "cut2":
+                                elif placeholder == "cut2" :
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.size = Pt(16)
