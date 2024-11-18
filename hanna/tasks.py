@@ -2694,23 +2694,25 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
                     if placeholder in shape.text:
                         # Replace placeholder with content
                         if isinstance(data, dict):
+                            # Format for titles, descriptions, and key elements
                             formatted_text = (
                                 f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
                             )
                         else:
+                            # Format for simple string placeholders (e.g., cut1, cut2)
                             formatted_text = data
-
+    
                         shape.text = formatted_text
-
+    
                         # Apply formatting
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
                             shape.text_frame.margin_left = Inches(0.10)
                             shape.text_frame.margin_right = Inches(0.10)
-
+    
                             for paragraph in shape.text_frame.paragraphs:
                                 content = paragraph.text.strip()
-
+    
                                 # Slide-specific formatting
                                 if slide_index == 0:  # Slide 1
                                     if placeholder == "cut1":
@@ -2719,7 +2721,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
                                             run.font.bold = True
                                             run.font.size = Pt(36)
                                             run.font.color.rgb = RGBColor(255, 255, 255)  # White
-
+    
                                 elif slide_index == 1:  # Slide 2
                                     if placeholder in ["cut1", "cut2"]:
                                         paragraph.alignment = PP_ALIGN.LEFT
@@ -2731,7 +2733,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
                                         for run in paragraph.runs:
                                             run.font.size = Pt(12)
                                             run.font.color.rgb = RGBColor(255, 255, 255)  # White
-
+    
                                 elif slide_index == 2:  # Slide 3
                                     if placeholder in ["cut1", "cut2", "title"]:
                                         paragraph.alignment = PP_ALIGN.CENTER
@@ -2739,18 +2741,20 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
                                             run.font.bold = True
                                             run.font.size = Pt(14)
                                             run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+    
+                                # Preserve formatting for descriptions and key elements
+                                if isinstance(data, dict):  # Only for dictionary entries
+                                    if content == data.get("description", ""):
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(12)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+                                    elif content.startswith("-"):
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(12)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
-                                # Preserve existing formatting for descriptions and key elements
-                                if content == data.get("description", ""):
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
-                                elif content.startswith("-"):
-                                    paragraph.alignment = PP_ALIGN.LEFT
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(12)
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
 
     # Apply replacements and formatting for each slide
     for index, slide in enumerate(presentation.slides):
