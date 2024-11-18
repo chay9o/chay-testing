@@ -2672,6 +2672,7 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
                         continue
                     
                     if placeholder in shape.text:
+                        formatted_text = ""
                         # Replace only titles if replace_titles_only is True
                         if replace_titles_only and isinstance(data, dict):
                             formatted_text = data['title']
@@ -2800,6 +2801,7 @@ def handle_template_type_3(canvas_data, smartnote_title, smartnote_description):
             if hasattr(shape, "text"):
                 for placeholder, data in replacement_dict.items():
                     if placeholder in shape.text:
+                        formatted_text = ""
                         # Replace placeholder with content
                         if isinstance(data, dict):
                             if "description" in data and "key_elements" in data:
