@@ -3014,17 +3014,25 @@ def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
     
                                 # Handle cut1 and cut2 replacements
                                 if placeholder == "cut1":
-                                    for run in paragraph.runs:
-                                        run.font.size = Pt(20)
-                                        run.font.bold = True
-                                        run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
+                                    if slide == presentation.slides[0]:  # Specific logic for slide[0]
+                                        paragraph.alignment = PP_ALIGN.CENTER  # Center align
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(36)  # Font size 36
+                                            run.font.bold = True   # Bold text
+                                            run.font.name = "Arial"
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White font
+                                    elif slide in [presentation.slides[1], presentation.slides[2]]:  # Logic for slide[1] and slide[2]
+                                        paragraph.alignment = PP_ALIGN.LEFT  # Left align
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(20)  # Font size 20
+                                            run.font.bold = True   # Bold text
+                                            run.font.name = "Arial"
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black font
                                     continue  # Skip further processing for this paragraph
     
                                 elif placeholder == "cut2":
                                     for run in paragraph.runs:
                                         run.font.size = Pt(14)
-                                        run.font.bold = True
                                         run.font.name = "Arial"
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
                                     continue  # Skip further processing for this paragraph
