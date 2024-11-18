@@ -2495,9 +2495,10 @@ def parse_plain_text_response(response):
 
         # Handle Grid Layout Canvas (Template 2)
         elif data["template_type"] == "2":
-            for area in ["Top Left Area", "Top Right Area", "Bottom Left Area", "Bottom Right Area"]:
+            areas = ["Top Left Area", "Top Right Area", "Bottom Left Area", "Bottom Right Area"]
+            for area in areas:
                 area_match = re.search(
-                    rf"{area}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    rf"{area}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+?)(?:\n\S|$)",
                     clean_response,
                     re.DOTALL,
                 )
@@ -2508,6 +2509,8 @@ def parse_plain_text_response(response):
                         "description": area_match.group(2).strip(),
                         "key_elements": [el.strip() for el in area_match.group(3).split(",")],
                     })
+                else:
+                    logger.warning(f"Section data for '{area}' is incomplete or missing.")
 
 
         # Handle Circular Layout Canvas (Template 3)
@@ -2519,11 +2522,11 @@ def parse_plain_text_response(response):
                     "circle": "Central Circle",
                     "issue_goal": central_match.group(1).strip(),
                 })
-
+        
             # Supporting Circles
             for i in range(1, 6):  # Iterate over Supporting Circle 1 to 5
                 circle_match = re.search(
-                    rf"Supporting Circle {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+)",
+                    rf"Supporting Circle {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+?)(?:\n\S|$)",
                     clean_response,
                     re.DOTALL,
                 )
@@ -2534,6 +2537,8 @@ def parse_plain_text_response(response):
                         "description": circle_match.group(2).strip(),
                         "key_elements": [el.strip() for el in circle_match.group(3).split(",")],
                     })
+                else:
+                    logger.warning(f"Supporting Circle {i} data is incomplete or missing.")
 
         # Handle Hive Template (Template 4)
         elif data["template_type"] == "4":
