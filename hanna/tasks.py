@@ -2747,7 +2747,7 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
                                         run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
     
     # Apply replacements for each slide
-    apply_replacements(presentation.slides[2], replacement_dict, font_color_black=True, replace_titles_only=True)  # Replace only titles for Slide 1
+    apply_replacements(presentation.slides[2], replacement_dict, font_color_black=True, replace_titles_only=False)  # Replace only titles for Slide 1
     apply_replacements(presentation.slides[1], replacement_dict, font_color_black=False, replace_titles_only=False)  # Replace all content for Slide 2
     apply_replacements(presentation.slides[0], replacement_dict, font_color_black=True, specific_placeholder="cut1")  # Replace only 'cut1' for Slide 3
 
