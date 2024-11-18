@@ -2656,6 +2656,9 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
     canvas_description = canvas_data.get("canvas_description", "")
     sections = canvas_data.get("columns", [])
 
+    if not isinstance(columns, list):
+        raise ValueError(f"Invalid data: 'columns' should be a list but got {type(columns)}")
+
     # Prepare replacement dictionary
     replacement_dict = {
         "cut1": canvas_name,
