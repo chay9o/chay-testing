@@ -2654,7 +2654,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
 
     canvas_name = canvas_data.get("canvas_name", "")
     canvas_description = canvas_data.get("canvas_description", "")
-    sections = canvas_data.get("columns", [])
+    columns = canvas_data.get("columns", [])
 
     if not isinstance(columns, list):
         raise ValueError(f"Invalid data: 'columns' should be a list but got {type(columns)}")
