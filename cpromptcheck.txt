@@ -52,47 +52,6 @@ Bottom Right Area:
 [/INST]
 
 [INST]
-#### 3. **Circular Layout Canvas (Template 3):**
-   - Places the central issue or goal in the middle, surrounded by five concentric circles.
-   - Each circle represents a specific aspect or category of the situation.
-   - Ideal for evaluating interconnected dimensions of the problem.
-
-### Plain Text Output Format:
-Template Type: "3"
-Canvas Name: [Canvas name]
-Canvas Description: [Brief description]
-
-Central Circle:
-  Issue/Goal: [One-line description of the central issue or goal]
-
-Supporting Circle 1:
-  Title: [Two-word title]
-  Description: [Concise description]
-  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
-
-Supporting Circle 2:
-  Title: [Two-word title]
-  Description: [Concise description]
-  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
-
-Supporting Circle 3:
-  Title: [Two-word title]
-  Description: [Concise description]
-  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
-
-Supporting Circle 4:
-  Title: [Two-word title]
-  Description: [Concise description]
-  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
-
-Supporting Circle 5:
-  Title: [Two-word title]
-  Description: [Concise description]
-  Key Elements: [Two-word element 1], [Two-word element 2], [Two-word element 3], [Two-word element 4]
-
-[/INST]
-
-[INST]
 **Note**:
 - Always include all sections for the selected template.
 - Use "N/A" for missing data in titles, descriptions, or key elements.
