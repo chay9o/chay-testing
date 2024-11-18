@@ -2702,7 +2702,7 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
                                         run.font.color.rgb = RGBColor(255, 255, 255)  # White
                                     continue
 
-                                if slide == presentation.slides[1] and placeholder in ["cut1", "cut2"]:
+                                if slide == presentation.slides[2] and placeholder in ["cut1", "cut2"]:
                                     paragraph.alignment = PP_ALIGN.LEFT
                                     for run in paragraph.runs:
                                         run.font.bold = True if placeholder == "cut1" else False
