@@ -15,7 +15,6 @@ from langchain_openai import ChatOpenAI
 from .retriever import LLMHybridRetriever
 from .master_vectors.MV import MasterVectors
 from .chunker import ChunkText
-from .tasks import send_data_to_webhook
 from jinja2 import Template
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
