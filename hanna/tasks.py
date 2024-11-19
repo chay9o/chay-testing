@@ -26,13 +26,6 @@ from together import Together
 import fasttext
 import logging
 
-@shared_task
-def send_data_to_webhook(payload):
-    webhook_url = "https://chay-testing-192912d0328c.herokuapp.com/webhook_handler"
-    try:
-        requests.post(webhook_url, json=payload, timeout=5)
-    except requests.RequestException as e:
-        print(f"Webhook error: {e}")
 
 chat_template = (
     "{{ bos_token }}{% for message in messages %}"
