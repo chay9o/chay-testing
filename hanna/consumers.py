@@ -263,8 +263,6 @@ This is only applicable if the user asks about situations in companies in which 
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
                 member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids, user_id=user_id)
                         
-                if company_vector or initiative_vector or member_vector:
-                    is_trained_data_used = True
 
             elif "Individuals" in cat or "Personal Information" in cat:
                 # if "Individuals" in cat:
@@ -274,9 +272,6 @@ This is only applicable if the user asks about situations in companies in which 
                 company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
                 initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
                 member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids, user_id=user_id)
-
-                if company_vector or initiative_vector or member_vector:
-                    is_trained_data_used = True
 
             # if "Greeting" in cat:
             #     mode = 0.4
@@ -314,6 +309,10 @@ This is only applicable if the user asks about situations in companies in which 
             top_member_initiative_vec = llm_hybrid.reranker(query=final_query, batch=initiative_vector, top_k=10, class_=collection, return_type=str)
 
             retriever = f"{top_master_vec} {top_company_vec} {top_member_initiative_vec}"
+            if top_company_vec or top_member_initiative_vec:
+                is_trained_data_used = True
+
+        
 
         else:
             print("Searching Meeting Vectors!")
@@ -356,6 +355,10 @@ This is only applicable if the user asks about situations in companies in which 
                 initiative_meeting_vec.extend(user_meeting_vec)
                 company_meeting_vec.extend(initiative_meeting_vec)
 
+                if initiative_meeting_vec or company_meeting_vec:
+                    is_trained_data_used = True
+
+
                 retriever = "\n".join(company_meeting_vec) if len(company_meeting_vec) > 0 else ""
 
             elif query_value != "" and date_value != "":
@@ -371,6 +374,8 @@ This is only applicable if the user asks about situations in companies in which 
 
                 initiative_meeting_vec.extend(user_meeting_vec)
                 company_meeting_vec.extend(initiative_meeting_vec)
+                if initiative_meeting_vec or company_meeting_vec:
+                    is_trained_data_used = True
 
                 retriever = "\n".join(company_meeting_vec) if len(company_meeting_vec) > 0 else ""
 
@@ -388,6 +393,10 @@ This is only applicable if the user asks about situations in companies in which 
                                                                 class_=collection, return_type=str)
 
                 retriever = f"{top_master_vec} {top_company_vec} {top_member_initiative_vec}"
+                if top_company_vec or top_member_initiative_vec:
+                    is_trained_data_used = True
+
+                
 
             # log_info_async(f"LOADING VECTORS: {retriever}")
 
