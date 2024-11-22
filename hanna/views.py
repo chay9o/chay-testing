@@ -633,13 +633,6 @@ def get_user_inputs(user_id):
     print(f"[Redis] Retrieved user inputs for user {user_id}: {inputs}")
     return inputs
 
-
-
-Here's your updated code with added print statements for debugging Redis operations, ensuring you can verify that data is being stored and retrieved correctly from Redis.
-
-Updated Code with Debugging
-python
-Copy code
 # Redis-based helper functions for problem description, user inputs, and generated questions
 def store_problem_description(user_id, description, timeout=3600):
     """Store the problem description for a specific user."""
