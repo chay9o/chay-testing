@@ -3,6 +3,7 @@ import uuid
 from django.http import StreamingHttpResponse
 from langchain_core.callbacks import BaseCallbackHandler
 from django.conf import settings
+from django.core.cache import cache
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -604,15 +605,99 @@ user_inputs_global = {}
 generated_questions_global = {}
 problem_description_global = {}  # Dictionary to store the problem description for each user
 
+def store_problem_description(user_id, description, timeout=3600):
+    """Store the problem description for a specific user."""
+    cache.set(f"problem_description_{user_id}", description, timeout)
+    print(f"[Redis] Stored problem description for user {user_id}: {description}")
 
 
+def get_problem_description(user_id):
+    """Retrieve the problem description for a specific user."""
+    description = cache.get(f"problem_description_{user_id}", "")
+    print(f"[Redis] Retrieved problem description for user {user_id}: {description}")
+    return description
+
+
+def store_user_input(user_id, user_input, timeout=3600):
+    """Store user input for a specific user."""
+    key = f"user_inputs_{user_id}"
+    existing_inputs = cache.get(key, [])
+    existing_inputs.append(user_input)
+    cache.set(key, existing_inputs, timeout)
+    print(f"[Redis] Updated user inputs for user {user_id}: {existing_inputs}")
+
+
+def get_user_inputs(user_id):
+    """Retrieve user inputs for a specific user."""
+    inputs = cache.get(f"user_inputs_{user_id}", [])
+    print(f"[Redis] Retrieved user inputs for user {user_id}: {inputs}")
+    return inputs
+
+
+
+Here's your updated code with added print statements for debugging Redis operations, ensuring you can verify that data is being stored and retrieved correctly from Redis.
+
+Updated Code with Debugging
+python
+Copy code
+# Redis-based helper functions for problem description, user inputs, and generated questions
+def store_problem_description(user_id, description, timeout=3600):
+    """Store the problem description for a specific user."""
+    cache.set(f"problem_description_{user_id}", description, timeout)
+    print(f"[Redis] Stored problem description for user {user_id}: {description}")
+
+
+def get_problem_description(user_id):
+    """Retrieve the problem description for a specific user."""
+    description = cache.get(f"problem_description_{user_id}", "")
+    print(f"[Redis] Retrieved problem description for user {user_id}: {description}")
+    return description
+
+
+def store_user_input(user_id, user_input, timeout=3600):
+    """Store user input for a specific user."""
+    key = f"user_inputs_{user_id}"
+    existing_inputs = cache.get(key, [])
+    existing_inputs.append(user_input)
+    cache.set(key, existing_inputs, timeout)
+    print(f"[Redis] Updated user inputs for user {user_id}: {existing_inputs}")
+
+
+def get_user_inputs(user_id):
+    """Retrieve user inputs for a specific user."""
+    inputs = cache.get(f"user_inputs_{user_id}", [])
+    print(f"[Redis] Retrieved user inputs for user {user_id}: {inputs}")
+    return inputs
+
+
+def store_generated_question(user_id, question, timeout=3600):
+    """Store a generated question for a specific user."""
+    key = f"generated_questions_{user_id}"
+    existing_questions = cache.get(key, [])
+    existing_questions.append(question)
+    cache.set(key, existing_questions, timeout)
+    print(f"[Redis] Updated generated questions for user {user_id}: {existing_questions}")
+
+
+def get_generated_questions(user_id):
+    """Retrieve generated questions for a specific user."""
+    questions = cache.get(f"generated_questions_{user_id}", [])
+    print(f"[Redis] Retrieved generated questions for user {user_id}: {questions}")
+    return questions
 # Helper function to build the system prompt by appending previous steps from user-specific data
+
+# Helper function to build the system prompt by appending previous steps
 def build_system_prompt(base_prompt, user_id):
+    """Construct a system prompt using previous user inputs and generated questions."""
     steps_content = ""
-    if user_id in generated_questions_global and user_id in user_inputs_global:
-        for generated_question, user_input in zip(generated_questions_global[user_id], user_inputs_global[user_id]):
+    generated_questions = get_generated_questions(user_id)
+    user_inputs = get_user_inputs(user_id)
+    for generated_question, user_input in zip(generated_questions, user_inputs):
+        if generated_question and user_input:  # Skip empty data
             steps_content += f"{generated_question}\n{user_input}\n"
+    print(f"[Redis] Built system prompt for user {user_id}: {steps_content}")
     return base_prompt.replace("{previous_steps}", steps_content)
+
 
 
 @csrf_exempt
@@ -626,16 +711,11 @@ def stinsight_step1(request):
         if not user_id:
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Initialize the lists for this user if they don't already exist
-        if user_id not in user_inputs_global:
-            user_inputs_global[user_id] = []
-            generated_questions_global[user_id] = []
-            problem_description_global[user_id] = ""
         
         # Capture the problem description from step1
         problem_description = data['user_input']
         language = data['language']
-        problem_description_global[user_id] = problem_description
+        store_problem_description(user_id, problem_description)
 
         with open("strategic-insight-prompt.txt", "r") as file:
             prompt_template = file.read()
@@ -682,7 +762,7 @@ def stinsight_step1(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question in the global list
-        generated_questions_global[user_id].append(generated_question_value)
+        store_generated_question(user_id, generated_question_value)
 
         # Print the system prompt with actual values
         print("System prompt:", prompt_with_values)
@@ -714,13 +794,13 @@ def stinsight_step2(request):
         language = data['language']
 
         # Store the user input for the current step
-        user_inputs_global[user_id].append(user_input)
+        store_user_input(user_id, user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -762,12 +842,11 @@ def stinsight_step2(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question value in the global list
-        generated_questions_global[user_id].append(generated_question_value)
+        store_generated_question(user_id, generated_question_value)
 
         # Rebuild the system prompt again, now with the extracted question
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
-
         # Print the system prompt with actual values
         print(system_prompt)
 
@@ -799,13 +878,13 @@ def stinsight_step3(request):
         language = data['language']
 
         # Store the user input for the current step
-        user_inputs_global[user_id].append(user_input)
+        store_user_input(user_id, user_input)
         
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -847,9 +926,8 @@ def stinsight_step3(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global[user_id].append(generated_question_value)
-
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        store_generated_question(user_id, generated_question_value)
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
 
         # Print the system prompt with actual values
@@ -881,13 +959,13 @@ def stinsight_step4(request):
         user_input = data['user_input']
         language = data['language']
 
-        user_inputs_global[user_id].append(user_input)
+        store_user_input(user_id, user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -929,9 +1007,9 @@ def stinsight_step4(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global[user_id].append(generated_question_value)
+        store_generated_question(user_id, generated_question_value)
 
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
 
         # Print the system prompt with actual values
@@ -962,13 +1040,13 @@ def stinsight_step5(request):
         user_input = data['user_input']
         language = data['language']
 
-        user_inputs_global[user_id].append(user_input)
+        store_user_input(user_id, user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -1010,9 +1088,9 @@ def stinsight_step5(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global[user_id].append(generated_question_value)
+        store_generated_question(user_id, generated_question_value)
 
-        system_prompt = base_prompt.replace("{user_input}", problem_description_global[user_id])
+        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
         system_prompt = build_system_prompt(system_prompt, user_id)
         # Print the system prompt with actual values
         print(system_prompt)
@@ -1045,25 +1123,35 @@ def stinsight_step6(request):
         language = data.get('language', 'en')
         selected_option = data.get('selected_option', 'option1')
 
-        user_inputs_global[user_id].append(user_input)
+        if user_input:
+            store_user_input(user_id, user_input)
 
         # Collect the final content that includes the problem description and all user inputs
-        final_content = problem_description_global[user_id] + "\n\n" + "\n".join(user_inputs_global[user_id])
+        problem_description = get_problem_description(user_id)
+        user_inputs = get_user_inputs(user_id)
+
+        final_content = f"{problem_description}\n\n" + "\n".join(user_inputs)
         # Print all data for verification
         #print("Final Content to be passed to process_prompts:")
         #print(final_content)
         #print("Selected option:", selected_option)
 
+        print(f"[Redis] Final content for user {user_id}: {final_content}")
+        print(f"[Redis] Selected option for user {user_id}: {selected_option}")
+
         # Trigger the appropriate Celery task based on the dropdown value
         if selected_option == 'option1':
             # Trigger process_prompts for option 1 (Strategic Analysis for Decision Makers)
             task = process_prompts_1.apply_async(args=[final_content, language])
+            print(f"[Celery] Task initiated for Option 1: {task.id}")
         elif selected_option == 'option2':
             # Trigger process_prompts2 for option 2 (Strategic Analysis for Organizational Architects)
             task = process_prompts_2.apply_async(args=[final_content, language])
+            print(f"[Celery] Task initiated for Option 2: {task.id}")
         elif selected_option == 'option3':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
             task = process_prompts_3.apply_async(args=[final_content, language])
+            print(f"[Celery] Task initiated for Option 3: {task.id}")
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
             response_data = trigger_ppt_generation(final_content, language, user_id)
