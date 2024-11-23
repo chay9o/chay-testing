@@ -665,20 +665,23 @@ def get_generated_questions(user_id, invocation_id, step):
 
 
 # Helper function to build the system prompt by appending previous steps
-def build_system_prompt(base_prompt, user_id, invocation_id):
+def build_system_prompt(base_prompt, user_id, invocation_id, current_step):
     """
-    Construct a system prompt using previous user inputs and generated questions for an invocation.
+    Construct a system prompt using only the current step and the immediately previous steps.
     """
     steps_content = ""
-    for step in range(1, 7):  # Assuming a maximum of 6 steps
-        generated_questions = get_generated_questions(user_id, invocation_id, step)
-        user_inputs = get_user_inputs(user_id, invocation_id, step)
-        for generated_question, user_input in zip(generated_questions, user_inputs):
-            if generated_question and user_input:  # Skip empty data
-                steps_content += f"{generated_question}\n{user_input}\n"
-    print(f"[Redis] Built system prompt for user {user_id}, invocation {invocation_id}: {steps_content}")
-    return base_prompt.replace("{previous_steps}", steps_content)
+    
+    # Append only the relevant previous step and the current step
+    for step in range(current_step - 1, current_step + 1):  # Current and previous step
+        if step > 0:  # Ensure we do not go below step 1
+            generated_questions = get_generated_questions(user_id, invocation_id, step)
+            user_inputs = get_user_inputs(user_id, invocation_id, step)
+            for generated_question, user_input in zip(generated_questions, user_inputs):
+                if generated_question and user_input:  # Skip empty data
+                    steps_content += f"{generated_question}\n{user_input}\n"
 
+    print(f"[Redis] Built system prompt for user {user_id}, invocation {invocation_id}, step {current_step}: {steps_content}")
+    return base_prompt.replace("{previous_steps}", steps_content.strip())
 
 
 @csrf_exempt
@@ -789,7 +792,7 @@ def stinsight_step2(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 1)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 2)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -878,8 +881,7 @@ def stinsight_step3(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 2)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
-
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 3)
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
 
@@ -1005,7 +1007,7 @@ def stinsight_step4(request):
         store_generated_question(user_id, invocation_id, 4, generated_question_value)
 
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 4)
 
         # Print the system prompt with actual values
         print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
@@ -1046,7 +1048,7 @@ def stinsight_step5(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 4)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 5)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
