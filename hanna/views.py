@@ -792,7 +792,7 @@ def stinsight_step2(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 1)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 2)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 2)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -835,8 +835,7 @@ def stinsight_step2(request):
         # Store only the extracted question value in the global list
         store_generated_question(user_id, invocation_id, 2, generated_question_value)
         # Rebuild the system prompt again, now with the extracted question
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
+
 
         # Print the rebuilt system prompt
         print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
@@ -881,7 +880,7 @@ def stinsight_step3(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 2)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 3)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 3)
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
 
@@ -922,9 +921,7 @@ def stinsight_step3(request):
 
         # Store only the value of the question in the global list
         store_generated_question(user_id, invocation_id, 3, generated_question_value)
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
-
+        
         # Print the system prompt with actual values
         print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
@@ -964,7 +961,8 @@ def stinsight_step4(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 3)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 4)
+
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -1006,8 +1004,7 @@ def stinsight_step4(request):
         # Store only the value of the question in the global list
         store_generated_question(user_id, invocation_id, 4, generated_question_value)
 
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 4)
+    
 
         # Print the system prompt with actual values
         print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
@@ -1048,7 +1045,8 @@ def stinsight_step5(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 4)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 5)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 5)
+
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -1090,8 +1088,7 @@ def stinsight_step5(request):
 
         # Store only the value of the question in the global list
         store_generated_question(user_id, invocation_id, 5, generated_question_value)
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
+        
         # Print the system prompt with actual values
         print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
