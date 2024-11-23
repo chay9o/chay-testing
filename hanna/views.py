@@ -605,90 +605,78 @@ user_inputs_global = {}
 generated_questions_global = {}
 problem_description_global = {}  # Dictionary to store the problem description for each user
 
-def store_problem_description(user_id, description, timeout=3600):
-    """Store the problem description for a specific user."""
-    cache.set(f"problem_description_{user_id}", description, timeout)
-    print(f"[Redis] Stored problem description for user {user_id}: {description}")
+def store_problem_description(user_id, invocation_id, step, description, timeout=3600):
+    """
+    Store the problem description for a specific user, invocation, and step.
+    """
+    key = f"problem_description_{user_id}_{invocation_id}_step_{step}"
+    cache.set(key, description, timeout)
+    print(f"[Redis] Stored problem description for user {user_id}, invocation {invocation_id}, step {step}: {description}")
 
 
-def get_problem_description(user_id):
-    """Retrieve the problem description for a specific user."""
-    description = cache.get(f"problem_description_{user_id}", "")
-    print(f"[Redis] Retrieved problem description for user {user_id}: {description}")
+def get_problem_description(user_id, invocation_id, step):
+    """
+    Retrieve the problem description for a specific user, invocation, and step.
+    """
+    key = f"problem_description_{user_id}_{invocation_id}_step_{step}"
+    description = cache.get(key, "")
+    print(f"[Redis] Retrieved problem description for user {user_id}, invocation {invocation_id}, step {step}: {description}")
     return description
 
 
-def store_user_input(user_id, user_input, timeout=3600):
-    """Store user input for a specific user."""
-    key = f"user_inputs_{user_id}"
+def store_user_input(user_id, invocation_id, step, user_input, timeout=3600):
+    """
+    Store user input for a specific user, invocation, and step.
+    """
+    key = f"user_inputs_{user_id}_{invocation_id}_step_{step}"
     existing_inputs = cache.get(key, [])
     existing_inputs.append(user_input)
     cache.set(key, existing_inputs, timeout)
-    print(f"[Redis] Updated user inputs for user {user_id}: {existing_inputs}")
+    print(f"[Redis] Updated user inputs for user {user_id}, invocation {invocation_id}, step {step}: {existing_inputs}")
 
-
-def get_user_inputs(user_id):
-    """Retrieve user inputs for a specific user."""
-    inputs = cache.get(f"user_inputs_{user_id}", [])
-    print(f"[Redis] Retrieved user inputs for user {user_id}: {inputs}")
+def get_user_inputs(user_id, invocation_id, step):
+    """
+    Retrieve user inputs for a specific user, invocation, and step.
+    """
+    key = f"user_inputs_{user_id}_{invocation_id}_step_{step}"
+    inputs = cache.get(key, [])
+    print(f"[Redis] Retrieved user inputs for user {user_id}, invocation {invocation_id}, step {step}: {inputs}")
     return inputs
 
-# Redis-based helper functions for problem description, user inputs, and generated questions
-def store_problem_description(user_id, description, timeout=3600):
-    """Store the problem description for a specific user."""
-    cache.set(f"problem_description_{user_id}", description, timeout)
-    print(f"[Redis] Stored problem description for user {user_id}: {description}")
-
-
-def get_problem_description(user_id):
-    """Retrieve the problem description for a specific user."""
-    description = cache.get(f"problem_description_{user_id}", "")
-    print(f"[Redis] Retrieved problem description for user {user_id}: {description}")
-    return description
-
-
-def store_user_input(user_id, user_input, timeout=3600):
-    """Store user input for a specific user."""
-    key = f"user_inputs_{user_id}"
-    existing_inputs = cache.get(key, [])
-    existing_inputs.append(user_input)
-    cache.set(key, existing_inputs, timeout)
-    print(f"[Redis] Updated user inputs for user {user_id}: {existing_inputs}")
-
-
-def get_user_inputs(user_id):
-    """Retrieve user inputs for a specific user."""
-    inputs = cache.get(f"user_inputs_{user_id}", [])
-    print(f"[Redis] Retrieved user inputs for user {user_id}: {inputs}")
-    return inputs
-
-
-def store_generated_question(user_id, question, timeout=3600):
-    """Store a generated question for a specific user."""
-    key = f"generated_questions_{user_id}"
+def store_generated_question(user_id, invocation_id, step, question, timeout=3600):
+    """
+    Store a generated question for a specific user, invocation, and step.
+    """
+    key = f"generated_questions_{user_id}_{invocation_id}_step_{step}"
     existing_questions = cache.get(key, [])
     existing_questions.append(question)
     cache.set(key, existing_questions, timeout)
-    print(f"[Redis] Updated generated questions for user {user_id}: {existing_questions}")
+    print(f"[Redis] Updated generated questions for user {user_id}, invocation {invocation_id}, step {step}: {existing_questions}")
 
 
-def get_generated_questions(user_id):
-    """Retrieve generated questions for a specific user."""
-    questions = cache.get(f"generated_questions_{user_id}", [])
-    print(f"[Redis] Retrieved generated questions for user {user_id}: {questions}")
+def get_generated_questions(user_id, invocation_id, step):
+    """
+    Retrieve generated questions for a specific user, invocation, and step.
+    """
+    key = f"generated_questions_{user_id}_{invocation_id}_step_{step}"
+    questions = cache.get(key, [])
+    print(f"[Redis] Retrieved generated questions for user {user_id}, invocation {invocation_id}, step {step}: {questions}")
     return questions
-# Helper function to build the system prompt by appending previous steps from user-specific data
+
 
 # Helper function to build the system prompt by appending previous steps
-def build_system_prompt(base_prompt, user_id):
-    """Construct a system prompt using previous user inputs and generated questions."""
+def build_system_prompt(base_prompt, user_id, invocation_id):
+    """
+    Construct a system prompt using previous user inputs and generated questions for an invocation.
+    """
     steps_content = ""
-    generated_questions = get_generated_questions(user_id)
-    user_inputs = get_user_inputs(user_id)
-    for generated_question, user_input in zip(generated_questions, user_inputs):
-        if generated_question and user_input:  # Skip empty data
-            steps_content += f"{generated_question}\n{user_input}\n"
-    print(f"[Redis] Built system prompt for user {user_id}: {steps_content}")
+    for step in range(1, 7):  # Assuming a maximum of 6 steps
+        generated_questions = get_generated_questions(user_id, invocation_id, step)
+        user_inputs = get_user_inputs(user_id, invocation_id, step)
+        for generated_question, user_input in zip(generated_questions, user_inputs):
+            if generated_question and user_input:  # Skip empty data
+                steps_content += f"{generated_question}\n{user_input}\n"
+    print(f"[Redis] Built system prompt for user {user_id}, invocation {invocation_id}: {steps_content}")
     return base_prompt.replace("{previous_steps}", steps_content)
 
 
@@ -700,6 +688,7 @@ def stinsight_step1(request):
         data = json.loads(request.body)
         print("Received data:", data)
         user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id', str(uuid.uuid4()))
         
         if not user_id:
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -708,7 +697,7 @@ def stinsight_step1(request):
         # Capture the problem description from step1
         problem_description = data['user_input']
         language = data['language']
-        store_problem_description(user_id, problem_description)
+        store_problem_description(user_id, invocation_id, 1, problem_description)
 
         with open("strategic-insight-prompt.txt", "r") as file:
             prompt_template = file.read()
@@ -755,21 +744,23 @@ def stinsight_step1(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question in the global list
-        store_generated_question(user_id, generated_question_value)
+        store_generated_question(user_id, invocation_id, 1, generated_question_value)
 
         # Print the system prompt with actual values
         print("System prompt:", prompt_with_values)
         
         step1_data = {
+            'invocation_id': invocation_id,
             'step1': {
                 'user_input': problem_description,
                 'generated_question': generated_question_value
             }
         }
 
+        print(f"[Redis] Step 1 data for user {user_id}, invocation {invocation_id}: {step1_data}")
         return JsonResponse(step1_data, safe=False)
     except Exception as e:
-        print(e)
+        print(f"Error in step1: {e}")
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
@@ -779,22 +770,24 @@ def stinsight_step2(request):
         # Extract user_id from request (assuming it's provided in the request body)
         data = json.loads(request.body)
         user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
         
-        if not user_id:
-            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         user_input = data['user_input']
         language = data['language']
 
         # Store the user input for the current step
-        store_user_input(user_id, user_input)
+        store_user_input(user_id, invocation_id, 2, user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
+        problem_description = get_problem_description(user_id, invocation_id, 1)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -802,7 +795,7 @@ def stinsight_step2(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
         ]
 
         response = client.chat.completions.create(
@@ -835,21 +828,24 @@ def stinsight_step2(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question value in the global list
-        store_generated_question(user_id, generated_question_value)
-
+        store_generated_question(user_id, invocation_id, 2, generated_question_value)
         # Rebuild the system prompt again, now with the extracted question
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
-        # Print the system prompt with actual values
-        print(system_prompt)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
+
+        # Print the rebuilt system prompt
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step2': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
+
+        print(f"[Redis] Step 2 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
 
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
@@ -863,22 +859,24 @@ def stinsight_step3(request):
     try:
         data = json.loads(request.body)
         user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
 
-        if not user_id:
-            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         user_input = data['user_input']
         language = data['language']
 
         # Store the user input for the current step
-        store_user_input(user_id, user_input)
+        store_user_input(user_id, invocation_id, 3, user_input)
         
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
+        problem_description = get_problem_description(user_id, invocation_id, 2)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -886,9 +884,9 @@ def stinsight_step3(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
         ]
-
+        
         response = client.chat.completions.create(
             model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
             messages=messages,
@@ -919,21 +917,22 @@ def stinsight_step3(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        store_generated_question(user_id, generated_question_value)
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
+        store_generated_question(user_id, invocation_id, 3, generated_question_value)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
 
         # Print the system prompt with actual values
-        print(system_prompt)
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step3': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
-
+        print(f"[Redis] Step 3 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
         print(e)
@@ -945,21 +944,23 @@ def stinsight_step4(request):
     try:
         data = json.loads(request.body)
         user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
 
-        if not user_id:
-            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         user_input = data['user_input']
         language = data['language']
 
-        store_user_input(user_id, user_input)
+        store_user_input(user_id, invocation_id, 4, user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
+        problem_description = get_problem_description(user_id, invocation_id, 3)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -967,9 +968,8 @@ def stinsight_step4(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
         ]
-
         response = client.chat.completions.create(
             model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
             messages=messages,
@@ -1000,21 +1000,23 @@ def stinsight_step4(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        store_generated_question(user_id, generated_question_value)
+        store_generated_question(user_id, invocation_id, 4, generated_question_value)
 
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
 
         # Print the system prompt with actual values
-        print(system_prompt)
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step4': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
+        print(f"[Redis] Step 4 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
         print(e)
@@ -1026,21 +1028,23 @@ def stinsight_step5(request):
     try:
         data = json.loads(request.body)
         user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
 
-        if not user_id:
-            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
         user_input = data['user_input']
         language = data['language']
 
-        store_user_input(user_id, user_input)
+        store_user_input(user_id, invocation_id, 5, user_input)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
+        problem_description = get_problem_description(user_id, invocation_id, 4)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -1048,7 +1052,7 @@ def stinsight_step5(request):
         # The user input is already included in the previous steps, so no need to repeat it
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{problem_description_global[user_id]}\n\nLanguage: {language}"}
+            {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
         ]
 
         response = client.chat.completions.create(
@@ -1081,21 +1085,22 @@ def stinsight_step5(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        store_generated_question(user_id, generated_question_value)
-
-        system_prompt = base_prompt.replace("{user_input}", get_problem_description(user_id))
-        system_prompt = build_system_prompt(system_prompt, user_id)
+        store_generated_question(user_id, invocation_id, 5, generated_question_value)
+        system_prompt = base_prompt.replace("{user_input}", problem_description)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id)
         # Print the system prompt with actual values
-        print(system_prompt)
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
+
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step5': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
-
+        print(f"[Redis] Step 5 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
         print(e)
@@ -1108,29 +1113,32 @@ def stinsight_step6(request):
     try:
         data = json.loads(request.body)
         user_id = data.get('user_id')
-
-        if not user_id:
-            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        invocation_id = data.get('invocation_id')
+        
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         user_input = data.get('user_input', '')
         language = data.get('language', 'en')
         selected_option = data.get('selected_option', 'option1')
 
         if user_input:
-            store_user_input(user_id, user_input)
+            store_user_input(user_id, invocation_id, 6, user_input)
 
         # Collect the final content that includes the problem description and all user inputs
-        problem_description = get_problem_description(user_id)
-        user_inputs = get_user_inputs(user_id)
+        final_content = ""
+        for step in range(1, 7):  # Assuming a maximum of 6 steps
+            problem_description = get_problem_description(user_id, invocation_id, step)
+            user_inputs = get_user_inputs(user_id, invocation_id, step)
+            if problem_description:
+                final_content += f"{problem_description}\n\n"
+            if user_inputs:
+                final_content += "\n".join(user_inputs) + "\n\n"
 
-        final_content = f"{problem_description}\n\n" + "\n".join(user_inputs)
-        # Print all data for verification
-        #print("Final Content to be passed to process_prompts:")
-        #print(final_content)
-        #print("Selected option:", selected_option)
+        final_content = final_content.strip()  # Clean up trailing whitespace
 
-        print(f"[Redis] Final content for user {user_id}: {final_content}")
-        print(f"[Redis] Selected option for user {user_id}: {selected_option}")
+        print(f"[Redis] Final content for user {user_id}, invocation {invocation_id}: {final_content}")
+        print(f"[Redis] Selected option for user {user_id}, invocation {invocation_id}: {selected_option}")
 
         # Trigger the appropriate Celery task based on the dropdown value
         if selected_option == 'option1':
@@ -1147,7 +1155,7 @@ def stinsight_step6(request):
             print(f"[Celery] Task initiated for Option 3: {task.id}")
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
-            response_data = trigger_ppt_generation(final_content, language, user_id)
+            response_data = trigger_ppt_generation(final_content, language, user_id, invocation_id)
             if 'error' in response_data:
                 return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return JsonResponse(response_data, status=status.HTTP_202_ACCEPTED)
@@ -1159,10 +1167,11 @@ def stinsight_step6(request):
         print(e)
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def trigger_ppt_generation(final_content, language, user_id):
+def trigger_ppt_generation(final_content, language, user_id, invocation_id):
     try:
         # Trigger the asynchronous task for PPT generation
-        task = process_prompts4.apply_async(args=[final_content, language, user_id])
+        task = process_prompts4.apply_async(args=[final_content, language, user_id, invocation_id])
+        print(f"[Celery] Task initiated for PPT generation: {task.id}")
         return {'task_id': task.id, 'status': 'PPT generation initiated'}
     except Exception as e:
         logger.error(f"Error in trigger_ppt_generation: {e}")
