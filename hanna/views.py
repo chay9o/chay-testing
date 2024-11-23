@@ -772,8 +772,10 @@ def stinsight_step2(request):
         user_id = data.get('user_id')
         invocation_id = data.get('invocation_id')
         
-        if not user_id or not invocation_id:
-            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not invocation_id:
+            return Response({'error': 'invocation_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         user_input = data['user_input']
         language = data['language']
