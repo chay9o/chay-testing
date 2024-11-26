@@ -2090,7 +2090,8 @@ def process_prompts4(final_content, language, user_id, invocation_id):
 
             # Print the full response text for debugging
         #print("Full LLM Response:\n", generated_text)
-        canvas_data = parse_plain_text_response_with_user_id(generated_response, user_id)
+        timeout=1200
+        canvas_data = parse_plain_text_response_with_user_id(generated_response, user_id, invocation_id, timeout)
         #canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
         smartnote_title = canvas_data.get("canvas_name", "Default Title")
@@ -2126,15 +2127,14 @@ def process_prompts4(final_content, language, user_id, invocation_id):
             #logger.error(f"Unknown template type: {template_type}")
             raise ValueError(f"Unknown template type: {template_type}")
 
-        del user_data_store[user_id]
+        delete_user_data(user_id, invocation_id)
         
         return response_data
         
     except Exception as e:
-        logger.error(f"Task failed for user {user_id}: {str(e)}")
-        if user_id in user_data_store:
-            del user_data_store[user_id]
-        raise ValueError(f"Task failed for user {user_id}: {str(e)}")
+        logger.error(f"Task failed for user {user_id}, invocation {invocation_id}: {str(e)}")
+        delete_user_data(user_id, invocation_id)
+        raise ValueError(f"Task failed: {str(e)}")
 
 def generate_dynamic_presentation(refined_response):
     """
@@ -2243,16 +2243,25 @@ def clean_asterisks(text):
     return text.replace("*", "").strip()
 
 
-def parse_plain_text_response_with_user_id(response, user_id):
-    """Parse the plain text response dynamically with user isolation."""
-    # Call the existing parser
+def parse_plain_text_response_with_user_id(response, user_id, invocation_id, timeout):
+    """Parse the plain text response dynamically and store it in Redis."""
     parsed_data = parse_plain_text_response(response)
 
-    # Add to global data store
-    user_data_store[user_id] = parsed_data
+    # Create a Redis key using user_id and invocation_id
+    key = f"{user_id}_{invocation_id}"
+
+    # Store data in Redis with a timeout
+    cache.set(key, parsed_data, timeout=timeout)
+
     return parsed_data
     
-
+def delete_user_data(user_id, invocation_id):
+    """
+    Delete user-specific data from Redis.
+    """
+    key = f"{user_id}_{invocation_id}"
+    cache.delete(key)
+    
 def parse_plain_text_responsed(response):
     """Parse the plain text response dynamically."""
     data = {
