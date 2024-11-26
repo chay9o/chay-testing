@@ -794,7 +794,7 @@ def stinsight_step2(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 1)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 2, timeout)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 2)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -883,7 +883,7 @@ def stinsight_step3(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 2)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 3, timeout)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 3)
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
 
@@ -965,7 +965,7 @@ def stinsight_step4(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 3)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 4, timeout)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 4)
 
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -1050,7 +1050,7 @@ def stinsight_step5(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 4)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 5, timeout)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 5)
 
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
