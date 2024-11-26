@@ -1162,7 +1162,7 @@ def stinsight_step6(request):
             print(f"[Celery] Task initiated for Option 3: {task.id}")
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
-            response_data = trigger_ppt_generation(final_content, language, user_id)
+            response_data = trigger_ppt_generation(final_content, language, user_id, invocation_id)
             if 'error' in response_data:
                 return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return JsonResponse(response_data, status=status.HTTP_202_ACCEPTED)
