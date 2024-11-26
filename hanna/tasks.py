@@ -2043,7 +2043,7 @@ def process_single_prompt3(prompt, chat_history, language, model_name=None):
 user_data_store = {}
 
 @shared_task
-def process_prompts4(final_content, language, user_id):
+def process_prompts4(final_content, language, user_id, invocation_id):
     try:
         # Load system prompt from the text file
         with open("cpromptcheck.txt", "r") as file:
