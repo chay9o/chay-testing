@@ -701,7 +701,7 @@ def stinsight_step1(request):
         # Capture the problem description from step1
         problem_description = data['user_input']
         language = data['language']
-        store_problem_description(user_id, invocation_id, 1, problem_description)
+        store_problem_description(user_id, invocation_id, 1, problem_description, timeout)
 
         with open("strategic-insight-prompt.txt", "r") as file:
             prompt_template = file.read()
@@ -748,7 +748,7 @@ def stinsight_step1(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question in the global list
-        store_generated_question(user_id, invocation_id, 1, generated_question_value)
+        store_generated_question(user_id, invocation_id, 1, generated_question_value, timeout)
 
         # Print the system prompt with actual values
         print("System prompt:", prompt_with_values)
@@ -786,7 +786,7 @@ def stinsight_step2(request):
         language = data['language']
 
         # Store the user input for the current step
-        store_user_input(user_id, invocation_id, 2, user_input)
+        store_user_input(user_id, invocation_id, 2, user_input, timeout)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
@@ -794,7 +794,7 @@ def stinsight_step2(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 1)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 2)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 2, timeout)
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -835,7 +835,7 @@ def stinsight_step2(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question value in the global list
-        store_generated_question(user_id, invocation_id, 2, generated_question_value)
+        store_generated_question(user_id, invocation_id, 2, generated_question_value, timeout)
         # Rebuild the system prompt again, now with the extracted question
 
 
@@ -875,7 +875,7 @@ def stinsight_step3(request):
         language = data['language']
 
         # Store the user input for the current step
-        store_user_input(user_id, invocation_id, 3, user_input)
+        store_user_input(user_id, invocation_id, 3, user_input, timeout)
         
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
@@ -883,7 +883,7 @@ def stinsight_step3(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 2)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 3)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 3, timeout)
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
 
@@ -923,7 +923,7 @@ def stinsight_step3(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        store_generated_question(user_id, invocation_id, 3, generated_question_value)
+        store_generated_question(user_id, invocation_id, 3, generated_question_value, timeout)
         
         # Print the system prompt with actual values
         print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
@@ -957,7 +957,7 @@ def stinsight_step4(request):
         user_input = data['user_input']
         language = data['language']
 
-        store_user_input(user_id, invocation_id, 4, user_input)
+        store_user_input(user_id, invocation_id, 4, user_input, timeout)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
@@ -965,7 +965,7 @@ def stinsight_step4(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 3)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 4)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 4, timeout)
 
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -1006,7 +1006,7 @@ def stinsight_step4(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        store_generated_question(user_id, invocation_id, 4, generated_question_value)
+        store_generated_question(user_id, invocation_id, 4, generated_question_value, timeout)
 
     
 
@@ -1042,7 +1042,7 @@ def stinsight_step5(request):
         user_input = data['user_input']
         language = data['language']
 
-        store_user_input(user_id, invocation_id, 5, user_input)
+        store_user_input(user_id, invocation_id, 5, user_input, timeout)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
@@ -1050,7 +1050,7 @@ def stinsight_step5(request):
         # Build the system prompt by appending previous steps
         problem_description = get_problem_description(user_id, invocation_id, 4)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 5)
+        system_prompt = build_system_prompt(system_prompt, user_id, invocation_id, 5, timeout)
 
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -1092,7 +1092,7 @@ def stinsight_step5(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        store_generated_question(user_id, invocation_id, 5, generated_question_value)
+        store_generated_question(user_id, invocation_id, 5, generated_question_value, timeout)
         
         # Print the system prompt with actual values
         print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
@@ -1130,7 +1130,7 @@ def stinsight_step6(request):
         selected_option = data.get('selected_option', 'option1')
 
         if user_input:
-            store_user_input(user_id, invocation_id, 6, user_input)
+            store_user_input(user_id, invocation_id, 6, user_input, timeout)
 
         # Collect the final content that includes the problem description and all user inputs
         final_content = ""
