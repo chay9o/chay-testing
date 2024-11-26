@@ -2041,7 +2041,7 @@ def process_single_prompt3(prompt, chat_history, language, model_name=None):
 
 
 
-user_data_store = {}
+
 
 @shared_task
 def process_prompts4(final_content, language, user_id, invocation_id):
@@ -2096,7 +2096,7 @@ def process_prompts4(final_content, language, user_id, invocation_id):
         #canvas_data = parse_plain_text_response(generated_response)
         print(f"Parsed canvas data: {canvas_data}")
         smartnote_title = canvas_data.get("canvas_name", "Default Title")
-        smartnote_description = refine_and_generate_presentation(generated_response, language)
+        smartnote_description = refine_and_generate_presentation(generated_response, language, user_id, invocation_id)
         
         template_type = canvas_data.get("template_type", None)
         if not template_type:
@@ -2113,16 +2113,16 @@ def process_prompts4(final_content, language, user_id, invocation_id):
         #canvas_data = json_response
             # Based on the template type, forward to the appropriate function
         if template_type == "1":
-            pptx_data = handle_template_type_1(canvas_data, smartnote_title, smartnote_description)
+            pptx_data = handle_template_type_1(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
             response_data.update(pptx_data) 
         elif template_type == "2":
-            pptx_data = handle_template_type_2(canvas_data, smartnote_title, smartnote_description)
+            pptx_data = handle_template_type_2(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
             response_data.update(pptx_data) 
         elif template_type == "3":
-            pptx_data = handle_template_type_3(canvas_data, smartnote_title, smartnote_description)
+            pptx_data = handle_template_type_3(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
             response_data.update(pptx_data) 
         elif template_type == "4":
-            pptx_data = handle_template_type_4(canvas_data, smartnote_title, smartnote_description)
+            pptx_data = handle_template_type_4(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
             response_data.update(pptx_data) 
         else:
             #logger.error(f"Unknown template type: {template_type}")
@@ -2180,7 +2180,7 @@ def extract_dynamic_section(response, section_name):
 
 
         
-def refine_and_generate_presentation(generated_response, language):
+def refine_and_generate_presentation(generated_response, language, user_id, invocation_id):
     try:
         # Load the new system prompt for refining the response
         with open("cpromptcheck2.txt", "r") as file:
@@ -2246,7 +2246,7 @@ def clean_asterisks(text):
 
 def parse_plain_text_response_with_user_id(response, user_id, invocation_id, timeout):
     """Parse the plain text response dynamically and store it in Redis."""
-    parsed_data = parse_plain_text_response(response)
+    parsed_data = parse_plain_text_response(response, user_id, invocation_id)
 
     # Create a Redis key using user_id and invocation_id
     key = f"{user_id}_{invocation_id}"
@@ -2416,7 +2416,7 @@ def parse_plain_text_responsed(response):
         logger.error(f"Error parsing response: {str(e)}")
         raise ValueError(f"Parsing error: {str(e)}")
 
-def parse_plain_text_response(response):
+def parse_plain_text_response(response, user_id, invocation_id):
     """Parse the plain text response dynamically."""
     data = {
         "template_type": None,
@@ -2656,7 +2656,7 @@ def parse_plain_text_respons(response):
         raise ValueError(f"Parsing error: {str(e)}")
         
 # Example functions to handle each template type
-def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
+def handle_template_type_1(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
     print(f"Handling template type 1 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (5).pptx")
 
@@ -2801,7 +2801,7 @@ def handle_template_type_1(canvas_data, smartnote_title, smartnote_description):
     }
 
     
-def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
+def handle_template_type_2(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
     print(f"Handling template type 2 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (7).pptx")  # Use the appropriate template for type 2
 
@@ -2962,7 +2962,7 @@ def handle_template_type_2(canvas_data, smartnote_title, smartnote_description):
         "smartnote_description": smartnote_description
     }
     
-def handle_template_type_3(canvas_data, smartnote_title, smartnote_description):
+def handle_template_type_3(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
     #presentation = Presentation("Circular Canvas.pptx")
     print(f"Handling template type 3 with data: {canvas_data}")
     presentation = Presentation("Hex Canvas Design (6).pptx")
@@ -3115,7 +3115,7 @@ def handle_template_type_3(canvas_data, smartnote_title, smartnote_description):
         "smartnote_description": smartnote_description
     }
     
-def handle_template_type_4(canvas_data, smartnote_title, smartnote_description):
+def handle_template_type_4(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
     presentation = Presentation("Hex Canvas Design (3).pptx")
     print(f"Handling template type 4 with data: {canvas_data}")
     if "top_hexagons" not in canvas_data or not canvas_data["top_hexagons"]:
