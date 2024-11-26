@@ -605,12 +605,12 @@ user_inputs_global = {}
 generated_questions_global = {}
 problem_description_global = {}  # Dictionary to store the problem description for each user
 
-def store_problem_description(user_id, invocation_id, step, description, timeout=3600):
+def store_problem_description(user_id, invocation_id, step, description, timeout):
     """
     Store the problem description for a specific user, invocation, and step.
     """
     key = f"problem_description_{user_id}_{invocation_id}_step_{step}"
-    cache.set(key, description, timeout)
+    cache.set(key, description, timeout=timeout)
     print(f"[Redis] Stored problem description for user {user_id}, invocation {invocation_id}, step {step}: {description}")
 
 
@@ -624,14 +624,14 @@ def get_problem_description(user_id, invocation_id, step):
     return description
 
 
-def store_user_input(user_id, invocation_id, step, user_input, timeout=3600):
+def store_user_input(user_id, invocation_id, step, user_input, timeout):
     """
     Store user input for a specific user, invocation, and step.
     """
     key = f"user_inputs_{user_id}_{invocation_id}_step_{step}"
     existing_inputs = cache.get(key, [])
     existing_inputs.append(user_input)
-    cache.set(key, existing_inputs, timeout)
+    cache.set(key, existing_inputs, timeout=timeout)
     print(f"[Redis] Updated user inputs for user {user_id}, invocation {invocation_id}, step {step}: {existing_inputs}")
 
 def get_user_inputs(user_id, invocation_id, step):
@@ -643,14 +643,14 @@ def get_user_inputs(user_id, invocation_id, step):
     print(f"[Redis] Retrieved user inputs for user {user_id}, invocation {invocation_id}, step {step}: {inputs}")
     return inputs
 
-def store_generated_question(user_id, invocation_id, step, question, timeout=3600):
+def store_generated_question(user_id, invocation_id, step, question, timeout):
     """
     Store a generated question for a specific user, invocation, and step.
     """
     key = f"generated_questions_{user_id}_{invocation_id}_step_{step}"
     existing_questions = cache.get(key, [])
     existing_questions.append(question)
-    cache.set(key, existing_questions, timeout)
+    cache.set(key, existing_questions, timeout=timeout)
     print(f"[Redis] Updated generated questions for user {user_id}, invocation {invocation_id}, step {step}: {existing_questions}")
 
 
@@ -692,6 +692,7 @@ def stinsight_step1(request):
         print("Received data:", data)
         user_id = data.get('user_id')
         invocation_id = data.get('invocation_id', str(uuid.uuid4()))
+        timeout = data.get('timeout', 1200)  # Default to 1 hour if timeout is not provided
         
         if not user_id:
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -774,6 +775,7 @@ def stinsight_step2(request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
         
         if not user_id:
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -864,6 +866,7 @@ def stinsight_step3(request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
 
         if not user_id or not invocation_id:
             return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -946,6 +949,7 @@ def stinsight_step4(request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
 
         if not user_id or not invocation_id:
             return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1030,6 +1034,7 @@ def stinsight_step5(request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
 
         if not user_id or not invocation_id:
             return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1115,6 +1120,7 @@ def stinsight_step6(request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
         
         if not user_id or not invocation_id:
             return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1156,7 +1162,7 @@ def stinsight_step6(request):
             print(f"[Celery] Task initiated for Option 3: {task.id}")
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
-            response_data = trigger_ppt_generation(final_content, language, user_id, invocation_id)
+            response_data = trigger_ppt_generation(final_content, language, user_id)
             if 'error' in response_data:
                 return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return JsonResponse(response_data, status=status.HTTP_202_ACCEPTED)
