@@ -15,15 +15,15 @@ class ClientCredentials:
         try:
             self.cohere_client = cohere.Client(settings.COHERE_API_KEY)
             self.__auth_config = weaviate.auth.AuthApiKey(api_key=settings.WEAVIATE_API_KEY)
-            def add_api_key(headers):
-                headers["X-API-KEY"] = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
-                return headers
+            
+
+            auth_config = weaviate.auth.AuthApiKey(api_key="hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de")
 
             self.weaviate_client = weaviate.connect_to_local(
                 host="173.208.218.180",
                 port=8080,
                 grpc_port=50051,
-                http_interceptor_provider=add_api_key,
+                auth_client_secret=auth_config,
             )
             if self.weaviate_client.is_ready():
                 print("Weaviate connection established successfully.")
