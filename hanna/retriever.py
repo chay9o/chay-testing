@@ -163,7 +163,7 @@ Classify the following user query, {user_prompt}"""
 
         return cat
 
-    def add_collection(self, class_: str) -> None:
+    def add_collection(class_: str) -> None:
         class_obj = {
             "class": class_,
             "description": f"collection for {class_}",
@@ -187,14 +187,14 @@ Classify the following user query, {user_prompt}"""
                         }
                     }
                 },
-
+    
                 {
                     "name": "user_id",
                     "dataType": ["text"],
                     "moduleConfig": {
                         "text2vec-cohere": {
                             "skip": True,
-
+    
                         }
                     }
                 },
@@ -224,7 +224,7 @@ Classify the following user query, {user_prompt}"""
                     "moduleConfig": {
                         "text2vec-cohere": {
                             "skip": True,
-
+    
                         }
                     }
                 },
@@ -234,7 +234,7 @@ Classify the following user query, {user_prompt}"""
                     "moduleConfig": {
                         "text2vec-cohere": {
                             "skip": True,
-
+    
                         }
                     }
                 },
@@ -244,14 +244,15 @@ Classify the following user query, {user_prompt}"""
                     "moduleConfig": {
                         "text2vec-cohere": {
                             "skip": True,
-
+    
                         }
                     }
                 }
             ],
         }
-
-        self.weaviate_client.schema.create_class(class_obj)
+    
+        # weaviate_client.schema.create_class(class_obj)
+        weaviate_client.collections.create_from_dict(class_obj)
 
     def search_vectors_user_type(self, query: str, class_: str, entity: str, user_id: str, vector_type: str) -> list:
         try:
