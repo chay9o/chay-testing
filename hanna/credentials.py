@@ -2,6 +2,7 @@ import cohere
 import weaviate
 from django.conf import settings
 from dotenv import load_dotenv
+from weaviate.classes.init import Auth
 import base64
 import warnings
 warnings.filterwarnings('ignore')
@@ -17,13 +18,13 @@ class ClientCredentials:
             self.__auth_config = weaviate.auth.AuthApiKey(api_key=settings.WEAVIATE_API_KEY)
             
 
-            auth_config = weaviate.auth.AuthApiKey(api_key="hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de")
+            weaviate_api_key = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
 
             self.weaviate_client = weaviate.connect_to_local(
                 host="173.208.218.180",
                 port=8080,
                 grpc_port=50051,
-                auth_client_secret=auth_config,
+                auth_credentials=Auth.api_key(weaviate_api_key)
             )
             if self.weaviate_client.is_ready():
                 print("Weaviate connection established successfully.")
