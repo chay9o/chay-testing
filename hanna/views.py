@@ -556,9 +556,6 @@ def create_collection(request) -> Response:
         company = json.loads(request.body)
         collection = "C" + str(company['collection'])
 
-        if llm_hybrid.collection_exists(collection) is True:
-            return Response({'error': 'This collection already exists!'}, status=status.HTTP_400_BAD_REQUEST)
-
         llm_hybrid.add_collection(collection)
 
         return Response({'msg': f'Collection created!'}, status=status.HTTP_200_OK)
