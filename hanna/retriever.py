@@ -253,7 +253,7 @@ Classify the following user query, {user_prompt}"""
         }
     
         # weaviate_client.schema.create_class(class_obj)
-         self.weaviate_client.collections.create_from_dict(class_obj)
+        self.weaviate_client.collections.create_from_dict(class_obj)
 
     def search_vectors_user_type(self, query: str, class_: str, entity: str, user_id: str, vector_type: str) -> list:
         try:
