@@ -28,7 +28,7 @@ class ClientCredentials:
                 grpc_port=50051,
                 grpc_secure=False,
                 headers={
-                    "X-API-KEY": "chay@gmail.com"
+                    "X-API-KEY": "jane@doe.com"
                 }
             )
             if self.weaviate_client.is_ready():
