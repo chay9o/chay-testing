@@ -555,8 +555,10 @@ def create_collection(request) -> Response:
     try:
         company = json.loads(request.body)
         collection = "C" + str(company['collection'])
+        print("hi")
 
         llm_hybrid.add_collection(collection)
+        print("hie")
 
         return Response({'msg': f'Collection created!'}, status=status.HTTP_200_OK)
     except Exception as e:
