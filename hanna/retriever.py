@@ -163,7 +163,8 @@ Classify the following user query, {user_prompt}"""
 
         return cat
 
-    def add_collection(class_: str) -> None:
+    def add_collection(self,class_: str) -> None:
+        print("hi2")
         class_obj = {
             "class": class_,
             "description": f"collection for {class_}",
