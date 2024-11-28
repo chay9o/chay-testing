@@ -24,7 +24,7 @@ class ClientCredentials:
             
 
             self.weaviate_client = weaviate.connect_to_weaviate_cloud(
-                cluster_url=weaviate_url,   # Replace with your Weaviate Cloud URL
+                cluster_url="https://w4.strategicfuture.ai:8082/",   # Replace with your Weaviate Cloud URL
                 auth_credentials=Auth.client_password(
                     username="chay.kusumanchi@strategicfuture.ai",  # Your Weaviate Cloud username
                     password="Chaitanya@2244"  # Your Weaviate Cloud password
