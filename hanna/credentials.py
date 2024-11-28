@@ -3,6 +3,7 @@ import weaviate
 from django.conf import settings
 from dotenv import load_dotenv
 from weaviate.classes.init import Auth
+from weaviate import Client, AuthClientPassword
 import base64
 import warnings
 warnings.filterwarnings('ignore')
@@ -19,16 +20,18 @@ class ClientCredentials:
             
 
             weaviate_api_key = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
+            auth = AuthClientPassword(
+                username="<your-username>",
+                password="<your-password>",
+                client_id="wcs",
+                openid_url="https://auth.wcs.api.weaviate.io/auth/realms/SeMI",
+            )
 
-            self.weaviate_client = weaviate.connect_to_custom(
-                http_host="w4.strategicfuture.ai",
-                http_port="8082", # Placeholder value; won't be actively used due to HTTPS
-                http_secure=True,  # Use HTTPS for secure connection
-                grpc_host="w4.strategicfuture.ai",
-                grpc_port=50051,
-                grpc_secure=False,  # If gRPC is not configured for HTTPS, leave it False
-                headers={
-                    "X-API-KEY": "jane@doe.com"
+            self.weaviate_client = Client(
+                url="https://w4.strategicfuture.ai",  # Your Weaviate endpoint
+                auth_client_secret=auth,
+                additional_headers={
+                    "X-OpenID-User": "chay.kusumanchi@strategicfuture.ai"  # Optional: Include extra headers if required
                 }
             )
             if self.weaviate_client.is_ready():
