@@ -21,11 +21,7 @@ class ClientCredentials:
             
 
             weaviate_api_key = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
-            auth_client = AuthClientPassword(
-                username="chay.kusumanchi@strategicfuture.ai",  # Replace with your WCS email
-                password="Chaitanya@2244",         # Replace with your WCS password
-                openid_url="https://auth.wcs.api.weaviate.io/auth/realms/SeMI",  # OIDC URL
-            )
+            
 
             self.weaviate_client = weaviate.connect_to_weaviate_cloud(
                 cluster_url=weaviate_url,   # Replace with your Weaviate Cloud URL
