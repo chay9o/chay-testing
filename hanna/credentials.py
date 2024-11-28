@@ -3,8 +3,6 @@ import weaviate
 from django.conf import settings
 from dotenv import load_dotenv
 from weaviate.classes.init import Auth
-from weaviate import Client
-from weaviate.auth import AuthClientPassword 
 import base64
 import warnings
 warnings.filterwarnings('ignore')
@@ -21,14 +19,17 @@ class ClientCredentials:
             
 
             weaviate_api_key = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
-            
 
-            self.weaviate_client = weaviate.connect_to_weaviate_cloud(
-                cluster_url="https://w4.strategicfuture.ai:8082/",   # Replace with your Weaviate Cloud URL
-                auth_credentials=Auth.client_password(
-                    username="chay.kusumanchi@strategicfuture.ai",  # Your Weaviate Cloud username
-                    password="Chaitanya@2244"  # Your Weaviate Cloud password
-                )
+            self.weaviate_client = weaviate.connect_to_custom(
+                http_host="w4.strategicfuture.ai",
+                http_port="8082", # Placeholder value; won't be actively used due to HTTPS
+                http_secure=True,  # Use HTTPS for secure connection
+                grpc_host="w4.strategicfuture.ai",
+                grpc_port=50051,
+                grpc_secure=False,  # If gRPC is not configured for HTTPS, leave it False
+                headers={
+                    "X-API-KEY": "jane@doe.com"
+                }
             )
             if self.weaviate_client.is_ready():
                 print("Weaviate connection established successfully.")
