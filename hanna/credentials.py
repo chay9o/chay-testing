@@ -20,16 +20,9 @@ class ClientCredentials:
 
             weaviate_api_key = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
 
-            self.weaviate_client = weaviate.connect_to_custom(
-                http_host="173.208.218.180",
-                http_port=8080,
-                http_secure=False,
-                grpc_host="173.208.218.180",
-                grpc_port=50051,
-                grpc_secure=False,
-                headers={
-                    "X-API-KEY": "jane@doe.com"
-                }
+            self.weaviate_client = weaviate.Client(
+                url="173.208.218.180:8080",
+                
             )
             if self.weaviate_client.is_ready():
                 print("Weaviate connection established successfully.")
