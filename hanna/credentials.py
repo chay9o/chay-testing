@@ -27,9 +27,12 @@ class ClientCredentials:
                 openid_url="https://auth.wcs.api.weaviate.io/auth/realms/SeMI",  # OIDC URL
             )
 
-            self.weaviate_client = Client(
-                url="https://w4.strategicfuture.ai",  # Your Weaviate endpoint
-                auth_client_secret=auth_client  
+            self.weaviate_client = weaviate.connect_to_weaviate_cloud(
+                cluster_url=weaviate_url,   # Replace with your Weaviate Cloud URL
+                auth_credentials=Auth.client_password(
+                    username="chay.kusumanchi@strategicfuture.ai",  # Your Weaviate Cloud username
+                    password="Chaitanya@2244"  # Your Weaviate Cloud password
+                )
             )
             if self.weaviate_client.is_ready():
                 print("Weaviate connection established successfully.")
