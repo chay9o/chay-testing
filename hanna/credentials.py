@@ -3,7 +3,8 @@ import weaviate
 from django.conf import settings
 from dotenv import load_dotenv
 from weaviate.classes.init import Auth
-from weaviate import Client, AuthClientPassword
+from weaviate import Client
+from weaviate.auth import AuthClientPassword 
 import base64
 import warnings
 warnings.filterwarnings('ignore')
@@ -20,19 +21,15 @@ class ClientCredentials:
             
 
             weaviate_api_key = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
-            auth = AuthClientPassword(
-                username="<your-username>",
-                password="<your-password>",
-                client_id="wcs",
-                openid_url="https://auth.wcs.api.weaviate.io/auth/realms/SeMI",
+            auth_client = AuthClientPassword(
+                username="chay.kusumanchi@strategicfuture.ai",  # Replace with your WCS email
+                password="Chaitanya@2244",         # Replace with your WCS password
+                openid_url="https://auth.wcs.api.weaviate.io/auth/realms/SeMI",  # OIDC URL
             )
 
             self.weaviate_client = Client(
                 url="https://w4.strategicfuture.ai",  # Your Weaviate endpoint
-                auth_client_secret=auth,
-                additional_headers={
-                    "X-OpenID-User": "chay.kusumanchi@strategicfuture.ai"  # Optional: Include extra headers if required
-                }
+                auth_client_secret=auth_client  
             )
             if self.weaviate_client.is_ready():
                 print("Weaviate connection established successfully.")
