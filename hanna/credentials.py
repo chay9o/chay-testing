@@ -22,7 +22,7 @@ class ClientCredentials:
 
             self.weaviate_client = weaviate.connect_to_custom(
                 http_host="w4.strategicfuture.ai",
-                http_port=, 
+                http_port=80,  # Placeholder value; won't be actively used due to HTTPS
                 http_secure=True,  # Use HTTPS for secure connection
                 grpc_host="w4.strategicfuture.ai",
                 grpc_port=50051,
