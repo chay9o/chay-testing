@@ -28,7 +28,7 @@ class ClientCredentials:
                 grpc_port=50051,
                 grpc_secure=False,  # If gRPC is not configured for HTTPS, leave it False
                 headers={
-                    "X-API-KEY": "jane@doe.com"
+                    "X-API-KEY": "chay.kusumanchi@strategicfuture.ai"
                 }
             )
             if self.weaviate_client.is_ready():
