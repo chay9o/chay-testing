@@ -5,10 +5,65 @@ from dotenv import load_dotenv
 from weaviate.classes.init import Auth
 import base64
 import warnings
+import time
+import requests
 warnings.filterwarnings('ignore')
 warnings.simplefilter('ignore')
 
 load_dotenv()
+
+class OIDCAuthManager:
+    def __init__(self, client_id, username, password, token_url):
+        self.client_id = client_id
+        self.username = username
+        self.password = password
+        self.token_url = token_url
+        self.access_token = None
+        self.refresh_token = None
+        self.token_expiry = 0
+
+    def fetch_tokens(self):
+        response = requests.post(
+            self.token_url,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={
+                "grant_type": "password",
+                "client_id": self.client_id,
+                "username": self.username,
+                "password": self.password,
+            },
+        )
+        if response.status_code == 200:
+            tokens = response.json()
+            self.access_token = tokens["access_token"]
+            self.refresh_token = tokens["refresh_token"]
+            self.token_expiry = time.time() + tokens["expires_in"] - 60  # Refresh 1 min before expiry
+            print("Access token fetched successfully.")
+        else:
+            raise Exception(f"Failed to fetch tokens: {response.json()}")
+
+    def refresh_access_token(self):
+        response = requests.post(
+            self.token_url,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={
+                "grant_type": "refresh_token",
+                "client_id": self.client_id,
+                "refresh_token": self.refresh_token,
+            },
+        )
+        if response.status_code == 200:
+            tokens = response.json()
+            self.access_token = tokens["access_token"]
+            self.token_expiry = time.time() + tokens["expires_in"] - 60  # Refresh 1 min before expiry
+            print("Access token refreshed successfully.")
+        else:
+            raise Exception(f"Failed to refresh token: {response.json()}")
+
+    def get_access_token(self):
+        if time.time() > self.token_expiry:
+            self.refresh_access_token()
+        return self.access_token
 
 class ClientCredentials:
 
@@ -16,13 +71,15 @@ class ClientCredentials:
         try:
             self.cohere_client = cohere.Client(settings.COHERE_API_KEY)
             self.__auth_config = weaviate.auth.AuthApiKey(api_key=settings.WEAVIATE_API_KEY)
-            
 
-            weaviate_api_key = "hsdnfd7y3n87ry28gd989m82372t1e8hsey78t3291de"
-            # OIDC token (replace `<your_oidc_token>` with the actual access token you received)
-            # Add your full token here
+            self.oidc_manager = OIDCAuthManager(
+                client_id="wcs",
+                username="chay.kusumanchi@strategicfuture.ai",
+                password="Chaitanya@2244",
+                token_url="https://auth.wcs.api.weaviate.io/auth/realms/SeMI/protocol/openid-connect/token",
+            )
+            self.oidc_manager.fetch_tokens()
 
-            oidc_token = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUOU1HUG1WOTZna1ljbFhqQjl1ZG52ZktKZlJlU0lpSTRrS3FjQi1SWTlJIn0.eyJleHAiOjE3MzI4MzQwNzYsImlhdCI6MTczMjgzMzE3NiwianRpIjoiZWVkMWMxZjUtMzkwYy00YjAzLWIxOWQtMmUzMGU3MDVhOThmIiwiaXNzIjoiaHR0cHM6Ly9hdXRoLndjcy5hcGkud2VhdmlhdGUuaW8vYXV0aC9yZWFsbXMvU2VNSSIsImF1ZCI6WyJ3Y3MiLCJhY2NvdW50Il0sInN1YiI6IjZmYWUzNjFjLTFiN2MtNDEyNy1iNjIyLTNhMmEzNjIwY2Q5NyIsInR5cCI6IkJlYXJlciIsImF6cCI6IndjcyIsInNlc3Npb25fc3RhdGUiOiI1ZTQzYWE1YS0xODM5LTQ2ZTUtODFjYy1lZDA4YWI5ZjQwYzUiLCJhbGxvd2VkLW9yaWdpbnMiOlsiaHR0cDovL2NvbnNvbGUuc2VtaS50ZWNobm9sb2d5IiwiaHR0cHM6Ly9jb25zb2xlLndlYXZpYXRlLmlvLyoiLCJodHRwczovL2NvbnNvbGUud2VhdmlhdGUuaW8iLCJodHRwOi8vY29uc29sZS5zZW1pLnRlY2hub2xvZ3kvKiIsImh0dHBzOi8vYWNjZW50dXJlMDAxLmRlbW8uc2VtaS50ZWNobm9sb2d5IiwiaHR0cDovL3BsYXlncm91bmQuc2VtaS50ZWNobm9sb2d5LyoiLCJodHRwczovL2NvbnNvbGUuc2VtaS50ZWNobm9sb2d5Il0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJkZWZhdWx0LXJvbGVzLXNlbWkiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJwcm9maWxlIG9wZW5pZCBlbWFpbCIsInNpZCI6IjVlNDNhYTVhLTE4MzktNDZlNS04MWNjLWVkMDhhYjlmNDBjNSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJuYW1lIjoibi5hLiBuLmEuIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiY2hheS5rdXN1bWFuY2hpQHN0cmF0ZWdpY2Z1dHVyZS5haSIsImdpdmVuX25hbWUiOiJuLmEuIiwiZmFtaWx5X25hbWUiOiJuLmEuIiwiZW1haWwiOiJjaGF5Lmt1c3VtYW5jaGlAc3RyYXRlZ2ljZnV0dXJlLmFpIn0.XA-VTEX33YMjivhiYrYBNkYD2PlpbM2ryqZ_l2qUslHyMICHjqPV7FVHZzDwFbsA6KCukbJr6Skc0N00xz03_dZrArs6_UbOtpoHs0KZ799ayGOBz5QR-bbGDQp8mpOxrmP850ggerdYI2bIU5AXliYTTL1HxyxDBCYdVZPUqWsQbxtOJQGst6w020ic6eA9fOf7dAX6hw3ffiLes4XwK-amskQVAhZbCbIIOHFF6tL6KDxbXDkUi9IA5DrxfLocIo7tk41RZKe4aKR8HYa7z1ABrZ3uT1YeM-gYLnldhrCnPd-3OREpAR8GO0Im_O6aRCvDSLNImQd3Vd4vcBYz6w"
             self.weaviate_client = weaviate.connect_to_custom(
                 http_host="w4.strategicfuture.ai",
                 http_port="8082", # Placeholder value; won't be actively used due to HTTPS
@@ -31,7 +88,7 @@ class ClientCredentials:
                 grpc_port=50051,
                 grpc_secure=False,  # If gRPC is not configured for HTTPS, leave it False
                 headers={
-                    "Authorization": f"Bearer {oidc_token}"  # Pass the OIDC token in the Authorization header
+                    "Authorization": f"Bearer {self.oidc_manager.get_access_token()}"
                 }
             )
             if self.weaviate_client.is_ready():
