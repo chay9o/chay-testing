@@ -6,7 +6,8 @@ Situation:
 
 [INST]
 Instructions:
-As a canvas creation expert, the goal is to design a canvas that will guide the team to better analyze the situation, think more deeply, improve problem-solving, and find solutions effectively. The canvas should be actionable, balanced, and creative. The goal is to enhance the team’s awareness of the situation and accelerate the resolution process.
+As a canvas creation expert, the goal is to design a canvas that will guide the team to better analyze the situation, think more deeply, improve problem-solving, and find solutions effectively. The canvas should be actionable, balanced, and creative. The goal is to enhance the team’s awareness of the situation and move people into the solution of the problem as people can have a blind spot on how to solve it. Be clear in the last steps of what to they should achieve.
+ 
 
 Steps:
 1. Analyze the situation described by the user or team.
