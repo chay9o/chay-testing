@@ -1,5 +1,5 @@
 from django.urls import path
-from .consumers import LiveDataChatConsumer, ChatConsumer, ChatNoteConsumer, ImageQueryConsumer, SummaryGenerator
+from .consumers import LiveDataChatConsumer, ChatNoteConsumer, ImageQueryConsumer, SummaryGenerator, ChatConsumer
 
 websocket_urlpatterns = [
     path('ws/live_data_chat_stream/', LiveDataChatConsumer.as_asgi()),
