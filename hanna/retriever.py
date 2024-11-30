@@ -6,12 +6,14 @@ from langchain.chains import LLMChain
 from .credentials import ClientCredentials
 import uuid
 import re
-from weaviate.gql.get import HybridFusion
-import asyncio
+from weaviate.classes.query import Filter, MetadataQuery, HybridFusion
 from .jina import JINA
 import os
+import logging
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class LLMHybridRetriever(ClientCredentials):
@@ -31,19 +33,19 @@ class LLMHybridRetriever(ClientCredentials):
                                       max_tokens=200)
 
         self.__llm_meeting = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
-                                      model_name=settings.GPT_MODEL_2,
-                                      openai_api_base=settings.BASE_URL,
-                                      temperature=0)
-
-        self.__llm_multihop = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
                                         model_name=settings.GPT_MODEL_2,
                                         openai_api_base=settings.BASE_URL,
-                                        temperature=0.2)
+                                        temperature=0)
+
+        self.__llm_multihop = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
+                                         model_name=settings.GPT_MODEL_2,
+                                         openai_api_base=settings.BASE_URL,
+                                         temperature=0.2)
 
         self.__llm_chat_summary = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
-                                        model_name=settings.GPT_MODEL_1,
-                                        openai_api_base=settings.BASE_URL,
-                                        temperature=0.7)
+                                             model_name=settings.GPT_MODEL_1,
+                                             openai_api_base=settings.BASE_URL,
+                                             temperature=0.7)
 
         self.threshold = 0.50
 
@@ -124,13 +126,12 @@ Classify the following user query, {user_prompt}"""
         self.__chain_meeting = LLMChain(llm=self.__llm_meeting, prompt=self.__meeting_prompt)
         self.__chain_mulithop = LLMChain(llm=self.__llm_multihop, prompt=self.__multihop_prompt)
         self.__chain_chat_summary = LLMChain(llm=self.__llm_chat_summary, prompt=self.__chat_summary_prompt)
-    # Comprehensive phrase
 
+    # Comprehensive phrase
 
     # SDK, OCoOM, OoS, DQ, CR -> Master, Company Vec, Init Vec, Private Vec
     # AR, Greeting, GK, OoI, Ambiguous, Unrelated -> No Vec
     # PI, Individual -> Company Vec, Init Vec, Private Vec
-
 
     def important_words(self, query: str) -> str:
         keywords = self.__chain_mulithop.run(query=query)
@@ -153,13 +154,14 @@ Classify the following user query, {user_prompt}"""
         return df
 
     def collection_exists(self, class_: str) -> bool:
-        return True if self.weaviate_client.schema.exists(class_) is True else False
+        # return True if self.weaviate_client.schema.exists(class_) is True else False
+        return True if self.weaviate_client.collections.exists(class_) is True else False
 
     def summarize_chat(self, chat_history: str) -> str:
         cat = self.__chain_chat_summary.run(chat_history=chat_history)
 
-        if self.verbose is True:
-            print(f"PROBLEM STATEMENT: {cat}")
+        # if self.verbose is True:
+        #     print(f"PROBLEM STATEMENT: {cat}")
 
         return cat
 
@@ -251,73 +253,32 @@ Classify the following user query, {user_prompt}"""
             ],
         }
 
-        self.weaviate_client.schema.create_class(class_obj)
+        # self.weaviate_client.schema.create_class(class_obj)
+        self.weaviate_client.collections.create_from_dict(class_obj)
 
     def search_vectors_user_type(self, query: str, class_: str, entity: str, user_id: str, vector_type: str) -> list:
         try:
             weaviate_result = []
 
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content", "collection_name", "uuid"])
-                .with_where(
-                    {
-                        "operator": "And",
-                        "operands": [
-                            {
-                                "path": ["entity"],
-                                "operator": "Equal",
-                                "valueText": entity,
-                            },
-                            {
-                                "path": ["user_id"],
-                                "operator": "Equal",
-                                "valueText": user_id,
-                            },
-                            {
-                                "path": ["note_type"],
-                                "operator": "Equal",
-                                "valueText": vector_type,
-                            },
-                            {
-                                "path": ["meeting_date"],
-                                "operator": "Equal",
-                                "valueText": query,
-                            },
-
-                        ]
-                    }
-                )
-                # .with_bm25(
-                #     query=query.lower(),
-                #     properties=['meeting_date']
-                #
-                # )
-                # .with_hybrid(
-                #     query=query.lower(),
-                #     alpha=0.8,
-                #     fusion_type=HybridFusion.RELATIVE_SCORE
-                # )
-                .with_additional("score")
-                .with_limit(self.num_results)
-                .do()
+            collection = self.weaviate_client.collections.get(class_)
+            response = collection.query.fetch_objects(
+                filters=(
+                        Filter.by_property("entity").equal(entity) &
+                        Filter.by_property("user_id").equal(user_id) &
+                        Filter.by_property("note_type").equal(vector_type) &
+                        Filter.by_property("meeting_date").equal(query)
+                ),
+                return_metadata=MetadataQuery(score=True),
+                return_properties=["content", "collection_name", "uuid"],
+                limit=self.num_results
             )
 
-            if not response or response != [] or 'data' in response:
-                print("MEMBER VECTORS...")
-                result = response['data']['Get'][class_]
+            for o in response.objects:
+                weaviate_result.append(
+                    o.properties['collection_name'] + ' ' + o.properties['content'] + "-UUID-" + o.properties['uuid'])
 
-                if result is not None:
-                    for chunk in result:
-                        # relevance_score = round(float(chunk['_additional']['score']), 3)
-                        #
-                        # if relevance_score >= 0.650:
-                        weaviate_result.append(chunk['collection_name'] + ' ' + chunk['content'])
+            return weaviate_result
 
-                return weaviate_result
-            else:
-                print("NO RESULTS FOUND!")
-                return []
         except Exception as e:
             print(f"CLASS LLMHYBRID -> USER VEC: {e}")
             return []
@@ -326,65 +287,30 @@ Classify the following user query, {user_prompt}"""
         try:
             weaviate_result = []
 
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content", "collection_name", "uuid"])
-                .with_where(
-                    {
-                        "operator": "And",
-                        "operands": [
-                            {
-                                "path": ["entity"],
-                                "operator": "Equal",
-                                "valueText": entity,
-                            },
-                            {
-                                "path": ["note_type"],
-                                "operator": "Equal",
-                                "valueText": vector_type,
-                            },
-                            {
-                                "path": ["meeting_date"],
-                                "operator": "Equal",
-                                "valueText": query,
-                            },
-
-                        ]
-                    }
-                )
-                # .with_bm25(
-                #     query=query.lower(),
-                #     properties=['meeting_date']
-                # )
-                # .with_hybrid(
-                #     query=query.lower(),
-                #     alpha=0.8,
-                #     fusion_type=HybridFusion.RELATIVE_SCORE
-                # )
-                .with_additional("score")
-                .with_limit(self.num_results)
-                .do()
+            collection = self.weaviate_client.collections.get(class_)
+            response = collection.query.fetch_objects(
+                filters=(
+                        Filter.by_property("entity").equal(entity) &
+                        Filter.by_property("note_type").equal(vector_type) &
+                        Filter.by_property("meeting_date").equal(query)
+                ),
+                return_metadata=MetadataQuery(score=True),
+                return_properties=["content", "collection_name", "uuid"],
+                limit=self.num_results
             )
 
-            if not response or response != [] or 'data' in response:
-                print("COMPANY VECTORS...")
-                result = response['data']['Get'][class_]
-                if result is not None:
-                    for chunk in result:
-                        # relevance_score = round(float(chunk['_additional']['score']), 3)
-                        #
-                        # if relevance_score >= 0.650:
-                        weaviate_result.append(chunk['collection_name'] + ' ' + chunk['content'])
+            for o in response.objects:
+                weaviate_result.append(
+                    o.properties['collection_name'] + ' ' + o.properties['content'] + "-UUID-" + o.properties['uuid'])
 
-                return weaviate_result
-            else:
-                print("NO RESULTS FOUND!")
-                return []
+            return weaviate_result
+
         except Exception as e:
             print(f"CLASS LLMHYBRID -> COMP VEC: {e}")
             return []
 
-    def reranker_meeting(self, query: str, class_: str, batch: list, top_k: int = 6, return_type: type = str) -> str or list:
+    def reranker_meeting(self, query: str, class_: str, batch: list, top_k: int = 6,
+                         return_type: type = str) -> str or list:
         try:
             if not batch or batch == []:
                 return "\n\n".join(batch) if return_type == str else batch
@@ -404,39 +330,53 @@ Classify the following user query, {user_prompt}"""
 
             if ranked_results != [] or len(ranked_results) != 0:
                 print("SEPARATING NOTES UUIDS...")
-                uids = [chunk['text'].split('-UUID-')[1] for chunk in ranked_results if chunk['text'].split('-UUID-')[1][:4] != "file"]
+                uids = [chunk['text'].split('-UUID-')[1] for chunk in ranked_results if
+                        chunk['text'].split('-UUID-')[1][:4] != "file"]
                 # print(uids)
 
                 print("SEPARATING FILES CHUNKS...")
-                files = ['- ' + chunk['text'].split('-UUID-')[0] for chunk in ranked_results if chunk['text'].split('-UUID-')[1][:4] == "file"]
+                files = ['- ' + chunk['text'].split('-UUID-')[0] for chunk in ranked_results if
+                         chunk['text'].split('-UUID-')[1][:4] == "file"]
                 # print(files)
 
                 unique_ids = list(set(uids))
                 print("NOTES UUIDs: ", unique_ids)
                 if unique_ids != [] or len(unique_ids) != 0:
-                    response = (
-                        self.weaviate_client.query
-                        .get(class_, ["content", "collection_name"])
-                        .with_where({
-                            "path": ["uuid"],
-                            "operator": "ContainsAll",
-                            "valueText": unique_ids
-                        })
-                        .do()
+                    collection = self.weaviate_client.collections.get(class_)
+                    response = collection.query.fetch_objects(
+                        filters=(
+                            Filter.by_property("uuid").contains_all(unique_ids)
+                        ),
+                        # return_metadata=MetadataQuery(score=True),
+                        return_properties=["content", "collection_name"],
                     )
+
+                    # response = (
+                    #     self.weaviate_client.query
+                    #     .get(class_, ["content", "collection_name"])
+                    #     .with_where({
+                    #         "path": ["uuid"],
+                    #         "operator": "ContainsAll",
+                    #         "valueText": unique_ids
+                    #     })
+                    #     .do()
+                    # )
 
                     print("GOT NOTES!")
 
                     if files == [] or len(files) == 0:
                         print("NO FILES, SENDING NOTES")
-                        tmp = ['- ' + chunk['content'] + " " + chunk['collection_name'] for chunk in response['data']['Get'][class_]]
+                        tmp = ['- ' + chunk.properties['content'] + " " + chunk.properties['collection_name'] for chunk
+                               in response.objects]
                         return "\n\n".join(tmp)
-                    elif response['data']['Get'][class_] == [] or len(response['data']['Get'][class_]) == 0:
+                    elif response.objects == [] or len(response.objects) == 0:
                         print("NO NOTES, SENDING FILES CHUNK")
                         return "\n\n".join(files)
                     else:
                         print("SENDING ALL")
-                        tmp: list | None = files.extend(['- ' + chunk['content'] + " " + chunk['collection_name'] for chunk in response['data']['Get'][class_]])
+                        tmp: list | None = files.extend(
+                            ['- ' + chunk.properties['content'] + " " + chunk.properties['collection_name'] for chunk in
+                             response.objects])
                         return "\n\n".join(tmp)
                 else:
                     return "\n\n".join(files) if return_type == str else files
@@ -455,57 +395,77 @@ Classify the following user query, {user_prompt}"""
 
             filter_query = re.sub(r"\\", "", query).lower()
 
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content", "collection_name", "uuid"])
-                .with_where(
-                    {
-                        "operator": "And",
-                        "operands": [
-                            {
-                                "path": ["entity"],
-                                "operator": "Equal",
-                                "valueText": entity,
-                            },
-                            {
-                                "path": ["user_id"],
-                                "operator": "Equal",
-                                "valueText": user_id,
-                            },
+            collection = self.weaviate_client.collections.get(class_)
+            response = collection.query.hybrid(
+                query=filter_query,
 
-                        ]
-                    }
-                )
+                filters=(
+                        Filter.by_property("entity").equal(entity) &
+                        Filter.by_property("user_id").equal(user_id)
+                ),
 
-                .with_hybrid(
-                    query=filter_query,
-                    properties=["collection_name"],
-                    alpha=self.alpha,
-                    fusion_type=HybridFusion.RELATIVE_SCORE
-                )
-                .with_additional("score")
-                .with_limit(self.num_results)
-
-                .do()
+                query_properties=["collection_name"],
+                alpha=self.alpha,
+                fusion_type=HybridFusion.RELATIVE_SCORE,
+                return_metadata=MetadataQuery(score=True),
+                return_properties=["content", "collection_name", "uuid"],
+                limit=self.num_results
             )
 
-            if not response or response != [] or 'data' in response:
-                print("MEMBER VECTORS!")
-                result = response['data']['Get'][class_]
+            # response = (
+            #     self.weaviate_client.query
+            #     .get(class_, ["content", "collection_name", "uuid"])
+            #     .with_where(
+            #         {
+            #             "operator": "And",
+            #             "operands": [
+            #                 {
+            #                     "path": ["entity"],
+            #                     "operator": "Equal",
+            #                     "valueText": entity,
+            #                 },
+            #                 {
+            #                     "path": ["user_id"],
+            #                     "operator": "Equal",
+            #                     "valueText": user_id,
+            #                 },
+            #
+            #             ]
+            #         }
+            #     )
+            #
+            #     .with_hybrid(
+            #         query=filter_query,
+            #         properties=["collection_name"],
+            #         alpha=self.alpha,
+            #         fusion_type=HybridFusion.RELATIVE_SCORE
+            #     )
+            #     .with_additional("score")
+            #     .with_limit(self.num_results)
+            #
+            #     .do()
+            # )
+
+            if not response or response != [] or hasattr(response, 'objects') is True:
+                logger.info("MEMBER VECTORS...")
+                result = response.objects
 
                 if result is not None:
                     for chunk in result:
-                        relevance_score = round(float(chunk['_additional']['score']), 3)
+
+                        relevance_score = round(float(chunk.metadata.score), 3)
 
                         if relevance_score >= self.threshold:
-                            weaviate_result.append(chunk['collection_name'] + " " + chunk['content'] + "-UUID-" + chunk['uuid'])
+                            weaviate_result.append(
+                                chunk.properties['collection_name'] + " " + chunk.properties['content'] + "-UUID-" +
+                                chunk.properties['uuid'])
 
                 return weaviate_result
             else:
-                print("NO RESULTS FOUND!")
+                logger.info("NO RESULTS FOUND...")
                 return []
         except Exception as e:
-            print(f"CLASS LLMHYBRID -> USER VEC: {e}")
+            logger.error(f"CLASS LLMHYBRID -> USER VEC: {e}")
             return []
 
     def search_vectors_initiative(self, query: str, class_: str, entity: str) -> list:
@@ -514,44 +474,62 @@ Classify the following user query, {user_prompt}"""
 
             filter_query = re.sub(r"\\", "", query).lower()
 
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content", "collection_name", "uuid"])
-                .with_where(
-                    {
-                        "path": ["entity"],
-                        "operator": "Equal",
-                        "valueText": entity,
-                    }
-                )
+            collection = self.weaviate_client.collections.get(class_)
+            response = collection.query.hybrid(
+                query=filter_query,
 
-                .with_hybrid(
-                    query=filter_query,
-                    properties=["collection_name"],
-                    alpha=self.alpha,
-                    fusion_type=HybridFusion.RELATIVE_SCORE
-                )
-                .with_additional("score")
-                .with_limit(self.num_results)
-                .do()
+                filters=(
+                    Filter.by_property("entity").equal(entity)
+                ),
+
+                query_properties=["collection_name"],
+                alpha=self.alpha,
+                fusion_type=HybridFusion.RELATIVE_SCORE,
+                return_metadata=MetadataQuery(score=True),
+                return_properties=["content", "collection_name", "uuid"],
+                limit=self.num_results
             )
 
-            if not response or response != [] or 'data' in response:
-                print("INITIATIVE VECTORS...")
-                result = response['data']['Get'][class_]
+            # response = (
+            #     self.weaviate_client.query
+            #     .get(class_, ["content", "collection_name", "uuid"])
+            #     .with_where(
+            #         {
+            #             "path": ["entity"],
+            #             "operator": "Equal",
+            #             "valueText": entity,
+            #         }
+            #     )
+            #
+            #     .with_hybrid(
+            #         query=filter_query,
+            #         properties=["collection_name"],
+            #         alpha=self.alpha,
+            #         fusion_type=HybridFusion.RELATIVE_SCORE
+            #     )
+            #     .with_additional("score")
+            #     .with_limit(self.num_results)
+            #     .do()
+            # )
+
+            if not response or response != [] or hasattr(response, 'objects') is True:
+                logger.info("INITIATIVE VECTORS...")
+                result = response.objects
                 if result is not None:
                     for chunk in result:
-                        relevance_score = round(float(chunk['_additional']['score']), 3)
+                        relevance_score = round(float(chunk.metadata.score), 3)
 
                         if relevance_score >= self.threshold:
-                            weaviate_result.append(chunk['collection_name'] + " " + chunk['content'] + "-UUID-" + chunk['uuid'])
+                            weaviate_result.append(
+                                chunk.properties['collection_name'] + " " + chunk.properties['content'] + "-UUID-" +
+                                chunk.properties['uuid'])
 
                 return weaviate_result
             else:
-                print("NO RESULTS FOUND!")
+                logger.info("NO RESULTS FOUND!")
                 return []
         except Exception as e:
-            print(f"CLASS LLMHYBRID -> INIT VEC: {e}")
+            logger.error(f"CLASS LLMHYBRID -> INIT VEC: {e}")
             return []
 
     def search_vectors_company(self, query: str, class_: str, entity: str) -> list:
@@ -560,47 +538,67 @@ Classify the following user query, {user_prompt}"""
 
             filter_query = re.sub(r"\\", "", query).lower()
 
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content", "collection_name", "uuid"])
-                .with_where(
-                    {
-                        "path": ["entity"],
-                        "operator": "Equal",
-                        "valueText": entity,
-                    }
-                )
+            collection = self.weaviate_client.collections.get(class_)
+            response = collection.query.hybrid(
+                query=filter_query,
 
-                .with_hybrid(
-                    query=filter_query,
-                    properties=["collection_name"],
-                    alpha=self.alpha,
-                    fusion_type=HybridFusion.RELATIVE_SCORE
-                )
-                .with_additional("score")
-                .with_limit(self.num_results)
-                .do()
+                filters=(
+                    Filter.by_property("entity").equal(entity)
+                ),
+
+                query_properties=["collection_name"],
+                alpha=self.alpha,
+                fusion_type=HybridFusion.RELATIVE_SCORE,
+                return_metadata=MetadataQuery(score=True),
+                return_properties=["content", "collection_name", "uuid"],
+                limit=self.num_results
             )
 
-            if not response or response != [] or 'data' in response:
-                print("COMPANY VECTORS...")
-                result = response['data']['Get'][class_]
+            # response = (
+            #     self.weaviate_client.query
+            #     .get(class_, ["content", "collection_name", "uuid"])
+            #     .with_where(
+            #         {
+            #             "path": ["entity"],
+            #             "operator": "Equal",
+            #             "valueText": entity,
+            #         }
+            #     )
+            #
+            #     .with_hybrid(
+            #         query=filter_query,
+            #         properties=["collection_name"],
+            #         alpha=self.alpha,
+            #         fusion_type=HybridFusion.RELATIVE_SCORE
+            #     )
+            #     .with_additional("score")
+            #     .with_limit(self.num_results)
+            #     .do()
+            # )
+
+            if not response or response != [] or hasattr(response, 'objects') is True:
+                logger.info("COMPANY VECTORS...")
+                result = response.objects
                 if result is not None:
                     for chunk in result:
-                        relevance_score = round(float(chunk['_additional']['score']), 3)
+                        relevance_score = round(float(chunk.metadata.score), 3)
 
                         if relevance_score >= self.threshold:
-                            weaviate_result.append(chunk['collection_name'] + " " + chunk['content'] + "-UUID-" + chunk['uuid'])
+                            weaviate_result.append(
+                                chunk.properties['collection_name'] + " " + chunk.properties['content'] + "-UUID-" +
+                                chunk.properties['uuid'])
 
                 return weaviate_result
             else:
-                print("NO RESULTS FOUND!")
+                logger.info("NO RESULTS FOUND!")
                 return []
         except Exception as e:
-            print(f"CLASS LLMHYBRID -> COMP VEC: {e}")
+            logger.error(f"CLASS LLMHYBRID -> COMP VEC: {e}")
             return []
 
     def reranker(self, query: str, class_: str, batch: list, top_k: int = 6, return_type: type = str) -> str or list:
+        special_prompt = """[INST] While processing the information found in <SOLUTION_ENTRY> ... </SOLUTION_ENTRY>, remember to include the author identified in [Author] and the initiative name indicated in [Created By Initiative] in your response. [/INST]"""
+
         try:
             if not batch or batch == []:
                 return "\n\n".join(batch) if return_type == str else batch
@@ -609,53 +607,77 @@ Classify the following user query, {user_prompt}"""
 
             results = self.jina.rerank(query=query, docs=batch, top_n=top_k)
 
-            print("RERANKING RESULTS...")
+            logger.info("RERANKING RESULTS...")
 
             for document in results['results']:
                 if float(document['relevance_score']) >= 0.400:
                     ranked_results.append({"relevance_score": document['relevance_score'],
                                            "text": document['document']['text']})
 
-            print("FILTERED RESULTS...")
+            logger.info("FILTERED RESULTS...")
 
             if ranked_results != [] or len(ranked_results) != 0:
-                print("SEPARATING NOTES UUIDS...")
-                uids = [chunk['text'].split('-UUID-')[1] for chunk in ranked_results if chunk['text'].split('-UUID-')[1][:4] != "file"]
-                # print(uids)
+                logger.info("SEPARATING NOTES UUIDS...")
+                uids = [chunk['text'].split('-UUID-')[1] for chunk in ranked_results if
+                        chunk['text'].split('-UUID-')[1][:4] != "file"]
 
-                print("SEPARATING FILES CHUNKS...")
-                files = ['- ' + chunk['text'].split('-UUID-')[0] for chunk in ranked_results if chunk['text'].split('-UUID-')[1][:4] == "file"]
-                # print(files)
+                logger.info("SEPARATING FILES CHUNKS...")
+                files = ['- ' + chunk['text'].split('-UUID-')[0] for chunk in ranked_results if
+                         chunk['text'].split('-UUID-')[1][:4] == "file"]
 
                 unique_ids = list(set(uids))
-                print("NOTES UUIDs: ", unique_ids)
+
+                # logger.info("NOTES UUIDs: ", unique_ids)
                 if unique_ids != [] or len(unique_ids) != 0:
-                    response = (
-                        self.weaviate_client.query
-                        .get(class_, ["content", "collection_name"])
-                        .with_where({
-                            "path": ["uuid"],
-                            "operator": "ContainsAny",
-                            "valueTextArray": unique_ids
-                        })
-                        .do()
+                    # response = (
+                    #     self.weaviate_client.query
+                    #     .get(class_, ["content", "collection_name"])
+                    #     .with_where({
+                    #         "path": ["uuid"],
+                    #         "operator": "ContainsAny",
+                    #         "valueTextArray": unique_ids
+                    #     })
+                    #     .do()
+                    # )
+
+                    collection = self.weaviate_client.collections.get(class_)
+                    response = collection.query.fetch_objects(
+                        filters=(
+                            Filter.by_property("uuid").contains_any(unique_ids)
+                        ),
+                        # return_metadata=MetadataQuery(score=True),
+                        return_properties=["content", "collection_name"],
                     )
 
-                    print("GOT NOTES!")
+                    seen_content = set()
+                    unique_results = []
+
+                    for item in response.objects:
+                        content = item.properties['content']
+                        if content not in seen_content:
+                            unique_results.append(item)
+                            seen_content.add(content)
+
+                    # print("GOT NOTES!")
+
+                    notes = []
+
+                    if response:
+                        notes = ['- ' + chunk.properties['content'] + " " + chunk.properties['collection_name'] for
+                                 chunk in unique_results]
 
                     if files == [] or len(files) == 0:
-                        print("NO FILES, SENDING NOTES")
-                        tmp = ['- ' + chunk['content'] + " " + chunk['collection_name'] for chunk in response['data']['Get'][class_]]
-                        return "\n\n".join(tmp)
-                    elif response['data']['Get'][class_] == [] or len(response['data']['Get'][class_]) == 0:
-                        print("NO NOTES, SENDING FILES CHUNK")
-                        return "\n\n".join(files)
+                        logger.info("NO FILES, SENDING NOTES")
+
+                        return special_prompt + "\n\n".join(notes)
+                    elif response.objects == [] or len(response.objects) == 0:
+                        logger.info("NO NOTES, SENDING FILES CHUNK")
+                        return special_prompt + "\n\n".join(files)
                     else:
-                        print("SENDING ALL")
-                        notes = ['- ' + chunk['content'] + " " + chunk['collection_name'] for chunk in response['data']['Get'][class_]]
+                        logger.info("SENDING ALL")
 
                         files.extend(notes)
-                        return "\n\n".join(files)
+                        return special_prompt + "\n\n".join(files)
                 else:
                     return "\n\n".join(files) if return_type == str else files
             else:
@@ -664,185 +686,7 @@ Classify the following user query, {user_prompt}"""
             # return "\n\n".join(ranked_results) if return_type == str else ranked_results
 
         except Exception as e:
-            print(e)
-            return [] if return_type == list else ""
-
-    #  -------------------------- Asynchronous Version --------------------------
-    async def asearch_vectors_user(self, query: str, class_: str, entity: str, user_id: str, show_score: bool = False) -> list:
-        try:
-            weaviate_result = []
-
-            filter_query = re.sub(r"\\", "", query).lower()
-
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content"])
-                .with_where(
-                    {
-                        "operator": "And",
-                        "operands": [
-                            {
-                                "path": ["entity"],
-                                "operator": "Equal",
-                                "valueText": entity,
-                            },
-                            {
-                                "path": ["user_id"],
-                                "operator": "Equal",
-                                "valueText": user_id,
-                            },
-                        ]
-                    }
-                )
-
-                .with_hybrid(
-                    query=filter_query,
-                    alpha=self.alpha,
-                    fusion_type=HybridFusion.RELATIVE_SCORE
-                )
-                .with_additional("score")
-                .with_limit(self.num_results)
-
-                .do()
-            )
-
-            if not response or response != [] or 'data' in response:
-                print("FOUND VECTORS!")
-                result = response['data']['Get'][class_]
-                await asyncio.sleep(1)
-
-                if result is not None:
-                    for chunk in result:
-                        relevance_score = round(float(chunk['_additional']['score']), 3)
-
-                        if relevance_score >= self.threshold:
-                            weaviate_result.append(chunk['content'])
-
-                return weaviate_result
-            else:
-                print("NO RESULTS FOUND!")
-                return []
-        except Exception as e:
-            print(f"CLASS LLMHYBRID -> USER VEC: {e}")
-            return []
-
-    async def asearch_vectors_initiative(self, query: str, class_: str, entity: str) -> list:
-        try:
-            weaviate_result = []
-
-            filter_query = re.sub(r"\\", "", query).lower()
-
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content"])
-                .with_where(
-                    {
-                        "path": ["entity"],
-                        "operator": "Equal",
-                        "valueText": entity,
-                    }
-                )
-
-                .with_hybrid(
-                    query=filter_query,
-                    alpha=self.alpha,
-                    fusion_type=HybridFusion.RELATIVE_SCORE
-                )
-                .with_additional("score")
-                .with_limit(self.num_results)
-                .do()
-            )
-
-            if not response or response != [] or 'data' in response:
-                print("FOUND VECTORS!")
-                result = response['data']['Get'][class_]
-                await asyncio.sleep(1)
-
-                if result is not None:
-                    for chunk in result:
-                        relevance_score = round(float(chunk['_additional']['score']), 3)
-
-                        if relevance_score >= self.threshold:
-                            weaviate_result.append(chunk['content'])
-
-                return weaviate_result
-            else:
-                print("NO RESULTS FOUND!")
-                return []
-        except Exception as e:
-            print(f"CLASS LLMHYBRID -> INIT VEC: {e}")
-            return []
-
-    async def asearch_vectors_company(self, query: str, class_: str, entity: str) -> list:
-        try:
-            weaviate_result = []
-
-            filter_query = re.sub(r"\\", "", query).lower()
-
-            response = (
-                self.weaviate_client.query
-                .get(class_, ["content"])
-                .with_where(
-                    {
-                        "path": ["entity"],
-                        "operator": "Equal",
-                        "valueText": entity,
-                    }
-                )
-
-                .with_hybrid(
-                    query=filter_query,
-                    alpha=self.alpha,
-                    fusion_type=HybridFusion.RELATIVE_SCORE
-                )
-                .with_additional("score")
-                .with_limit(self.num_results)
-                .do()
-            )
-
-            if not response or response != [] or 'data' in response:
-                print("FOUND VECTORS!")
-                result = response['data']['Get'][class_]
-                await asyncio.sleep(1)
-
-                if result is not None:
-                    for chunk in result:
-                        relevance_score = round(float(chunk['_additional']['score']), 3)
-
-                        if relevance_score >= self.threshold:
-                            weaviate_result.append(chunk['content'])
-
-                return weaviate_result
-            else:
-                print("NO RESULTS FOUND!")
-                return []
-        except Exception as e:
-            print(f"CLASS LLMHYBRID -> COMP VEC: {e}")
-            return []
-
-    async def areranker(self, query: str, batch: list, top_k: int = 6, return_type: type = str) -> str or list:
-        try:
-            if not batch:
-                return "\n\n".join(batch) if return_type == str else batch
-
-            ranked_results = []
-
-            results = self.cohere_client.rerank(
-                query=query,
-                documents=batch,
-                top_n=top_k,
-                model='rerank-english-v2.0',
-                return_documents=True)
-
-            await asyncio.sleep(0.5)
-
-            for document in results.results:
-                if float(document.relevance_score) >= self.threshold:
-                    ranked_results.append(document.document.text)
-
-            return "\n\n".join(ranked_results) if return_type == str else ranked_results
-        except Exception as e:
-            print(e)
+            logger.info(e)
             return [] if return_type == list else ""
 
     # ----------------------------------------------------------------------------
@@ -871,13 +715,21 @@ Classify the following user query, {user_prompt}"""
                 } for chunk in batch
             ]
 
-            self.weaviate_client.batch.configure(batch_size=100)
-            with self.weaviate_client.batch as batch_data:
-                for data_obj in data_objs:
-                    batch_data.add_data_object(
-                        data_obj,
-                        class_,
+            collection = self.weaviate_client.collections.get(class_)
+
+            with collection.batch.fixed_size(batch_size=100) as batch:
+                for data_row in data_objs:
+                    batch.add_object(
+                        properties=data_row,
                     )
+
+            # self.weaviate_client.batch.configure(batch_size=100)
+            # with self.weaviate_client.batch as batch_data:
+            #     for data_obj in data_objs:
+            #         batch_data.add_data_object(
+            #             data_obj,
+            #             class_,
+            #         )
 
             return str(unique_id)
         except Exception as e:
@@ -908,13 +760,21 @@ Classify the following user query, {user_prompt}"""
                 } for chunk in batch
             ]
 
-            self.weaviate_client.batch.configure(batch_size=100)
-            with self.weaviate_client.batch as batch_data:
-                for data_obj in data_objs:
-                    batch_data.add_data_object(
-                        data_obj,
-                        class_,
+            collection = self.weaviate_client.collections.get(class_)
+
+            with collection.batch.fixed_size(batch_size=100) as batch:
+                for data_row in data_objs:
+                    batch.add_object(
+                        properties=data_row,
                     )
+
+            # self.weaviate_client.batch.configure(batch_size=100)
+            # with self.weaviate_client.batch as batch_data:
+            #     for data_obj in data_objs:
+            #         batch_data.add_data_object(
+            #             data_obj,
+            #             class_,
+            #         )
 
             return str(uuid_)
         except Exception as e:
@@ -940,24 +800,67 @@ Classify the following user query, {user_prompt}"""
                 for dataObj in batch[_class]
             ]
 
-            self.weaviate_client.batch.configure(batch_size=100)
-            with self.weaviate_client.batch as batch_data:
-                for data_obj in data_object:
-                    batch_data.add_data_object(
-                        data_obj,
-                        _class,
+            collection = self.weaviate_client.collections.get(_class)
+
+            with collection.batch.fixed_size(batch_size=100) as batch:
+                for data_row in data_object:
+                    batch.add_object(
+                        properties=data_row,
                     )
 
-    def remove_uuid(self, uuid: str, class_: str):
-        self.weaviate_client.batch.delete_objects(
-            class_name=class_,
-            where={
-                "path": ["uuid"],
-                "operator": "Equal",
-                "valueText": uuid
-            },
-        )
+    def remove_uuid(self, uuid_: str, class_: str) -> bool:
+        try:
 
+            # self.weaviate_client.batch.delete_objects(
+            #     class_name=class_,
+            #     where={
+            #         "path": ["uuid"],
+            #         "operator": "Equal",
+            #         "valueText": uuid_
+            #     },
+            # )
+
+            collection = self.weaviate_client.collections.get(class_)
+            collection.data.delete_many(
+                where=Filter.by_property("uuid").equal(uuid_)
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error("REMOVE UUID: ")
+            logger.error(e)
+            return False
+
+    def remove_uuid_all(self, uuid_: str, class_: str) -> bool:
+        try:
+            uuid_file = "file-" + uuid_.split('-')[4] + uuid_.split('-')[4] + uuid_.split('-')[3] + uuid_.split('-')[
+                2] + \
+                        uuid_.split('-')[1] + uuid_.split('-')[0]
+
+            collection = self.weaviate_client.collections.get(class_)
+            collection.data.delete_many(
+                where=Filter.by_property("uuid").contains_any([uuid_, uuid_file])
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error("REMOVE UUID ALL: ")
+            logger.error(e)
+            return False
+
+    def remove_entity_all(self, class_: str, entity: str, combine_id: str) -> bool:
+        try:
+            collection = self.weaviate_client.collections.get(class_)
+            collection.data.delete_many(
+                where=Filter.by_property("entity").contains_any([entity, combine_id])
+            )
+            return True
+        except Exception as e:
+            logger.error("REMOVE ENTITY ALL: ")
+            logger.error(e)
+            return False
 
     def get_by_uuid(self, uuid_: str, class_: str) -> str:
         try:
@@ -1033,4 +936,3 @@ Classify the following user query, {user_prompt}"""
         )
 
         return data_object
-
