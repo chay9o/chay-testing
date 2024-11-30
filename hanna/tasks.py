@@ -6,7 +6,10 @@ import tempfile
 from pptx import Presentation
 from pptx.util import Pt, Inches
 from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
+from pptx.enum.shapes import MSO_SHAPE  
 from django.core.files.storage import default_storage
+from django.core.cache import cache
 from django.conf import settings
 import os
 import re
@@ -21,15 +24,109 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import ConfigurableField
 from langchain_openai import ChatOpenAI
 from together import Together
+import fasttext
 import logging
 
+#Strategic Alignement
+def detectLanguage( text, original_language):
+    # Load the pre-trained language identification model
+    model_path = 'lid.176.ftz'  # Path to the pre-trained model file
+    model = fasttext.load_model(model_path)
+    # Text to be identified
+    text = text.replace('\n', ' ').strip()  # Remove newlines and trim whitespace
+    # If the text is less than 5 words, return the original language
+    if len(text.split()) < 5:
+        return original_language
+    # Predict the language of the text
+    predicted_languages = model.predict(text, k=1)  # Get top 1 prediction
+    detected_language_code = predicted_languages[0][0].replace('__label__', '')
+    # Mapping of language codes to language names. I think with these languages we have more than enough
+    language_names = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'it': 'Italian',
+        'pt': 'Portuguese',
+        'zh': 'Chinese',
+        'ru': 'Russian',
+        'ja': 'Japanese',
+        'nl': 'Dutch',
+        'ar': 'Arabic',
+        'ur': 'Urdu'
+    }
+    # Return the full name of the detected language
+    return language_names.get(detected_language_code, original_language)
+    
 @shared_task
-def send_data_to_webhook(payload):
-    webhook_url = "https://chay-testing-192912d0328c.herokuapp.com/webhook_handler"
+def evaluate_text_task(note_text, guidelines):
     try:
-        requests.post(webhook_url, json=payload, timeout=5)
-    except requests.RequestException as e:
-        print(f"Webhook error: {e}")
+        note_language = detectLanguage(note_text, 'en')
+        print(note_language)
+        guideline_language = detectLanguage(guidelines[0]['text'], 'en')
+        print(guideline_language)
+
+        language_warning = None
+        if note_language != guideline_language:
+            language_warning = 'Smartnote and the Strategic Alignment are in different languages, so the outcome may not be accurate.'
+
+        with open("strategic-prompt.txt", "r") as file:
+            prompt_ = file.read()
+
+        SYSPROMPT = str(prompt_)
+        guidelines_text = "\n".join([f"#Guideline {index + 1}: \"{guideline['text']}\"" for index, guideline in enumerate(guidelines)])
+        prompt_with_values = SYSPROMPT.replace("{note_text}", note_text).replace("{guidelines}", guidelines_text).replace("{language}", note_language)
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=settings.TOGETHER_API_KEY)
+        messages = [
+            {"role": "system", "content": prompt_with_values},
+            {"role": "user", "content": f"{note_text}\n{guidelines_text}"}
+        ]
+
+        response = client.chat.completions.create(
+            model="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+            messages=messages,
+            max_tokens=4096,
+            temperature=0,
+            top_p=0.7,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        analysis = ""
+        for chunk in response:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                analysis += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                analysis += chunk.choices[0].message.content
+                
+        print(f"Raw analysis data: {analysis}")
+        if analysis.startswith("```") and analysis.endswith("```"):
+            analysis_lines = analysis.splitlines()
+            # Remove the first and last lines
+            analysis_lines = analysis_lines[1:-1]
+            # Join the lines back into a single string
+            analysis = "\n".join(analysis_lines)
+        print(f"Sanitized analysis data: {analysis}")
+      
+        if not analysis:
+            return Response({'error': 'Empty response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            analysis_json = json.loads(analysis)
+        except json.JSONDecodeError as e:
+            print(f"JSON Decode Error: {e}, Raw data: {analysis}")
+            return Response({'error': 'Invalid JSON response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if language_warning:
+            analysis_json['warning'] = language_warning
+
+        return analysis_json
+    except Exception as e:
+        return {'error': str(e)}
+
 
 chat_template = (
     "{{ bos_token }}{% for message in messages %}"
@@ -72,19 +169,20 @@ def process_prompts_1(self, final_text, language):
 
         # Call the process_user_input function with the iteration number
         answer = process_user_input_1(user_input, chat_history_str, i, language)
+        answer_cleaned = re.sub(r'\[INST\](.*?)\[/INST\]', '', answer, flags=re.DOTALL)
 
         # Append the bot's answer to the chat history
-        chat_history.append({"role": "bot", "text": answer})
+        chat_history.append({"role": "bot", "text": answer_cleaned})
 
         # Accumulate the answers for this iteration
-        accumulated_answers.append({ "answer": answer,"iteration": i+1})
+        accumulated_answers.append({ "answer": answer_cleaned,"iteration": i+1})
 
         # Log the accumulated answers for debugging
         logger.info(f"Accumulated Answers so far: {accumulated_answers}")
 
     # Final return (log before returning)
-    logger.info(f"Final accumulated_answers: {accumulated_answers}")
-    logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
+    #logger.info(f"Final accumulated_answers: {accumulated_answers}")
+    #logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
 
     return {
         'final_text': final_text,
@@ -263,51 +361,7 @@ def get_text_template_1(iteration):
         Default template for iteration {iteration}: Add your own text here.
         """
 
-
-#def process_user_inpu(combined_input, chat_history):
-    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-    client = Together(api_key=TOGETHER_API_KEY)
-    
-    #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-    model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-    max_tokens = 8192
-
-    # This is the OpenAI chat completion client call
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "user", "content": combined_input},
-            {"role": "system", "content": chat_history}
-        ],
-        max_tokens=max_tokens,
-        temperature=0.4,
-        top_p=0.9,
-        top_k=50,
-        repetition_penalty=1,
-        stop=["<|eot_id|>", "<|eom_id|>"],
-        stream=True
-    )
-
-    # Process the streamed response
-    generated_text = ""
-    
-    for chunk in response:
-        if len(chunk.choices) > 0:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                if chunk.choices[0].delta.content:
-                    generated_text += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                if chunk.choices[0].message.content:
-                    generated_text += chunk.choices[0].message.content
-        else:
-            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
-
-    # Return the generated text back to process_prompts1
-    return generated_text
-
 def process_user_input_1(combined_input, chat_history, iteration, language):
-    
-
     # Check if we are on iteration 2 (DeepInfra model)
     if iteration == 1:
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -410,19 +464,20 @@ def process_prompts_2(self, final_text, language):
 
         # Call the process_user_input function with the iteration number
         answer = process_user_input_2(user_input, chat_history_str, i, language)
+        answer_cleaned = re.sub(r'\[INST\](.*?)\[/INST\]', '', answer, flags=re.DOTALL)
 
         # Append the bot's answer to the chat history
-        chat_history.append({"role": "bot", "text": answer})
+        chat_history.append({"role": "bot", "text": answer_cleaned})
 
         # Accumulate the answers for this iteration
-        accumulated_answers.append({ "answer": answer,"iteration": i+1})
+        accumulated_answers.append({ "answer": answer_cleaned,"iteration": i+1})
 
         # Log the accumulated answers for debugging
         logger.info(f"Accumulated Answers so far: {accumulated_answers}")
 
     # Final return (log before returning)
-    logger.info(f"Final accumulated_answers: {accumulated_answers}")
-    logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
+    #logger.info(f"Final accumulated_answers: {accumulated_answers}")
+    #logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
 
     return {
         'final_text': final_text,
@@ -473,7 +528,7 @@ def get_text_template_2(iteration):
         Carefully analyze the models and frameworks provided in the #ModelsAndFrameworks area. 
 
         IF
-        any of models and frameworks from the #ModelsAndFrameworks area help solve the previous situation, choose that one.
+            any of models and frameworks from the #ModelsAndFrameworks area help solve the previous situation, choose the best 3 of them, and after choose one of them at random.
 
         ELSE
             If none of them help solve the situation
@@ -926,51 +981,7 @@ def get_text_template_2(iteration):
         Default template for iteration {iteration}: Add your own text here.
         """
 
-
-#def process_user_inpu(combined_input, chat_history):
-    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-    client = Together(api_key=TOGETHER_API_KEY)
-    
-    #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-    model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-    max_tokens = 8192
-
-    # This is the OpenAI chat completion client call
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "user", "content": combined_input},
-            {"role": "system", "content": chat_history}
-        ],
-        max_tokens=max_tokens,
-        temperature=0.4,
-        top_p=0.9,
-        top_k=50,
-        repetition_penalty=1,
-        stop=["<|eot_id|>", "<|eom_id|>"],
-        stream=True
-    )
-
-    # Process the streamed response
-    generated_text = ""
-    
-    for chunk in response:
-        if len(chunk.choices) > 0:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                if chunk.choices[0].delta.content:
-                    generated_text += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                if chunk.choices[0].message.content:
-                    generated_text += chunk.choices[0].message.content
-        else:
-            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
-
-    # Return the generated text back to process_prompts1
-    return generated_text
-
 def process_user_input_2(combined_input, chat_history, iteration, language):
-    
-
     # Check if we are on iteration 2 (DeepInfra model)
     if iteration == 2:
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -1073,19 +1084,20 @@ def process_prompts_3(self, final_text, language):
 
         # Call the process_user_input function with the iteration number
         answer = process_user_input_3(user_input, chat_history_str, i, language)
+        answer_cleaned = re.sub(r'\[INST\](.*?)\[/INST\]', '', answer, flags=re.DOTALL)
 
         # Append the bot's answer to the chat history
-        chat_history.append({"role": "bot", "text": answer})
+        chat_history.append({"role": "bot", "text": answer_cleaned})
 
         # Accumulate the answers for this iteration
-        accumulated_answers.append({ "answer": answer,"iteration": i+1})
+        accumulated_answers.append({ "answer": answer_cleaned,"iteration": i+1})
 
         # Log the accumulated answers for debugging
         logger.info(f"Accumulated Answers so far: {accumulated_answers}")
 
     # Final return (log before returning)
-    logger.info(f"Final accumulated_answers: {accumulated_answers}")
-    logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
+    #logger.info(f"Final accumulated_answers: {accumulated_answers}")
+    #logger.info(f"Final chat_history: {render_chat_history(chat_history)}")
 
     return {
         'final_text': final_text,
@@ -1242,50 +1254,7 @@ def get_text_template_3(iteration):
         """
 
 
-#def process_user_inpu(combined_input, chat_history):
-    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-    client = Together(api_key=TOGETHER_API_KEY)
-    
-    #MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-    model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-    max_tokens = 8192
-
-    # This is the OpenAI chat completion client call
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "user", "content": combined_input},
-            {"role": "system", "content": chat_history}
-        ],
-        max_tokens=max_tokens,
-        temperature=0.4,
-        top_p=0.9,
-        top_k=50,
-        repetition_penalty=1,
-        stop=["<|eot_id|>", "<|eom_id|>"],
-        stream=True
-    )
-
-    # Process the streamed response
-    generated_text = ""
-    
-    for chunk in response:
-        if len(chunk.choices) > 0:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                if chunk.choices[0].delta.content:
-                    generated_text += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                if chunk.choices[0].message.content:
-                    generated_text += chunk.choices[0].message.content
-        else:
-            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}")
-
-    # Return the generated text back to process_prompts1
-    return generated_text
-
 def process_user_input_3(combined_input, chat_history, iteration, language):
-    
-
     # Check if we are on iteration 2 (DeepInfra model)
     if iteration == 1:
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
@@ -1625,456 +1594,982 @@ def generate_ppt_task(chat_history, tab_name, username, language):
         raise ValueError(f"Task failed: {str(e)}")
 
 
-MODEL_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-
-#MODEL_405B = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
 
 @shared_task
-def process_single_prompt1(prompt, chat_history, language, model_name):
-    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-    client = Together(api_key=TOGETHER_API_KEY)
-    max_tokens = 8192  # Adjust based on requirement
-
-    # Add the current prompt to the chat history
-    if chat_history.strip() != "":
-        chat_history += f"[INST]\n{prompt.strip()}\n[/INST]\n"
-
-    # Combine the chat history with the user's language and instruction
-    current_input = f"[INST]\nLanguage: {language}\n[/INST]\n"
-    combined_input = chat_history + current_input
-
-    # Call Together API to get response
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[{"role": "user", "content": combined_input}],
-        max_tokens=max_tokens,
-        temperature=0.4,
-        top_p=0.9,
-        top_k=50,
-        repetition_penalty=1,
-        stop=["<|eot_id|>","<|eom_id|>"],
-        stream=True
-    )
-
-
-
-    # Process the streamed response
-    generated_text = ""
-
-    # print("TEST GEN: ", generated_text)
-    # print("TEST RES: ", response)
-
-    # response = response.choices[0].message.content
-    # generated_text = response
-
-    for chunk in response:
-        if len(chunk.choices) > 0:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                if chunk.choices[0].delta.content:
-                    generated_text += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                if chunk.choices[0].message.content:
-                    generated_text += chunk.choices[0].message.content
-        else:
-            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}", )
-
-    # Update the chat history with the generated response
-    chat_history += f"[INST]\n{generated_text.strip()}\n[/INST]\n"
-
-    return chat_history, generated_text
-
-##option1
-@shared_task
-def process_prompts1(final_content, language):
-    try:
-        # Load system prompts from a file
-        with open("SA_option1.txt", "r") as file:
-            prompt_file_content = file.read()
-
-        # Split prompts by custom delimiter
-        prompts = prompt_file_content.split("######")
-
-        # Initialize chat history with the user's first input
-        chat_history = f"[INST]\n{final_content.strip()}\n[/INST]\n"
-        all_responses = []
-        final_response = ""
-
-        # Iterate through prompts
-        for i, prompt in enumerate(prompts):
-            model_name = MODEL_70B
-
-            # Process each prompt with chat history
-            chat_history, generated_text = process_single_prompt1(
-                prompt, chat_history, language, model_name=model_name)
-
-            # Collect the response for each prompt
-            all_responses.append(generated_text)
-
-            # For the last prompt, keep the final response
-            if i == len(prompts) - 1:
-                final_response = generated_text
-
-            # Log the response for debugging
-            print(f"Response for Prompt {i + 1}: {generated_text}")
-
-        # Return final response and all intermediate responses
-        return {
-            "final_text": final_response,
-            "all_responses": all_responses
-        }
-
-    except Exception as e:
-        logger.error(f"Task failed: {str(e)}")
-        raise ValueError(f"Task failed: {str(e)}")
-
-######################################################################################################
-@shared_task
-def process_single_prompt2(prompt, chat_history, language, model_name=None, is_deepinfra=False):
-    if is_deepinfra:
-        # Use DeepInfra model for the 3rd prompt
-        messages = f"Language: {language}\n{chat_history}<INST>\n{prompt.strip()}\n</INST>\n"
-        response = llm.stream(messages)  # Assuming llm is the DeepInfra model object
-        generated_text = ""
-        for chunk in response:
-            if hasattr(chunk, 'content'):
-                generated_text += chunk.content
-            else:
-                generated_text += str(chunk)
-        
-        # After generating the response, update the chat history with the short prompt and the generated response
-        short_prompt = "Identify the most suitable model from the options provided or create a new one if necessary, explaining its relevance and usage."
-        chat_history += f"<INST>\n{short_prompt}\n</INST>\n"
-        chat_history += f"<INST>\n{generated_text.strip()}\n</INST>\n"
-    else:
-        # Use Together API for other prompts
-        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-        client = Together(api_key=TOGETHER_API_KEY)
-        max_tokens = 8192
-
-        messages = [
-            {"role": "system", "content": prompt.strip()},
-            {"role": "user", "content": f"{chat_history}\n\nLanguage: {language}"}
-        ]
-
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=0.4,
-            top_p=0.9,
-            stream=True
-        )
-
-        generated_text = ""
-        for chunk in response:
-            if len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                    if chunk.choices[0].delta.content:
-                        generated_text += chunk.choices[0].delta.content
-                elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                    if chunk.choices[0].message.content:
-                        generated_text += chunk.choices[0].message.content
-            else:
-                logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}", )
-        # Update chat history with the full prompt and generated response
-        chat_history += f"<INST>\n{prompt.strip()}\n</INST>\n"
-        chat_history += f"<INST>\n{generated_text.strip()}\n</INST>\n"
-    
-    return chat_history, generated_text
-
-
-##option2
-@shared_task
-def process_prompts2(final_content, language):
-    try:
-        # Load prompts from the text file
-        with open("SA_option2.txt", "r") as file:
-            prompt_file_content = file.read()
-
-        # Split the content by a custom delimiter like "######"
-        PROMPTS = prompt_file_content.split("######")
-
-        chat_history = f"<INST>\n{final_content.strip()}\n</INST>\n"
-        all_responses = []
-        final_response = ""
-
-        for i, prompt in enumerate(PROMPTS):
-            if i == 2:
-                # Third prompt with DeepInfra model
-                chat_history, generated_text = process_single_prompt2(prompt, chat_history, language, is_deepinfra=True)
-            else:
-                # Other prompts with Together API
-                model_name = MODEL_70B
-                chat_history, generated_text = process_single_prompt2(prompt, chat_history, language, model_name=model_name)
-                #chat_history, generated_text = process_single_prompt2(prompt, chat_history, language, is_deepinfra=True)
-            
-            # Append the response to the list for final return
-            all_responses.append(generated_text)
-
-            # Check if this is the final prompt (prompt 10)
-            if i == len(PROMPTS) - 1:
-                final_response = generated_text  # Store the final response
-
-            # Log the response for each prompt
-            print(f"Response for Prompt {i + 1}: {generated_text}")
-
-        # Print the final chat history after all prompts have been processed
-        #print("Final Chat History:")
-        #print(chat_history)
-        #print("finalone--------")
-        #print(final_response)
-
-        # Return the final response only for prompt 10
-        return {
-            "final_text": final_response,
-            "all_responses": all_responses
-        }
-
-    except Exception as e:
-        logger.error(f"Task failed: {str(e)}")
-        raise ValueError(f"Task failed: {str(e)}")
-
-####################################################################################################
-
-##option3
-@shared_task
-def process_prompts3(final_content, language):
-    try:
-        # Load prompts from the text file
-        with open("SA_option3.txt", "r") as file:
-            prompt_file_content = file.read()
-
-        # Split the content by a custom delimiter like "######"
-        PROMPTS = prompt_file_content.split("######")
-
-        # Initialize chat history
-        chat_history = f"<INST>\n{final_content.strip()}\n</INST>\n"
-        all_responses = []
-        final_response = ""
-
-        # Process Prompt 1
-        prompt_1 = PROMPTS[0]  # First prompt
-        chat_history, generated_text = process_single_prompt3(prompt_1, chat_history, language, model_name=MODEL_70B)
-        print(f"Response for Prompt 1: {generated_text}")
-
-        # Overwrite Prompt 1 response with Prompt 2
-        prompt_2 = PROMPTS[1]  # Second prompt
-        chat_history, generated_text = process_single_prompt3(prompt_2, chat_history, language, model_name=MODEL_70B)
-        checkpoint_response = generated_text  # Store checkpoint after Prompt 2
-        print(f"Response for Prompt 2 (checkpoint): {generated_text}")
-
-        # Initialize a container for Prompt 3 iterations
-        prompt_3_responses = ""
-
-        # Iterations of Prompt 3 (from 1 to 6)
-        prompt_3_template = PROMPTS[2]  # Template for prompt with {number}
-        for number in range(1, 7):  # Replace {number} with values 1 to 6
-            prompt_with_number = prompt_3_template.replace("{number}", str(number))
-            _, generated_text = process_single_prompt3(prompt_with_number, chat_history, language, model_name=MODEL_70B)
-            
-            # Append each iteration's response independently to the final combined result
-            prompt_3_responses += generated_text
-            print(f"Response for Prompt 3 (iteration {number}): {generated_text}")
-
-        # Now append the final combined responses from Prompt 3
-        all_responses.append(prompt_3_responses)
-
-        # Process Prompt 4 (reassessing the situation)
-        prompt_4 = PROMPTS[3]  # Final reassessment prompt
-        chat_history, reassessment_response = process_single_prompt3(prompt_4, prompt_3_responses, language, model_name=MODEL_70B)
-        all_responses.append(reassessment_response)
-        final_response += reassessment_response  # Append to final response
-        print(f"Response for Prompt 4: {reassessment_response}")
-
-        # Process Prompt 5 (final formatting and HTML)
-        final_prompt = PROMPTS[4]  # Final prompt with HTML instructions
-        chat_history, final_formatted_response = process_single_prompt3(final_prompt, chat_history, language, model_name=MODEL_70B)
-        final_response = final_formatted_response  # Overwrite with final formatted response
-        print("Final formatted response:")
-        print(final_formatted_response)
-
-        # Return the final response including all stages of processing
-        return {
-            "final_text": final_response,
-            "all_responses": all_responses
-        }
-
-    except Exception as e:
-        logger.error(f"Task failed: {str(e)}")
-        raise ValueError(f"Task failed: {str(e)}")
-
-
-
-##option3
-@shared_task
-def process_single_prompt3(prompt, chat_history, language, model_name=None):
-    TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-    client = Together(api_key=TOGETHER_API_KEY)
-    max_tokens = 8192
-
-    messages = [
-        {"role": "system", "content": prompt.strip()},
-        {"role": "user", "content": f"{chat_history}\n\nLanguage: {language}"}
-    ]
-
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=messages,
-        max_tokens=max_tokens,
-        temperature=0.4,
-        top_p=0.9,
-        stream=True
-    )
-
-    generated_text = ""
-    for chunk in response:
-        if len(chunk.choices) > 0:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                if chunk.choices[0].delta.content:
-                    generated_text += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                if chunk.choices[0].message.content:
-                    generated_text += chunk.choices[0].message.content
-        else:
-            logger.info(f"CHUNK HAS NO CHOICES: {chunk.choices}", )
-    # Update chat history with the full prompt and generated response
-    chat_history += f"<INST>\n{prompt.strip()}\n</INST>\n"
-    chat_history += f"<INST>\n{generated_text.strip()}\n</INST>\n"
-
-    return chat_history, generated_text
-
-
-
-
-
-
-@shared_task
-def process_prompts4(final_content, language):
+def process_prompts4(final_content, language, user_id, invocation_id):
     try:
         # Load system prompt from the text file
         with open("cpromptcheck.txt", "r") as file:
             prompt_file_content = file.read()
+            
+        SYSPROMPT = str(prompt_file_content)
 
         # Replace {final_content} in the system prompt with the actual final_content input
-        system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
+        #system_prompt = prompt_file_content.replace("{final_content}", final_content.strip())
+        system_prompt = SYSPROMPT.replace("{final_content}", final_content.strip()).replace("{language}", language)
 
-        # Send the system prompt to the DeepInfra LLM
-        response = llm.stream(system_prompt)
-        print(f"Raw response from DeepInfra: {response}")
-
-        # Collect response content
-        generated_text = ""
-        for chunk in response:
-            if hasattr(chunk, 'content'):
-                generated_text += chunk.content
-            else:
-                generated_text += str(chunk)
-
-        final_response = generated_text.strip()
-
-        # Log the final response
-        print(f"Final LLM Response:\n{final_response}")
-
-        # Search for the JSON content in the response, even if the exact pattern is not found
-        json_start = final_response.find("{")
-        json_end = final_response.rfind("}") + 1  # Locate the last closing brace for the JSON
-
-        if json_start != -1 and json_end != -1:
-            # Extract the JSON string from the response
-            json_string = final_response[json_start:json_end]
-
-            # Parse the extracted JSON
-            try:
-                canvas_data = json.loads(json_string)
-                print(f"Extracted JSON: {canvas_data}")
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to decode JSON: {str(e)}")
-                raise ValueError(f"Failed to decode JSON: {str(e)}")
-
-            # Check for the template type
-            template_type = canvas_data.get("canvas", {}).get("template_type")
-            print(f"Template Type: {template_type}")
-            response_data = {
-                "final_text": final_response,
-                "template_type": template_type
-            }
-
-            # Based on the template type, forward to the appropriate function
-            if template_type == 1:
-                handle_template_type_1(canvas_data)
-            elif template_type == 2:
-                handle_template_type_2(canvas_data)
-            elif template_type == 3:
-                handle_template_type_3(canvas_data)
-            elif template_type == 4:
-                pptx_data = handle_template_type_4(canvas_data)
-                response_data.update(pptx_data) 
-            else:
-                logger.error(f"Unknown template type: {template_type}")
-                raise ValueError(f"Unknown template type: {template_type}")
+         # Use Together API instead of llm.stream
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{final_content}\n"}
+        ]
         
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=8192,
+            temperature=0.4,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            top_p=0.7,
+            top_k=50,
+            repetition_penalty=1,
+            stream=True
+        )
+        print(f"Response: {response}")
+        # Collect response content
+        # Process the streamed response
+        generated_response = ""
+        for chunk in response:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                generated_response += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                generated_response += chunk.choices[0].message.content
+
+        print(f"Generated response: {generated_response}")
+
+
+            # Print the full response text for debugging
+        #print("Full LLM Response:\n", generated_text)
+        timeout=1200
+        canvas_data = parse_plain_text_response_with_user_id(generated_response, user_id, invocation_id, timeout)
+        #canvas_data = parse_plain_text_response(generated_response)
+        print(f"Parsed canvas data: {canvas_data}")
+        smartnote_title = canvas_data.get("canvas_name", "Default Title")
+        smartnote_description = refine_and_generate_presentation(generated_response, language, user_id, invocation_id)
+        
+        template_type = canvas_data.get("template_type", None)
+        if not template_type:
+            raise ValueError("Template type not found in the response")
+
+        #response_data = {"final_text": canvas_data, "template_type": template_type}
+        response_data = {
+            "user_id": user_id,
+            "smartnote_title": smartnote_title,
+            "smartnote_description": smartnote_description,
+            "template_type": canvas_data.get("template_type", None)
+        }
+        pptx_base64 = None
+        #canvas_data = json_response
+            # Based on the template type, forward to the appropriate function
+        if template_type == "1":
+            pptx_data = handle_template_type_1(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
+            response_data.update(pptx_data) 
+        elif template_type == "2":
+            pptx_data = handle_template_type_2(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
+            response_data.update(pptx_data) 
+        elif template_type == "3":
+            pptx_data = handle_template_type_3(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
+            response_data.update(pptx_data) 
+        elif template_type == "4":
+            pptx_data = handle_template_type_4(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id)
+            response_data.update(pptx_data) 
         else:
-            logger.error("No valid JSON output found in the LLM response")
-            raise ValueError("No valid JSON output found in the LLM response")
+            #logger.error(f"Unknown template type: {template_type}")
+            raise ValueError(f"Unknown template type: {template_type}")
 
+        delete_user_data(user_id, invocation_id)
+        
         return response_data
-
+        
     except Exception as e:
-        logger.error(f"Task failed: {str(e)}")
+        logger.error(f"Task failed for user {user_id}, invocation {invocation_id}: {str(e)}")
+        delete_user_data(user_id, invocation_id)
         raise ValueError(f"Task failed: {str(e)}")
 
-# Example functions to handle each template type
-def handle_template_type_1(canvas_data):
-    print(f"Handling template type 1 with data: {canvas_data}")
+        
+def refine_and_generate_presentation(generated_response, language, user_id, invocation_id):
+    try:
+        # Load the new system prompt for refining the response
+        with open("cpromptcheck2.txt", "r") as file:
+            new_prompt_content = file.read()
 
-def handle_template_type_2(canvas_data):
-    print(f"Handling template type 2 with data: {canvas_data}")
+        system_prompt = new_prompt_content.replace("{generated_response}", str(generated_response)).replace("{language}", language)
 
-def handle_template_type_3(canvas_data):
-    print(f"Handling template type 3 with data: {canvas_data}")
+        # Use Together API
+        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
+        client = Together(api_key=TOGETHER_API_KEY)
+        model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Refine this canvas data for presentation:\n{generated_response}"}
+        ]
+        
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=8192,
+            temperature=0.4,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            top_p=0.7,
+            top_k=50,
+            repetition_penalty=1,
+            stream=True
+        )
 
-def handle_template_type_4(canvas_data):
-    presentation = Presentation("Hex Canvas Design (1).pptx")
-    print(f"Handling template type 4 with data: {canvas_data}")
-    # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
-    replacement_dict = {
-        "box1": f"        {canvas_data['canvas']['top_hexagons'][0]['title']}\n\n        {canvas_data['canvas']['top_hexagons'][0]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['top_hexagons'][0]['key_elements']),
-        "top_hex2": f"        {canvas_data['canvas']['top_hexagons'][1]['title']}\n\n        {canvas_data['canvas']['top_hexagons'][1]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['top_hexagons'][1]['key_elements']),
-        "top_hex3": f"        {canvas_data['canvas']['top_hexagons'][2]['title']}\n\n        {canvas_data['canvas']['top_hexagons'][2]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['top_hexagons'][2]['key_elements']),
-        "top_hex4": f"        {canvas_data['canvas']['top_hexagons'][3]['title']}\n\n        {canvas_data['canvas']['top_hexagons'][3]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['top_hexagons'][3]['key_elements']),
-        "box2": f"        {canvas_data['canvas']['bottom_hexagons'][0]['title']}\n\n        {canvas_data['canvas']['bottom_hexagons'][0]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['bottom_hexagons'][0]['key_elements']),
-        "bottom_hex2": f"        {canvas_data['canvas']['bottom_hexagons'][1]['title']}\n\n        {canvas_data['canvas']['bottom_hexagons'][1]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['bottom_hexagons'][1]['key_elements']),
-        "bottom_hex3": f"        {canvas_data['canvas']['bottom_hexagons'][2]['title']}\n\n        {canvas_data['canvas']['bottom_hexagons'][2]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['bottom_hexagons'][2]['key_elements']),
-        "bottom_hex4": f"        {canvas_data['canvas']['bottom_hexagons'][3]['title']}\n\n        {canvas_data['canvas']['bottom_hexagons'][3]['description']}\n        - " + "\n        - ".join(canvas_data['canvas']['bottom_hexagons'][3]['key_elements']),
-        "cut1": canvas_data["canvas"]["canvas_name"],
-        "cut2": canvas_data["canvas"]["canvas_description"],
+        refined_response = ""
+        for chunk in response:
+            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                refined_response += chunk.choices[0].delta.content
+            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
+                refined_response += chunk.choices[0].message.content
+
+        print(f"Refined response: {refined_response}")
+        #formatted_presentation = generate_dynamic_presentation(refined_response)
+        #print("Generated 3-Slide Presentation:")
+        #print(formatted_presentation)
+
+        # Example: Logging or returning the dynamic slides
+        #print("Generated 3-Slide Pr:")
+        #for slide, content in formatted_presentation.items():
+        #    print(f"[{slide}]")
+        #    print(f"[Title] {content['Title']} [/Title]")
+        #    print(f"[Description] {content['Description']} [/Description]")
+        #    print(f"[/{slide}]")
+        return refined_response
+        # Handle the refined response as needed (e.g., storing or further processing)
+
+    except Exception as e:
+        logger.error(f"Refinement task failed: {str(e)}")
+        raise ValueError(f"Refinement task failed: {str(e)}")
+
+def clean_asterisks(text):
+    """
+    Remove all occurrences of `*` (including `**`) from the given text.
+    """
+    if not text:
+        return text  # Return as is if the text is None or empty
+    return text.replace("*", "").strip()
+
+
+def parse_plain_text_response_with_user_id(response, user_id, invocation_id, timeout):
+    """Parse the plain text response dynamically and store it in Redis."""
+    parsed_data = parse_plain_text_response(response, user_id, invocation_id)
+
+    # Create a Redis key using user_id and invocation_id
+    key = f"{user_id}_{invocation_id}"
+
+    # Store data in Redis with a timeout
+    cache.set(key, parsed_data, timeout=timeout)
+
+    return parsed_data
+    
+def delete_user_data(user_id, invocation_id):
+    """
+    Delete user-specific data from Redis.
+    """
+    key = f"{user_id}_{invocation_id}"
+    cache.delete(key)
+
+def parse_plain_text_response(response, user_id, invocation_id):
+    """Parse the plain text response dynamically."""
+    data = {
+        "template_type": None,
+        "canvas_name": None,
+        "canvas_description": None,
+        "top_hexagons": [],
+        "bottom_hexagons": [],
+        "sections": [],  # For other template types (2, 3, 4)
+        "columns": [],  # For Template 1 (Progression Canvas)
     }
-    # Iterate through slides and apply formatting for 'cut1' and 'cut2' (different sizes and black titles)
-    for slide in presentation.slides:
+
+    try:
+        clean_response = clean_asterisks(response)
+        logger.info(f"Cleaned Response chay:\n{clean_response}")
+
+        # Extract Template Type
+        template_type_match = re.search(r"Template Type:\s*\"?(\d+)\"?", clean_response)
+        if template_type_match:
+            data["template_type"] = template_type_match.group(1).strip()
+        else:
+            logger.warning("Template Type not found in the response.")
+
+        # Extract Canvas Name
+        canvas_name_match = re.search(r"Canvas Name:\s*(.+)", clean_response)
+        if canvas_name_match:
+            data["canvas_name"] = canvas_name_match.group(1).strip().strip("**")
+        else:
+            logger.warning("Canvas Name not found in the response.")
+
+        # Extract Canvas Description
+        canvas_description_match = re.search(r"Canvas Description:\s*(.+)", clean_response)
+        if canvas_description_match:
+            data["canvas_description"] = canvas_description_match.group(1).strip().strip("**")
+        else:
+            logger.warning("Canvas Description not found in the response.")
+
+        # Handle Progression Canvas (Template 1)
+        if data["template_type"] == "1":
+            logger.info(f"Found data: {clean_response}")
+
+            lines = clean_response.split("\n")
+            current_column = {}
+            for line in lines:
+                line = line.strip()
+
+                # Match Column Header
+                column_match = re.match(r"Column (\d+):", line)
+                if column_match:
+                    # Save the previous column if it exists
+                    if current_column:
+                        data["columns"].append(current_column)
+                        current_column = {}
+
+                    # Start a new column
+                    column_number = column_match.group(1)
+                    current_column["column"] = f"Column {column_number}"
+                    current_column["title"] = None
+                    current_column["description"] = None
+                    current_column["key_elements"] = []
+
+                # Match Title
+                elif line.startswith("Title:") and current_column:
+                    current_column["title"] = line.replace("Title:", "").strip()
+
+                # Match Description
+                elif line.startswith("Description:") and current_column:
+                    current_column["description"] = line.replace("Description:", "").strip()
+
+                # Match Key Elements
+                elif line.startswith("Key Elements:") and current_column:
+                    key_elements = line.replace("Key Elements:", "").strip()
+                    current_column["key_elements"] = [el.strip() for el in key_elements.split(",")]
+
+            # Add the last column if it exists
+            if current_column:
+                data["columns"].append(current_column)
+
+            logger.info(f"Parsed Columns for Template 1: {data['columns']}")
+
+        # Handle Grid Layout Canvas (Template 2)
+        elif data["template_type"] == "2":
+            areas = ["Top Left Area", "Top Right Area", "Bottom Left Area", "Bottom Right Area"]
+            for area in areas:
+                area_match = re.search(
+                    rf"{area}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+?)(?:\n\S|$)",
+                    clean_response,
+                    re.DOTALL,
+                )
+                if area_match:
+                    data["sections"].append({
+                        "area": area,
+                        "title": area_match.group(1).strip(),
+                        "description": area_match.group(2).strip(),
+                        "key_elements": [el.strip() for el in area_match.group(3).split(",")],
+                    })
+                else:
+                    logger.warning(f"Section data for '{area}' is incomplete or missing.")
+
+
+        # Handle Circular Layout Canvas (Template 3)
+        elif data["template_type"] == "3":
+            # Central Circle
+            central_match = re.search(r"Central Circle:\s*Issue/Goal:\s*(.+)", clean_response)
+            if central_match:
+                data["sections"].append({
+                    "circle": "Central Circle",
+                    "issue_goal": central_match.group(1).strip(),
+                })
+        
+            # Supporting Circles
+            for i in range(1, 6):  # Iterate over Supporting Circle 1 to 5
+                circle_match = re.search(
+                    rf"Supporting Circle {i}:\s*Title:\s*(.+?)\s*Description:\s*(.+?)\s*Key Elements:\s*(.+?)(?:\n\S|$)",
+                    clean_response,
+                    re.DOTALL,
+                )
+                if circle_match:
+                    data["sections"].append({
+                        "circle": f"Supporting Circle {i}",
+                        "title": circle_match.group(1).strip(),
+                        "description": circle_match.group(2).strip(),
+                        "key_elements": [el.strip() for el in circle_match.group(3).split(",")],
+                    })
+                else:
+                    logger.warning(f"Supporting Circle {i} data is incomplete or missing.")
+
+        # Handle Hive Template (Template 4)
+        elif data["template_type"] == "4":
+            hexagon_sections = re.split(r"(?P<position>Top|Bottom) Hexagon \d+:", clean_response)
+            for i in range(1, len(hexagon_sections), 2):
+                position = hexagon_sections[i].strip()
+                content = hexagon_sections[i + 1].strip()
+
+                # Extract Title, Description, and Key Elements
+                title_match = re.search(r"Title:\s*(.+)", content)
+                description_match = re.search(r"Description:\s*(.+)", content)
+                key_elements_match = re.search(r"Key Elements:\s*(.+)", content)
+
+                hexagon = {
+                    "title": title_match.group(1).strip() if title_match else None,
+                    "description": description_match.group(1).strip() if description_match else None,
+                    "key_elements": [
+                        el.strip() for el in key_elements_match.group(1).split(",")
+                    ] if key_elements_match else [],
+                }
+
+                # Append to Top or Bottom Hexagons
+                if position == "Top":
+                    data["top_hexagons"].append(hexagon)
+                elif position == "Bottom":
+                    data["bottom_hexagons"].append(hexagon)
+
+        return data
+
+    except Exception as e:
+        logger.error(f"Error parsing response: {str(e)}")
+        raise ValueError(f"Parsing error: {str(e)}")
+        
+        
+# Example functions to handle each template type
+def handle_template_type_1(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
+    print(f"Handling template type 1 with data: {canvas_data}")
+    presentation = Presentation("Hex Canvas Design (5).pptx")
+
+    canvas_name = canvas_data.get("canvas_name", "")
+    canvas_description = canvas_data.get("canvas_description", "")
+    columns = canvas_data.get("columns", [])
+
+    if not isinstance(columns, list):
+        raise ValueError(f"Invalid data: 'columns' should be a list but got {type(columns)}")
+
+    # Prepare replacement dictionary
+    replacement_dict = {
+        "cut1": canvas_name,
+        "cut2": canvas_description,
+    }
+
+    # Map columns dynamically
+    for column in columns:
+        column_id = column.get("column", "")
+        if column_id.startswith("Column "):
+            column_number = column_id.split(" ")[1]
+            placeholder = f"box{column_number}"
+            replacement_dict[placeholder] = {
+                "title": column.get("title", "Default Title"),
+                "description": column.get("description", "Default Description"),
+                "key_elements": column.get("key_elements", [])[:4],
+            }
+
+    # Debugging: Print replacement dictionary
+    print("==== TEMPLATE 1 REPLACEMENT DATA ====")
+    for key, value in replacement_dict.items():
+        if isinstance(value, dict):
+            print(f"{key}: Title: {value['title']}, Description: {value['description']}, Key Elements: {', '.join(value['key_elements'])}")
+        else:
+            print(f"{key}: {value}")
+    print("==== END OF REPLACEMENT DATA ====")
+
+    # Function to apply replacements
+    def apply_replacements(slide, replacement_dict, slide_index, font_color_black=True, replace_titles_only=False):
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, data in replacement_dict.items():
+                    if placeholder in shape.text:
+                        # Generate formatted text
+                        if slide_index == 2 and isinstance(data, dict):
+                            # For Slide 3 (slide[2]), only include titles, no descriptions or key elements
+                            formatted_text = data.get("title", "")
+                        else:
+                            formatted_text = (
+                                f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
+                                if isinstance(data, dict) and not replace_titles_only
+                                else (data if isinstance(data, str) else data.get("title", ""))
+                            )
+                        shape.text = formatted_text
+
+                        # Apply formatting
+                        if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                            shape.text_frame.word_wrap = True
+                            shape.text_frame.margin_left = Inches(0.10)
+                            shape.text_frame.margin_right = Inches(0.10)
+                            for paragraph in shape.text_frame.paragraphs:
+                                content = paragraph.text.strip()
+
+                                # Slide 1: `cut1` specific formatting
+                                if slide_index == 0:
+                                    if placeholder == "cut1":
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(36)
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                    elif isinstance(data, dict) and content == data.get("title", ""):
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)  # Titles: White, 14pt
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White
+
+                                # Slide 2: Replace all placeholders
+                                elif slide_index == 1:
+                                    if placeholder in ["cut1", "cut2"]:
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(20 if placeholder == "cut1" else 16)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                    elif isinstance(data, dict):
+                                        if content == data.get("title", ""):
+                                            paragraph.alignment = PP_ALIGN.CENTER
+                                            for run in paragraph.runs:
+                                                run.font.bold = True
+                                                run.font.size = Pt(14)
+                                                run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                        elif content == data.get("description", ""):
+                                            paragraph.alignment = PP_ALIGN.LEFT
+                                            for run in paragraph.runs:
+                                                run.font.size = Pt(12)
+                                                run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                        elif content.startswith("-"):
+                                            paragraph.alignment = PP_ALIGN.LEFT
+                                            #paragraph.level = 1  # Indent for key elements
+                                            for run in paragraph.runs:
+                                                run.font.size = Pt(12)
+                                                run.font.color.rgb = RGBColor(255, 255, 255)  # White
+
+                                # Slide 3: Replace `cut1`, `cut2`, and titles only
+                                elif slide_index == 2:
+                                    if placeholder == "cut1":
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(20)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                    elif placeholder == "cut2":
+                                        paragraph.alignment = PP_ALIGN.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(16)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                    elif isinstance(data, dict) and content == data.get("title", ""):
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+
+    # Apply replacements for each slide
+    apply_replacements(presentation.slides[0], replacement_dict, slide_index=0)  # Slide 1
+    apply_replacements(presentation.slides[1], replacement_dict, slide_index=1)  # Slide 2
+    apply_replacements(presentation.slides[2], replacement_dict, slide_index=2)  # Slide 3
+
+    # Save the presentation and return as base64
+    pptx_stream = BytesIO()
+    presentation.save(pptx_stream)
+    pptx_stream.seek(0)
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode('utf-8')
+
+    print("Template 1 processing complete.")
+    return {
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description,
+    }
+
+    
+def handle_template_type_2(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
+    print(f"Handling template type 2 with data: {canvas_data}")
+    presentation = Presentation("Hex Canvas Design (7).pptx")  # Use the appropriate template for type 2
+
+    canvas_name = canvas_data.get('canvas_name', '')
+    canvas_description = canvas_data.get('canvas_description', '')
+    sections = canvas_data.get('sections', [])
+    replacement_dict = {}  # Dictionary to store all area data
+
+    # Map canvas_name and description to cut1 and cut2
+    replacement_dict['cut1'] = canvas_name
+    replacement_dict['cut2'] = canvas_description
+
+    # Map sections to their respective areas
+    for section in sections:
+        area = section.get('area', '')
+        if area == "Top Right Area":
+            replacement_dict["box1"] = {
+                "title": section.get("title", "Default Title"),
+                "description": section.get("description", "Default Description"),
+                "key_elements": section.get("key_elements", [])[:3],  # Limit key elements to 3
+            }
+        elif area == "Top Left Area":
+            replacement_dict["box2"] = {
+                "title": section.get("title", "Default Title"),
+                "description": section.get("description", "Default Description"),
+                "key_elements": section.get("key_elements", [])[:3],
+            }
+        elif area == "Bottom Right Area":
+            replacement_dict["box3"] = {
+                "title": section.get("title", "Default Title"),
+                "description": section.get("description", "Default Description"),
+                "key_elements": section.get("key_elements", [])[:3],
+            }
+        elif area == "Bottom Left Area":
+            replacement_dict["box4"] = {
+                "title": section.get("title", "Default Title"),
+                "description": section.get("description", "Default Description"),
+                "key_elements": section.get("key_elements", [])[:3],
+            }
+
+    # Print the replacement_dict to verify its contents
+    print("==== START OF BOX OUTPUT ====")
+    for box, data in replacement_dict.items():
+        print(f"{box} Data:")
+        if isinstance(data, dict):
+            print(f"Title: {data['title']}")
+            if 'description' in data:
+                print(f"Description: {data['description']}")
+            if 'key_elements' in data:
+                print(f"Key Elements: {', '.join(data['key_elements'])}")
+        else:
+            print(f"Content: {data}")
+        print()
+    print("==== END OF BOX OUTPUT ====")
+
+    # Step 2: Apply replacements and handle formatting
+    def apply_replacements(slide, replacement_dict, font_color_black, replace_titles_only=False, specific_placeholder=None):
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, data in replacement_dict.items():
+                    # Check if we're targeting a specific placeholder
+                    if specific_placeholder and placeholder != specific_placeholder:
+                        continue
+                    
+                    if placeholder in shape.text:
+                        formatted_text = ""
+                        # Replace only titles if replace_titles_only is True
+                        if slide == presentation.slides[2] and placeholder in ["cut1", "cut2"]:
+                            formatted_text = data if isinstance(data, str) else data.get('title', '')
+                        elif replace_titles_only:
+                            # Replace only titles if replace_titles_only is True
+                            formatted_text = data['title'] if isinstance(data, dict) else data
+                        elif not replace_titles_only:
+                            # Replace full content if replace_titles_only is False
+                            if isinstance(data, dict):
+                                formatted_text = f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data['key_elements'])
+                            else:
+                                formatted_text = data
+    
+                        shape.text = formatted_text  # Replace placeholder with text
+    
+                        # Apply formatting to the updated text
+                        if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                            shape.text_frame.word_wrap = True
+    
+                            for paragraph in shape.text_frame.paragraphs:
+                                # Extract the paragraph text
+                                content = paragraph.text.strip()
+    
+                                # Specific formatting for Slide 0's cut1
+                                if placeholder == "cut1" and specific_placeholder == "cut1" and slide == presentation.slides[0]:
+                                    paragraph.alignment = PP_ALIGN.CENTER  # Center alignment
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(36)  # Font size 36
+                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                    continue
+
+                                if slide == presentation.slides[2] and placeholder in ["cut1", "cut2"]:
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        if placeholder == "cut1":
+                                            run.font.bold = True
+                                            run.font.size = Pt(20)  # Font size for cut1
+                                        elif placeholder == "cut2":
+                                            run.font.size = Pt(16)  # Font size for cut2
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black font color
+                                    continue
+        
+                                # Apply formatting based on placeholders
+                                if isinstance(data, dict):
+                                    if content == data.get('title', ''):
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)  # Standard size for titles
+                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                    elif not replace_titles_only:
+                                        if content == data.get('description', ''):
+                                            paragraph.alignment = PP_ALIGN.LEFT
+                                            for run in paragraph.runs:
+                                                run.font.size = Pt(12)
+                                                run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        elif content.startswith("-"):
+                                            paragraph.alignment = PP_ALIGN.LEFT
+                                            paragraph.level = 1  # Indent for key elements
+                                            for run in paragraph.runs:
+                                                run.font.size = Pt(12)
+                                                run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+    
+                                elif placeholder == "cut1":
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(20)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Dark Blue
+                                elif placeholder == "cut2" :
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Gray
+    
+    # Apply replacements for each slide
+    apply_replacements(presentation.slides[2], replacement_dict, font_color_black=True, replace_titles_only=True)  # Replace only titles for Slide 1
+    apply_replacements(presentation.slides[1], replacement_dict, font_color_black=False, replace_titles_only=False)  # Replace all content for Slide 2
+    apply_replacements(presentation.slides[0], replacement_dict, font_color_black=True, specific_placeholder="cut1")  # Replace only 'cut1' for Slide 3
+
+    # Save the presentation and return as base64
+    pptx_stream = BytesIO()
+    presentation.save(pptx_stream)
+    pptx_stream.seek(0)
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode('utf-8')
+
+    print("Template 2 processing complete.")
+    return {
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description
+    }
+    
+def handle_template_type_3(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
+    #presentation = Presentation("Circular Canvas.pptx")
+    print(f"Handling template type 3 with data: {canvas_data}")
+    presentation = Presentation("Hex Canvas Design (6).pptx")
+
+    canvas_name = canvas_data.get("canvas_name", "")
+    canvas_description = canvas_data.get("canvas_description", "")
+    sections = canvas_data.get("sections", [])
+
+    # Prepare the replacement dictionary
+    replacement_dict_slide1 = {"cut1": canvas_name, "cut2": canvas_description}
+    replacement_dict_slide2 = {"cut1": canvas_name, "cut2": canvas_description}
+    replacement_dict_slide3 = {"cut1": canvas_name}
+
+    box_counter = 1
+    for section in sections:
+        if section.get("circle") == "Central Circle":
+            replacement_dict_slide1["center_circle"] = {
+                "title": section.get("issue_goal", "Central Goal"),
+            }
+            replacement_dict_slide2["center_circle"] = replacement_dict_slide1["center_circle"]
+
+        elif section.get("circle", "").startswith("Supporting Circle"):
+            raw_key_elements = section.get("key_elements", [])
+            cleaned_key_elements = []
+
+            # Clean up key elements and stop parsing if new section starts
+            for element in raw_key_elements:
+                if "Supporting Circle" in element:
+                    break
+                cleaned_key_elements.append(element.strip())
+
+            # Add to replacement dictionaries
+            replacement_dict_slide1[f"box{box_counter}"] = {"title": section.get("title", "Default Title")}
+            replacement_dict_slide2[f"box{box_counter}"] = {
+                "title": section.get("title", "Default Title"),
+                "description": section.get("description", "Default Description"),
+                "key_elements": cleaned_key_elements[:3],
+            }
+            box_counter += 1
+
+    # Print the replacement dictionaries for debugging
+    print("==== SLIDE 1 REPLACEMENT DATA ====")
+    print(replacement_dict_slide1)
+    print("==== SLIDE 2 REPLACEMENT DATA ====")
+    print(replacement_dict_slide2)
+
+    # Function to apply replacements and formatting
+    def apply_replacements(slide, replacement_dict, font_color_black=True, slide_num=None):
+        """
+        Applies replacements for placeholders in the provided slide.
+        Handles formatting dynamically based on the placeholder type.
+        """
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                for placeholder, data in replacement_dict.items():
+                    if placeholder in shape.text:
+                        formatted_text = ""
+                        # Replace placeholder with content
+                        if isinstance(data, dict):
+                            if "description" in data and "key_elements" in data:
+                                formatted_text = (
+                                    f"{data['title']}\n\n{data['description']}\n- " + "\n- ".join(data["key_elements"])
+                                )
+                            else:
+                                formatted_text = data["title"]
+                        else:
+                            formatted_text = data
+
+                        # Replace the placeholder text
+                        shape.text = formatted_text
+
+                        # Apply formatting to the updated text
+                        if hasattr(shape, "text_frame") and shape.text_frame is not None:
+                            for paragraph in shape.text_frame.paragraphs:
+                                content = paragraph.text.strip()
+                                if slide_num == 0 and placeholder == "cut1":
+                                    paragraph.alignment = PP_ALIGN.CENTER
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(36)  # Font size 36
+                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White
+                                # Formatting for other slides and placeholders
+
+                                # Formatting for canvas name and description
+                                elif placeholder == "cut1":
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.bold = True
+                                        run.font.size = Pt(20)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                                elif placeholder == "cut2":
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(16)
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+
+                                # Formatting for titles
+                                elif content == data.get("title", ""):
+                                    if placeholder == "center_circle":
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            #run.font.bold = True
+                                            run.font.size = Pt(14)  # Larger font for center circle
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # Red
+                                    else:
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.color.rgb = (
+                                                RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                            )
+
+                                # Formatting for descriptions
+                                elif content == data.get("description", ""):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = (
+                                            RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        )
+
+                                # Formatting for key elements
+                                elif content.startswith("-"):
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    paragraph.level = 1  # Indentation for key elements
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = (
+                                            RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        )
+
+    # Apply replacements for Slide 1 (titles only, black font)
+    apply_replacements(presentation.slides[1], replacement_dict_slide2, font_color_black=True)
+
+    # Apply replacements for Slide 2 (titles, descriptions, key elements, white font)
+    apply_replacements(presentation.slides[2], replacement_dict_slide1, font_color_black=True)
+    apply_replacements(presentation.slides[0], replacement_dict_slide3, slide_num=0)
+
+    # Save the presentation and return as base64
+    pptx_stream = BytesIO()
+    presentation.save(pptx_stream)
+    pptx_stream.seek(0)
+    pptx_base64 = base64.b64encode(pptx_stream.read()).decode("utf-8")
+
+    print("Template 3 processing complete.")
+    return {
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description
+    }
+    
+def handle_template_type_4(canvas_data, smartnote_title, smartnote_description, user_id, invocation_id):
+    presentation = Presentation("Hex Canvas Design (3).pptx")
+    print(f"Handling template type 4 with data: {canvas_data}")
+    if "top_hexagons" not in canvas_data or not canvas_data["top_hexagons"]:
+        raise ValueError("'top_hexagons' is missing or empty.")
+    if "bottom_hexagons" not in canvas_data or not canvas_data["bottom_hexagons"]:
+        raise ValueError("'bottom_hexagons' is missing or empty.")
+
+    print("Top hexagons:", canvas_data["top_hexagons"])
+    print("Bottom hexagons:", canvas_data["bottom_hexagons"])
+    # Adjust the replacement dictionary, including 'cut1' and 'cut2' with different font sizes and title color
+    # Build the complete replacement dictionary to handle titles, descriptions, and key elements
+    replacement_dict_slide1 = {
+        "box1": canvas_data['top_hexagons'][0]['title'],
+        "top_hex2": canvas_data['top_hexagons'][1]['title'],
+        "top_hex3": canvas_data['top_hexagons'][2]['title'],
+        "top_hex4": canvas_data['top_hexagons'][3]['title'],
+        "box2": canvas_data['bottom_hexagons'][0]['title'],
+        "bottom_hex2": canvas_data['bottom_hexagons'][1]['title'],
+        "bottom_hex3": canvas_data['bottom_hexagons'][2]['title'],
+        "bottom_hex4": canvas_data['bottom_hexagons'][3]['title'],
+        "cut1": canvas_data["canvas_name"],
+        "cut2": canvas_data["canvas_description"],
+    }
+    
+    replacement_dict_slide2 = {
+        "box1": (
+            f"{canvas_data['top_hexagons'][0]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][0]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][0]['key_elements'][:4])
+        ),
+        "top_hex2": (
+            f"{canvas_data['top_hexagons'][1]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][1]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][1]['key_elements'][:4])
+        ),
+        "top_hex3": (
+            f"{canvas_data['top_hexagons'][2]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][2]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][2]['key_elements'][:4])
+        ),
+        "top_hex4": (
+            f"{canvas_data['top_hexagons'][3]['title']}\n\n"
+            f"{canvas_data['top_hexagons'][3]['description']}\n- "
+            + "\n- ".join(canvas_data['top_hexagons'][3]['key_elements'][:4])
+        ),
+        "box2": (
+            f"{canvas_data['bottom_hexagons'][0]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][0]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][0]['key_elements'][:4])
+        ),
+        "bottom_hex2": (
+            f"{canvas_data['bottom_hexagons'][1]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][1]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][1]['key_elements'][:4])
+        ),
+        "bottom_hex3": (
+            f"{canvas_data['bottom_hexagons'][2]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][2]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][2]['key_elements'][:4])
+        ),
+        "bottom_hex4": (
+            f"{canvas_data['bottom_hexagons'][3]['title']}\n\n"
+            f"{canvas_data['bottom_hexagons'][3]['description']}\n- "
+            + "\n- ".join(canvas_data['bottom_hexagons'][3]['key_elements'][:4])
+        ),
+        "cut1": canvas_data["canvas_name"],
+        "cut2": canvas_data["canvas_description"],
+    }
+    replacement_dict_slide3 = {
+        "cut1": canvas_data["canvas_name"],
+    }
+    
+    # Iterate through slides and apply formatting for 'cut1', 'cut2', hexagon titles, descriptions, and key elements
+    # Iterate through slides and apply formatting for 'cut1', 'cut2', hexagon titles, descriptions, and key elements
+    def apply_replacements(slide, replacement_dict, font_color_black=False):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 for placeholder, replacement in replacement_dict.items():
                     if placeholder in shape.text:
                         shape.text = shape.text.replace(placeholder, replacement)
     
-                        # Adjust text fitting, size, alignment, and color
+                        # Formatting and styling as per original code
                         if hasattr(shape, "text_frame") and shape.text_frame is not None:
                             shape.text_frame.word_wrap = True
-                            shape.text_frame.auto_size = True  # Ensure text boxes resize to fit content
+                            shape.text_frame.auto_size = True
+                            shape.text_frame.margin_left = Inches(0.20)
+                            shape.text_frame.margin_right = Inches(0.20)
+    
                             for paragraph in shape.text_frame.paragraphs:
+                                text_content = paragraph.text.strip()
+    
+                                # Handle cut1 and cut2 replacements
+                                if placeholder == "cut1":
+                                    if slide == presentation.slides[0]:  # Specific logic for slide[0]
+                                        paragraph.alignment = PP_ALIGN.CENTER  # Center align
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(36)
+                                            run.font.bold = False   ## Font size 36
+                                            run.font.name = "Arial"
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White font
+                                    elif slide in [presentation.slides[1], presentation.slides[2]]:  # Logic for slide[1] and slide[2]
+                                        paragraph.alignment = PP_ALIGN.LEFT  # Left align
+                                        for run in paragraph.runs:
+                                            run.font.size = Pt(20)  # Font size 20
+                                            run.font.bold = True   # Bold text
+                                            run.font.name = "Arial"
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Black font
+                                    continue  # Skip further processing for this paragraph
+    
+                                elif placeholder == "cut2":
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(14)
+                                        run.font.name = "Arial"
+                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for description
+                                    continue  # Skip further processing for this paragraph
+    
+                                # Additional logic for titles in slide[2]
+                                if slide == presentation.slides[2]:
+                                    if placeholder in [hexagon['title'] for hexagon in canvas_data['top_hexagons'] + canvas_data['bottom_hexagons']]:
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.name = "Arial"
+                                            run.font.color.rgb = RGBColor(0, 0, 0)  # Ensure font is black
+                                        continue
+    
+                                # Description alignment and styling
+                                if any(
+                                    text_content == hexagon['description'] or hexagon['description'] in text_content
+                                    for hexagon in canvas_data['top_hexagons'] + canvas_data['bottom_hexagons']
+                                ):
+                                    paragraph.level = 0
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(255, 255, 255)
+                                    continue
+    
+                                # Title condition for other slides
+                                if slide in [presentation.slides[1], presentation.slides[2]]:
+                                    if text_content in [
+                                        hexagon['title'] for hexagon in canvas_data['top_hexagons']
+                                    ] + [
+                                        hexagon['title'] for hexagon in canvas_data['bottom_hexagons']
+                                    ]:
+                                        paragraph.alignment = PP_ALIGN.CENTER
+                                        for run in paragraph.runs:
+                                            run.font.bold = True
+                                            run.font.size = Pt(14)
+                                            run.font.color.rgb = RGBColor(0, 0, 0) if font_color_black else RGBColor(255, 255, 255)
+                                        continue
+    
+                                # Key elements: Indent key elements to level 1
+                                if any(
+                                    key in text_content
+                                    for hexagon in canvas_data['top_hexagons'] + canvas_data['bottom_hexagons']
+                                    for key in hexagon['key_elements']
+                                ):
+                                    paragraph.level = 1
+                                    paragraph.alignment = PP_ALIGN.LEFT
+                                    for run in paragraph.runs:
+                                        run.font.size = Pt(12)
+                                        run.font.color.rgb = RGBColor(255, 255, 255)
+                                    continue
+    
+                                # Default font and color adjustments for other cases
                                 for run in paragraph.runs:
-                                    if placeholder == "cut1":
-                                        run.font.size = Pt(20)  # Larger font for cut1
-                                        run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
-                                    elif placeholder == "cut2":
-                                        run.font.size = Pt(14)  # Smaller font for cut2
-                                        run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black color for title
-                                    else:
-                                        run.font.size = Pt(9)  # Standard font size for other shapes
-                                        run.font.name = "Arial"
-                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White color for other texts
+                                    run.font.size = Pt(11)
+                                    run.font.name = "Arial"
+                                    run.font.color.rgb = RGBColor(255, 255, 255)  # White color for hexagon text
+    
+    
+    apply_replacements(presentation.slides[2], replacement_dict_slide1, font_color_black=True)  # Slide 2: Titles only, black font
+    apply_replacements(presentation.slides[1], replacement_dict_slide2)  # Slide 1: Titles, descriptions, key elements
+    apply_replacements(presentation.slides[0], replacement_dict_slide3)
     
     pptx_stream = BytesIO()
     presentation.save(pptx_stream)
@@ -2083,18 +2578,8 @@ def handle_template_type_4(canvas_data):
     
     log_memory_usage("Save Presentation")
     print("done")
-
     return {
-        'pptx_base64': pptx_base64,
+        "pptx_base64": pptx_base64,
+        "smartnote_title": smartnote_title,
+        "smartnote_description": smartnote_description
     }
-    
-    
-
-
-
-    
-
-
-
-
-
