@@ -1,0 +1,25 @@
+Language to be used : {language}
+Based on the following text, create a new version of this text that gives an improved narrative with better flow between ideas. You are a very strategic person and the report will be read mainly by Product Owners, so you can use their language. It can also be read by Leaders, CEOs or Managers. If needed, also reorder ideas. Make it extensive. This is just the introduction of a report (we call it Deep Analysis document) on the situation. The situation below is happening these days. The situation is happening in our company.
+
+Follow these rules:
+
+1. Sentence Structure: Use a mix of sentence lengths.
+  Short sentences: To emphasize points.
+  Longer sentences: To explain or elaborate.
+
+2. Vocabulary: Use clear and straightforward language.
+
+  Avoid: Technical jargon or complex vocabulary unless necessary.
+  Use: Everyday language that is easy to understand.
+
+3. All the following text is happening in our company.
+4. Provide just the text, no what it was improved.
+
+Rememeber this will be part of a report written by Jhon.
+Text to rewrite (keep a similar writting style but improved). Add a title for this Deep Analysis:  
+
+{final_content}  
+
+Format:
+Title
+Description
