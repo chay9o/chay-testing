@@ -6,13 +6,18 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from hanna.credentials import ClientCredentials
-from weaviate.gql.get import HybridFusion
+# from weaviate.gql.get import HybridFusion
+from weaviate.classes.query import Filter, MetadataQuery, HybridFusion
 from hanna.jina import JINA
 import uuid
 import re
 import os
+import logging
+
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class MasterVectors(ClientCredentials):
@@ -61,6 +66,10 @@ class MasterVectors(ClientCredentials):
 
     # Comprehensive phrase
 
+    def collection_exists(self, class_: str) -> bool:
+        # return True if self.weaviate_client.schema.exists(class_) is True else False
+        return True if self.weaviate_client.collections.exists(class_) is True else False
+
     def trigger_vector(self, query: str) -> bool:
         cat = self.__chain_class.run(user_prompt=query)
 
@@ -73,33 +82,45 @@ class MasterVectors(ClientCredentials):
 
         filter_query = re.sub(r"\\", "", query)
 
-        response = (
-            self.weaviate_client.query
-            .get(class_, ["content"])
-            .with_hybrid(
-                query=filter_query,
-                alpha=self.alpha,
-                fusion_type=HybridFusion.RELATIVE_SCORE
-            )
-            .with_additional("score")
-            .with_limit(self.num_results)
-            .do()
+        collection = self.weaviate_client.collections.get(class_)
+        response = collection.query.hybrid(
+            query=filter_query,
+            alpha=self.alpha,
+            fusion_type=HybridFusion.RELATIVE_SCORE,
+            return_metadata=MetadataQuery(score=True),
+            return_properties=["content"],
+            limit=self.num_results
         )
 
-        if not response or response != [] or 'data' in response:
+        # logger.info(response)
 
-            result = response['data']['Get'][class_]
+        # response = (
+        #     self.weaviate_client.query
+        #     .get(class_, ["content"])
+        #     .with_hybrid(
+        #         query=filter_query,
+        #         alpha=self.alpha,
+        #         fusion_type=HybridFusion.RELATIVE_SCORE
+        #     )
+        #     .with_additional("score")
+        #     .with_limit(self.num_results)
+        #     .do()
+        # )
+
+        if hasattr(response, 'objects'):
+
+            result = response.objects
             weaviate_result = []
 
             for chunk in result:
-                relevance_score = round(float(chunk['_additional']['score']), 3)
+                relevance_score = round(float(chunk.metadata.score), 3)
 
                 if relevance_score >= self.threshold:
-                    weaviate_result.append(chunk['content'])
+                    weaviate_result.append(chunk.properties['content'])
 
             return weaviate_result
         else:
-            print("NO MASTER RESULTS FOUND!")
+            logger.info("NO MASTER RESULTS FOUND!")
             return []
 
     # Asynchronous Logic
@@ -162,7 +183,7 @@ class MasterVectors(ClientCredentials):
 
             return "\n\n".join(ranked_results) if return_type == str else ranked_results
         except Exception as e:
-            print(e)
+            logger.error(f"MASTER RERANKER: {e}")
             return [] if return_type == list else ""
 
     def add_batch(self, batch: list, filename: str, type_: str, class_: str):
@@ -178,13 +199,22 @@ class MasterVectors(ClientCredentials):
                 } for chunk in batch
             ]
 
-            self.weaviate_client.batch.configure(batch_size=100)
-            with self.weaviate_client.batch as batch_data:
-                for data_obj in data_objs:
-                    batch_data.add_data_object(
-                        data_obj,
-                        class_,
+            collection = self.weaviate_client.collections.get(class_)
+
+            with collection.batch.fixed_size(batch_size=100) as batch:
+                for data_row in data_objs:
+                    batch.add_object(
+                        properties=data_row,
                     )
+
+
+            # self.weaviate_client.batch.configure(batch_size=100)
+            # with self.weaviate_client.batch as batch_data:
+            #     for data_obj in data_objs:
+            #         batch_data.add_data_object(
+            #             data_obj,
+            #             class_,
+            #         )
 
             return str(unique_id)
         except Exception as e:
@@ -202,13 +232,69 @@ class MasterVectors(ClientCredentials):
             for dataObj in batch[_class]
         ]
 
-        self.weaviate_client.batch.configure(batch_size=100)
-        with self.weaviate_client.batch as batch_data:
-            for data_obj in data_object:
-                batch_data.add_data_object(
-                    data_obj,
-                    _class,
+        collection = self.weaviate_client.collections.get(_class)
+
+        with collection.batch.fixed_size(batch_size=100) as batch:
+            for data_row in data_object:
+                batch.add_object(
+                    properties=data_row,
                 )
+
+        # self.weaviate_client.batch.configure(batch_size=100)
+        # with self.weaviate_client.batch as batch_data:
+        #     for data_obj in data_object:
+        #         batch_data.add_data_object(
+        #             data_obj,
+        #             _class,
+        #         )
+
+    def remove_file(self, filename: str, class_: str):
+        try:
+
+            # self.weaviate_client.batch.delete_objects(
+            #     class_name=class_,
+            #     where={
+            #         "path": ["uuid"],
+            #         "operator": "Equal",
+            #         "valueText": uuid_
+            #     },
+            # )
+
+            collection = self.weaviate_client.collections.get(class_)
+            collection.data.delete_many(
+                where=Filter.by_property("filename").equal(filename)
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error("REMOVE UUID: ")
+            logger.error(e)
+            return False
+
+    def remove_uuid(self, uuid_: str, class_: str):
+        try:
+
+            # self.weaviate_client.batch.delete_objects(
+            #     class_name=class_,
+            #     where={
+            #         "path": ["uuid"],
+            #         "operator": "Equal",
+            #         "valueText": uuid_
+            #     },
+            # )
+
+            collection = self.weaviate_client.collections.get(class_)
+            collection.data.delete_many(
+                where=Filter.by_property("uuid").equal(uuid_)
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error("REMOVE MASTER UUID: ")
+            logger.error(e)
+            return False
 
     def filter_by(self, key: str, value: str, class_: str):
         response = (
