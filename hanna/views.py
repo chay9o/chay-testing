@@ -1,8 +1,10 @@
 import os
 import uuid
 from django.http import StreamingHttpResponse
+from weaviate.classes.query import Filter
 from langchain_core.callbacks import BaseCallbackHandler
 from django.conf import settings
+from django.core.cache import cache
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -13,19 +15,18 @@ from .retriever import LLMHybridRetriever
 from .master_vectors.MV import MasterVectors
 from .chunker import ChunkText
 from dotenv import load_dotenv
-from langchain.chains.llm import LLMChain
 import json
 from .credentials import ClientCredentials
 from .backup import AWSBackup
 from jinja2 import Template
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .tasks import generate_ppt_task, process_prompts_1, process_prompts_2, process_prompts_3, process_prompts4
+from .tasks import generate_ppt_task, process_prompts_1, process_prompts_2, process_prompts_3, process_prompts4, evaluate_text_task
+from langchain.chains import LLMChain
 from celery.result import AsyncResult
 import re
 from together import Together
 import fasttext
-import psycopg2
 import logging
 import asyncio
 from datetime import datetime, timedelta
@@ -35,161 +36,97 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(level=logging.INFO)
+credentials = ClientCredentials()
 
-job_done = "STOP"
+awsb = AWSBackup(bucket_name=settings.FILE_BUCKET_NAME)
+weaviate_backup = AWSBackup(bucket_name=settings.BUCKET_NAME)
 
-def log_info_async(message):
-    logger.info(message)
+file = open("system-prompt.txt", "r")
+prompt_ = file.read()
+file.close()
 
+read_prompt = open("chatnote-prompt.txt", "r")
+note_prompt = read_prompt.read()
+read_prompt.close()
 
-if not settings.configured:
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'main.settings')
-load_dotenv()
+live_data_prompt_file = open("live-data-prompt.txt", "r")
+LIVE_DATA_PROMPT = live_data_prompt_file.read()
+live_data_prompt_file.close()
 
-# Load prompt templates
-with open("system-prompt.txt", "r") as file:
-    SYSPROMPT = file.read()
+system_prompt_generator = open("system-prompt-generator.txt", "r")
+SYSTEM_PROMPT_GENERATOR = system_prompt_generator.read()
+system_prompt_generator.close()
 
-with open("chatnote-prompt.txt", "r") as file:
-    CHATNOTE_PROMPT = file.read()
 
 with open("analytics-prompt.txt", "r") as file:
     ANYPROMPT = file.read()
+  
+SYSPROMPT = str(prompt_)
+CHATNOTE_PROMPT = str(note_prompt)
+
 
 prompt = PromptTemplate.from_template(SYSPROMPT)
 chat_note_prompt = PromptTemplate.from_template(CHATNOTE_PROMPT)
+live_data_prompt = PromptTemplate.from_template(LIVE_DATA_PROMPT)
+spgen = PromptTemplate.from_template(SYSTEM_PROMPT_GENERATOR)
 
-llm = ChatOpenAI(
-    openai_api_key=settings.OPENAI_API_KEY,
-    model_name=settings.GPT_MODEL_2,
-    openai_api_base=settings.BASE_URL,
-    max_tokens=1000
-)
+
+llm = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
+                 model_name=settings.GPT_MODEL_2,
+                 openai_api_base=settings.BASE_URL,
+                 # temperature=0.3,
+                 max_tokens=1000,
+                 streaming=True).configurable_fields(
+                                    temperature=ConfigurableField(
+                                        id="llm_temperature",
+                                        name="LLM Temperature",
+                                        description="The temperature of the LLM",
+                                    )
+                                )
+
+
+system_prompt_generator_llm = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
+                 model_name=settings.GPT_MODEL_2,
+                 openai_api_base=settings.BASE_URL,
+                 temperature=0.4,
+                 max_tokens=1000)
+
+llm_hybrid = LLMHybridRetriever(verbose=True)
 
 mv = MasterVectors()
+
 slice_document = ChunkText()
+
+
+@api_view(http_method_names=['GET'])
+def home(request) -> Response:
+
+    return Response({'msg': 'this is hanna enterprise suite'}, status=status.HTTP_200_OK)
+
+
+# ------------ TASK MANAGEMENT ------------
+class SimpleCallback(BaseCallbackHandler):
+
+    async def on_llm_start(self, serialized, prompts, **kwargs):
+        if settings.DEBUG is True:
+            print(f"The LLM has Started")
+
+    async def on_llm_end(self, *args, **kwargs):
+
+        if settings.DEBUG is True:
+            print("The LLM has ended!")
+
+
+# Load the template string into a Jinja object.
 chat_template = (
     "{{ bos_token }}{% for message in messages %}"
-    "{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}{% elif message['role'] == 'bot' %}{{ message['text'] + eos_token}}{% endif %}{% endfor %}"
+    "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
+    "{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}"
+    "{% elif message['role'] == 'bot' %}{{ message['text'] + eos_token}}"
+    "{% endif %}{% endfor %}"
 )
 
-@csrf_exempt
-def chat_view(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        collection = "C" + str(data['collection'])
-        query = str(data['query']).lower()
-        user_id = str(data['user_id'])
-        chat_history = data.get('chatHistory', [])
-        language = data.get('language', 'en')
-        current_date = data.get('current_date', '')
-
-        log_info_async(f"data: {data}")
-
-        # Check if collection exists
-        if not llm_hybrid.collection_exists(collection):
-            return JsonResponse({'error': 'This collection does not exist!'}, status=400)
-
-        master_vector = mv.search_master_vectors(query=query, class_="MV001")
-
-        key = llm_hybrid.important_words(query=query)
-
-        keyword_pattern = r'KEYWORD:\s*\["(.*?)"\]'
-        keyword_match = re.search(keyword_pattern, key)
-
-        if keyword_match:
-            keywords_str = keyword_match.group(1)
-            keywords_list = [keyword.strip().strip("'") for keyword in keywords_str.split(",")]
-        else:
-            keywords_list = []
-
-        if 2 <= len(keywords_list) <= 3:
-            for keyword in keywords_list:
-                r1 = mv.search_master_vectors(query=keyword, class_="MV001")
-                master_vector.extend(r1)
-
-        final_query = f"{query}, {' '.join(keywords_list)}"
-        top_master_vec = mv.reranker(query=final_query, batch=master_vector, return_type=str)
-
-        retriever = f"{top_master_vec}"
-
-        # If there's no chat history, initialize it
-        if not chat_history:
-            chat_history_str = ""
-        else:
-            template = Template(chat_template)
-            data = {
-                "bos_token": "<s>",
-                "eos_token": "</s>",
-                "messages": [
-                    {"role": msg['role'], "text": msg['text']} for msg in chat_history
-                ]
-            }
-            chat_history_str = template.render(data)
-
-        # LLMChain for generating a response
-        chain = prompt | llm
-
-        # Prepare input for LLM
-        response = chain({
-            'matching_model': retriever,
-            'question': query,
-            'username': data.get('user', 'Unknown User'),
-            'chat_history': chat_history_str,
-            'language_to_use': language,
-            'current_date': current_date,
-        })
-
-        return JsonResponse({"message": response}, status=200)
-
-    return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
-    
-DEFAULT_AREAS = {
-    "Strategy": 0,
-    "Teams": 0,
-    "Customer": 0,
-    "Company": 0,
-    "Workforce_Wellbeing": 0,
-    "Change_Management": 0,
-    "Risk_Management": 0,
-    "Operations": 0,
-    "Innovation": 0,
-    "Finance": 0,
-    "Compliance_Governance": 0,
-    "Sustainability": 0,
-    "Technology": 0
-}
-
-# A global dictionary to simulate an in-memory table (not persistent)
-classification_store = {}
-
-# New helper function that accepts the parsed payload directly
-def insert_classification_data(data):
-    company_id = data.get("Company_ID")
-    initiative_id = data.get("Initiative_ID")
-    date = data.get("Date")
-    
-    # Create a unique key for each record
-    record_key = f"{company_id}-{initiative_id}-{date}"
-
-    # Ensure all categories are present with a value of 0 or 1
-    validated_areas = {category: min(max(data.get("areas", {}).get(category, 0), 0), 1) for category in DEFAULT_AREAS}
-
-    # If the record already exists, update the values
-    if record_key in classification_store:
-        for key, value in validated_areas.items():
-            classification_store[record_key]["areas"][key] = min(classification_store[record_key]["areas"][key] + value, 1)
-    else:
-        # Store new data
-        classification_store[record_key] = {
-            "Month": date[:7] + "-01",  # 'YYYY-MM-01' format
-            "areas": validated_areas
-        }
-    print(f"Stored data for {record_key}: {classification_store[record_key]}")
-    return {"status": "success"}
-
-
+template = Template(chat_template)
 
 
 def classify_text_with_llm_together(query_text):
@@ -242,144 +179,29 @@ def webhook_handler(request):
             company_id = data.get("collection")  
             initiative_id = data.get("entity")  
             date = data.get("date")
+            
             # Perform classification or analytics logging
             print(f"Received query from {source}: {query}")
             classification_result = classify_text_with_llm_together(query)
-            print(f"classification:{classification_result}")
+            print(f"classification: {classification_result}")
+            
             try:
                 classification_data = json.loads(classification_result)
                 areas = classification_data.get("areas", {})
             except json.JSONDecodeError as e:
                 return JsonResponse({"error": f"Failed to parse classification result: {str(e)}"}, status=500)
 
-            payload = {
-                "Company_ID": company_id,
-                "Initiative_ID": initiative_id,
-                "Date": date,  # Use the provided date from the payload
-                "areas": areas  # Parse classification JSON
-            }
-            print(payload)
-            result = insert_classification_data(payload)
-            if result.get("status") == "success":
-                return JsonResponse({
-                    "status": "success",
-                    "result": classification_data  # Return classification result
-                }, status=200)
-            else:
-                return JsonResponse({"error": "Error storing data"}, status=500)
+            # Return classification data to the user
+            return JsonResponse({
+                "result": classification_data
+            }, status=200)
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+    
     return JsonResponse({"error": "Invalid request"}, status=400)
-
-@csrf_exempt
-def view_classifications(request):
-    try:
-        # Get filter parameters from the request
-        filter_type = request.GET.get("filter_type")  # 'company_initiative' or 'company'
-        company_id = request.GET.get("company_id")
-        initiative_id = request.GET.get("initiative_id")
-        area_condition = request.GET.get("area", "Strategy")
-
-        # Prepare filtered results
-        filtered_results = {}
-
-        if filter_type == "company_initiative" and company_id and initiative_id:
-            # Filter by Company ID, Initiative ID, and a condition (e.g., Strategy > 0)
-            for key, value in classification_store.items():
-                if (key[0] == company_id and key[1] == initiative_id and
-                        value["areas"].get(area_condition, 0) > 0):
-                    filtered_results[key] = value
-
-        elif filter_type == "company" and company_id:
-            # Filter by Company ID and a condition (e.g., Strategy = 1)
-            for key, value in classification_store.items():
-                if (key[0] == company_id and value["areas"].get(area_condition, 0) == 1):
-                    filtered_results[key] = value
-
-        # Return the filtered results
-        return JsonResponse(filtered_results, safe=False)
-
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-        
-credentials = ClientCredentials()
-
-awsb = AWSBackup(bucket_name=settings.FILE_BUCKET_NAME)
-weaviate_backup = AWSBackup(bucket_name=settings.BUCKET_NAME)
-
-file = open("system-prompt.txt", "r")
-prompt_ = file.read()
-file.close()
-
-read_prompt = open("chatnote-prompt.txt", "r")
-note_prompt = read_prompt.read()
-read_prompt.close()
-
-live_data_prompt_file = open("live-data-prompt.txt", "r")
-LIVE_DATA_PROMPT = live_data_prompt_file.read()
-live_data_prompt_file.close()
-
-SYSPROMPT = str(prompt_)
-CHATNOTE_PROMPT = str(note_prompt)
-
-prompt = PromptTemplate.from_template(SYSPROMPT)
-chat_note_prompt = PromptTemplate.from_template(CHATNOTE_PROMPT)
-live_data_prompt = PromptTemplate.from_template(LIVE_DATA_PROMPT)
-
-llm = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
-                 model_name=settings.GPT_MODEL_2,
-                 openai_api_base=settings.BASE_URL,
-                 # temperature=0.3,
-                 max_tokens=1000,
-                 streaming=True).configurable_fields(
-                                    temperature=ConfigurableField(
-                                        id="llm_temperature",
-                                        name="LLM Temperature",
-                                        description="The temperature of the LLM",
-                                    )
-                                )
-
-
-llm_hybrid = LLMHybridRetriever(verbose=True)
-
-mv = MasterVectors()
-
-slice_document = ChunkText()
-
-
-@api_view(http_method_names=['GET'])
-def home(request) -> Response:
-
-    return Response({'msg': 'this is hanna enterprise suite'}, status=status.HTTP_200_OK)
-
-
-# ------------ TASK MANAGEMENT ------------
-class SimpleCallback(BaseCallbackHandler):
-
-    async def on_llm_start(self, serialized, prompts, **kwargs):
-        if settings.DEBUG is True:
-            print(f"The LLM has Started")
-
-    async def on_llm_end(self, *args, **kwargs):
-
-        if settings.DEBUG is True:
-            print("The LLM has ended!")
-
-
-# Load the template string into a Jinja object.
-chat_template = (
-    "{{ bos_token }}{% for message in messages %}"
-    "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
-    "{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}"
-    "{% elif message['role'] == 'bot' %}{{ message['text'] + eos_token}}"
-    "{% endif %}{% endfor %}"
-)
-
-template = Template(chat_template)
-
 
 @api_view(['POST'])
 def generate_ppt(request):
@@ -550,35 +372,25 @@ def create_collection(request) -> Response:
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def detectLanguage( text, original_language):
-    # Load the pre-trained language identification model
-    model_path = 'lid.176.ftz'  # Path to the pre-trained model file
-    model = fasttext.load_model(model_path)
-    # Text to be identified
-    text = text.replace('\n', ' ').strip()  # Remove newlines and trim whitespace
-    # If the text is less than 5 words, return the original language
-    if len(text.split()) < 5:
-        return original_language
-    # Predict the language of the text
-    predicted_languages = model.predict(text, k=1)  # Get top 1 prediction
-    detected_language_code = predicted_languages[0][0].replace('__label__', '')
-    # Mapping of language codes to language names. I think with these languages we have more than enough
-    language_names = {
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'zh': 'Chinese',
-        'ru': 'Russian',
-        'ja': 'Japanese',
-        'nl': 'Dutch',
-        'ar': 'Arabic',
-        'ur': 'Urdu'
-    }
-    # Return the full name of the detected language
-    return language_names.get(detected_language_code, original_language)
+@api_view(http_method_names=['POST'])
+def create_collections(request) -> Response:
+    try:
+        company = json.loads(request.body)
+        collections = list(company['collections'])
+        missing_collections = []
+
+        for collection in collections:
+            collection_name = "C" + str(collection)
+            if llm_hybrid.collection_exists(collection_name) is False:
+                llm_hybrid.add_collection(collection_name)
+                logger.info(f"This collection was missing: {collection}")
+                missing_collections.append(collection)
+
+        return Response({'msg': f'Missing collections: {missing_collections}'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error("VIEW CREATE COLLECTIONS:")
+        logger.error(e)
+        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @csrf_exempt
@@ -588,107 +400,127 @@ def evaluate_text(request):
         data = json.loads(request.body)
         note_text = data['noteText']
         guidelines = data['guidelines']
-        # Detect the language of note text and the first guideline
-        note_language = detectLanguage(note_text, 'en')
-        print(note_language)
-        guideline_language = detectLanguage(guidelines[0]['text'], 'en')
-        print(guideline_language)
 
-        # Prepare a warning if languages are different
-        language_warning = None
-        if note_language != guideline_language:
-            language_warning = 'Smartnote and the Strategic Alignment are in different languages, so the outcome may not be accurate.'
-
-        with open("strategic-prompt.txt", "r") as file:
-            prompt_ = file.read()
-
-        SYSPROMPT = str(prompt_)
-
-        guidelines_text = "\n".join([f"#Guideline {index + 1}: \"{guideline['text']}\"" for index, guideline in enumerate(guidelines)])
-        # Incorporate language into the system prompt
-        prompt_with_values = SYSPROMPT.replace("{note_text}", note_text).replace("{guidelines}", guidelines_text).replace("{language}", note_language)
-        TOGETHER_API_KEY = settings.TOGETHER_API_KEY
-        client = Together(api_key=TOGETHER_API_KEY)
-
-        messages = [
-            {"role": "system", "content": prompt_with_values},
-            {"role": "user", "content": f"{note_text}\n{guidelines_text}"}
-        ]
-
-        response = client.chat.completions.create(
-            model="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-            messages=messages,
-            max_tokens=4096,
-            temperature=0,
-            top_p=0.7,
-            top_k=50,
-            repetition_penalty=1,
-            stop=["<|eot_id|>","<|eom_id|>"],
-            stream=True
-        )
-
-        analysis = ""
-        for chunk in response:
-            if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                analysis += chunk.choices[0].delta.content
-            elif hasattr(chunk.choices[0], 'message') and hasattr(chunk.choices[0].message, 'content'):
-                analysis += chunk.choices[0].message.content
-
-        print(f"Raw analysis data: {analysis}")
-        if analysis.startswith("```") and analysis.endswith("```"):
-            analysis_lines = analysis.splitlines()
-            # Remove the first and last lines
-            analysis_lines = analysis_lines[1:-1]
-            # Join the lines back into a single string
-            analysis = "\n".join(analysis_lines)
-        print(f"Sanitized analysis data: {analysis}")
-      
-        if not analysis:
-            return Response({'error': 'Empty response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        try:
-            analysis_json = json.loads(analysis)
-        except json.JSONDecodeError as e:
-            print(f"JSON Decode Error: {e}, Raw data: {analysis}")
-            return Response({'error': 'Invalid JSON response from API'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Include the warning in the response if it exists
-        if language_warning:
-            analysis_json['warning'] = language_warning
-
-        return JsonResponse(analysis_json, safe=False)
+        # Trigger the Celery task
+        task = evaluate_text_task.delay(note_text, guidelines)
+        return JsonResponse({'task_id': task.id}, status=202)
     except Exception as e:
         print(e)
-        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return JsonResponse({'error': 'Something went wrong!'}, status=500)
+
+@csrf_exempt
+@api_view(['GET'])
+def check_evaluation_status(request, task_id):
+    task = AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {'status': 'Pending'}
+    elif task.state == 'SUCCESS':
+        response = {'status': 'Completed', 'result': task.result}
+    elif task.state == 'FAILURE':
+        response = {'status': 'Failed', 'error': str(task.result)}
+    else:
+        response = {'status': 'Unknown'}
+
+    return JsonResponse(response)
 
 
-# Define global variables to store user inputs and generated questions, initialized as None
-user_inputs_global = None
-generated_questions_global = None
-problem_description = None  # Variable to store the problem description from step1
+def store_problem_description(user_id, invocation_id, step, description, timeout):
+    """
+    Store the problem description for a specific user, invocation, and step.
+    """
+    key = f"problem_description_{user_id}_{invocation_id}_step_{step}"
+    cache.set(key, description, timeout=timeout)
+    #print(f"[Redis] Stored problem description for user {user_id}, invocation {invocation_id}, step {step}: {description}")
 
 
-# Helper function to build the system prompt by appending previous steps from global lists
-def build_system_prompt(base_prompt):
+def get_problem_description(user_id, invocation_id, step):
+    """
+    Retrieve the problem description for a specific user, invocation, and step.
+    """
+    key = f"problem_description_{user_id}_{invocation_id}_step_{step}"
+    description = cache.get(key, "")
+    #print(f"[Redis] Retrieved problem description for user {user_id}, invocation {invocation_id}, step {step}: {description}")
+    return description
+
+
+def store_user_input(user_id, invocation_id, step, user_input, timeout):
+    """
+    Store user input for a specific user, invocation, and step.
+    """
+    key = f"user_inputs_{user_id}_{invocation_id}_step_{step}"
+    existing_inputs = cache.get(key, [])
+    existing_inputs.append(user_input)
+    cache.set(key, existing_inputs, timeout=timeout)
+    #print(f"[Redis] Updated user inputs for user {user_id}, invocation {invocation_id}, step {step}: {existing_inputs}")
+
+def get_user_inputs(user_id, invocation_id, step):
+    """
+    Retrieve user inputs for a specific user, invocation, and step.
+    """
+    key = f"user_inputs_{user_id}_{invocation_id}_step_{step}"
+    inputs = cache.get(key, [])
+    #print(f"[Redis] Retrieved user inputs for user {user_id}, invocation {invocation_id}, step {step}: {inputs}")
+    return inputs
+
+def store_generated_question(user_id, invocation_id, step, question, timeout):
+    """
+    Store a generated question for a specific user, invocation, and step.
+    """
+    key = f"generated_questions_{user_id}_{invocation_id}_step_{step}"
+    existing_questions = cache.get(key, [])
+    existing_questions.append(question)
+    cache.set(key, existing_questions, timeout=timeout)
+    #print(f"[Redis] Updated generated questions for user {user_id}, invocation {invocation_id}, step {step}: {existing_questions}")
+
+
+def get_generated_questions(user_id, invocation_id, step):
+    """
+    Retrieve generated questions for a specific user, invocation, and step.
+    """
+    key = f"generated_questions_{user_id}_{invocation_id}_step_{step}"
+    questions = cache.get(key, [])
+    #print(f"[Redis] Retrieved generated questions for user {user_id}, invocation {invocation_id}, step {step}: {questions}")
+    return questions
+
+
+# Helper function to build the system prompt by appending previous steps
+def build_system_prompt(base_prompt, user_id, invocation_id, current_step):
+    """
+    Construct a system prompt using only the current step and the immediately previous steps.
+    """
     steps_content = ""
-    for generated_question, user_input in zip(generated_questions_global, user_inputs_global):
-        steps_content += f"{generated_question}\n{user_input}\n"
-    return base_prompt.replace("{previous_steps}", steps_content)
+    
+    # Append only the relevant previous step and the current step
+    for step in range(1, current_step + 1):
+        generated_questions = get_generated_questions(user_id, invocation_id, step)
+        user_inputs = get_user_inputs(user_id, invocation_id, step)
+        
+        # Append the data for the current step
+        for generated_question, user_input in zip(generated_questions, user_inputs):
+            if generated_question and user_input:  # Only append if both are non-empty
+                steps_content += f"{generated_question}\n{user_input}\n"
+    print(f"[Redis] Built system prompt for user {user_id}, invocation {invocation_id}, step {current_step}: {steps_content}")
+    return base_prompt.replace("{previous_steps}", steps_content.strip())
 
 
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step1(request):
-    global user_inputs_global, generated_questions_global, problem_description
     try:
-        # Initialize the global lists for a new session
-        user_inputs_global = []
-        generated_questions_global = []
+        data = json.loads(request.body)
+        print("Received data:", data)
+        user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id', str(uuid.uuid4()))
+        timeout = data.get('timeout', 1200)  # Default to 1 hour if timeout is not provided
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         
         # Capture the problem description from step1
-        data = json.loads(request.body)
         problem_description = data['user_input']
         language = data['language']
+        store_problem_description(user_id, invocation_id, 1, problem_description, timeout)
 
         with open("strategic-insight-prompt.txt", "r") as file:
             prompt_template = file.read()
@@ -735,42 +567,54 @@ def stinsight_step1(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question in the global list
-        generated_questions_global.append(generated_question_value)
+        store_generated_question(user_id, invocation_id, 1, generated_question_value, timeout)
 
         # Print the system prompt with actual values
-        print(prompt_with_values)
-
+        #print("System prompt:", prompt_with_values)
+        
         step1_data = {
+            'invocation_id': invocation_id,
             'step1': {
                 'user_input': problem_description,
                 'generated_question': generated_question_value
             }
         }
 
+        print(f"[Redis] Step 1 data for user {user_id}, invocation {invocation_id}: {step1_data}")
         return JsonResponse(step1_data, safe=False)
     except Exception as e:
-        print(e)
+        print(f"Error in step1: {e}")
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step2(request):
-    global user_inputs_global, generated_questions_global
     try:
+        # Extract user_id from request (assuming it's provided in the request body)
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not invocation_id:
+            return Response({'error': 'invocation_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data['user_input']
         language = data['language']
 
         # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        store_user_input(user_id, invocation_id, 2, user_input, timeout)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
+        problem_description = get_problem_description(user_id, invocation_id, 1)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
-
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 2)
+        
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
 
@@ -810,22 +654,23 @@ def stinsight_step2(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the extracted question value in the global list
-        generated_questions_global.append(generated_question_value)
-
+        store_generated_question(user_id, invocation_id, 2, generated_question_value, timeout)
         # Rebuild the system prompt again, now with the extracted question
-        system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
 
-        # Print the system prompt with actual values
-        print(system_prompt)
+
+        # Print the rebuilt system prompt
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step2': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
+
+        print(f"[Redis] Step 2 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
 
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
@@ -836,22 +681,28 @@ def stinsight_step2(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step3(request):
-    global user_inputs_global, generated_questions_global
     try:
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
+
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data['user_input']
         language = data['language']
 
         # Store the user input for the current step
-        user_inputs_global.append(user_input)
-
+        store_user_input(user_id, invocation_id, 3, user_input, timeout)
+        
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
+        problem_description = get_problem_description(user_id, invocation_id, 2)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
-
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 3)
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
 
@@ -860,7 +711,7 @@ def stinsight_step3(request):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
         ]
-
+        
         response = client.chat.completions.create(
             model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
             messages=messages,
@@ -891,19 +742,20 @@ def stinsight_step3(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global.append(generated_question_value)
-
+        store_generated_question(user_id, invocation_id, 3, generated_question_value, timeout)
+        
         # Print the system prompt with actual values
-        print(system_prompt)
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step3': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
-
+        print(f"[Redis] Step 3 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
         print(e)
@@ -912,21 +764,28 @@ def stinsight_step3(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step4(request):
-    global user_inputs_global, generated_questions_global
     try:
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
+
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data['user_input']
         language = data['language']
 
-        # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        store_user_input(user_id, invocation_id, 4, user_input, timeout)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
+        problem_description = get_problem_description(user_id, invocation_id, 3)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 4)
+
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -936,7 +795,6 @@ def stinsight_step4(request):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"{problem_description}\n\nLanguage: {language}"}
         ]
-
         response = client.chat.completions.create(
             model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
             messages=messages,
@@ -967,19 +825,22 @@ def stinsight_step4(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global.append(generated_question_value)
+        store_generated_question(user_id, invocation_id, 4, generated_question_value, timeout)
+
+    
 
         # Print the system prompt with actual values
-        print(system_prompt)
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step4': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
-
+        print(f"[Redis] Step 4 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
         print(e)
@@ -988,21 +849,28 @@ def stinsight_step4(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step5(request):
-    global user_inputs_global, generated_questions_global
     try:
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
+
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
         user_input = data['user_input']
         language = data['language']
 
-        # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        store_user_input(user_id, invocation_id, 5, user_input, timeout)
 
         with open("strategic-insight-step2-3-prompt.txt", "r") as file:
             base_prompt = file.read()
 
         # Build the system prompt by appending previous steps
+        problem_description = get_problem_description(user_id, invocation_id, 4)
         system_prompt = base_prompt.replace("{user_input}", problem_description)
-        system_prompt = build_system_prompt(system_prompt)
+        system_prompt = build_system_prompt(base_prompt, user_id, invocation_id, 5)
+
 
         TOGETHER_API_KEY = settings.TOGETHER_API_KEY
         client = Together(api_key=TOGETHER_API_KEY)
@@ -1043,19 +911,21 @@ def stinsight_step5(request):
             return Response({'error': 'Failed to parse API response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Store only the value of the question in the global list
-        generated_questions_global.append(generated_question_value)
-
+        store_generated_question(user_id, invocation_id, 5, generated_question_value, timeout)
+        
         # Print the system prompt with actual values
-        print(system_prompt)
+        print(f"[Redis] Rebuilt system prompt for user {user_id}, invocation {invocation_id}: {system_prompt}")
+
 
         # Return the updated data
         previous_steps_data = {
+            'invocation_id': invocation_id,
             'step5': {
                 'user_input': user_input,
                 'generated_question': generated_question_value
             }
         }
-
+        print(f"[Redis] Step 5 data for user {user_id}, invocation {invocation_id}: {previous_steps_data}")
         return JsonResponse(previous_steps_data, safe=False)
     except Exception as e:
         print(e)
@@ -1065,42 +935,128 @@ def stinsight_step5(request):
 @csrf_exempt
 @api_view(['POST'])
 def stinsight_step6(request):
-    global user_inputs_global, generated_questions_global, problem_description
     try:
-        # Parse the request data
         data = json.loads(request.body)
+        user_id = data.get('user_id')
+        invocation_id = data.get('invocation_id')
+        timeout = data.get('timeout', 1200) 
+        
+        if not user_id or not invocation_id:
+            return Response({'error': 'user_id and invocation_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_input = data.get('user_input', '')
         language = data.get('language', 'en')
-        selected_option = data.get('selected_option', 'option1')  # Get the dropdown choice
+        selected_option = data.get('selected_option', 'option1')
 
-        # Store the user input for the current step
-        user_inputs_global.append(user_input)
+        if user_input:
+            store_user_input(user_id, invocation_id, 6, user_input, timeout)
 
         # Collect the final content that includes the problem description and all user inputs
-        final_content = problem_description + "\n\n" + "\n".join(user_inputs_global)
+        final_content = ""
+        for step in range(1, 7):  # Assuming a maximum of 6 steps
+            problem_description = get_problem_description(user_id, invocation_id, step)
+            user_inputs = get_user_inputs(user_id, invocation_id, step)
+            if problem_description:
+                final_content += f"{problem_description}\n\n"
+            if user_inputs:
+                final_content += "\n".join(user_inputs) + "\n\n"
 
-        # Print all data for verification
-        #print("Final Content to be passed to process_prompts:")
-        #print(final_content)
-        #print("Selected option:", selected_option)
+        final_content = final_content.strip()  # Clean up trailing whitespace
+
+        print(f"[Redis] Final content for user {user_id}, invocation {invocation_id}: {final_content}")
+        print(f"[Redis] Selected option for user {user_id}, invocation {invocation_id}: {selected_option}")
 
         # Trigger the appropriate Celery task based on the dropdown value
         if selected_option == 'option1':
             # Trigger process_prompts for option 1 (Strategic Analysis for Decision Makers)
             task = process_prompts_1.apply_async(args=[final_content, language])
+            print(f"[Celery] Task initiated for Option 1: {task.id}")
         elif selected_option == 'option2':
             # Trigger process_prompts2 for option 2 (Strategic Analysis for Organizational Architects)
             task = process_prompts_2.apply_async(args=[final_content, language])
+            print(f"[Celery] Task initiated for Option 2: {task.id}")
         elif selected_option == 'option3':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
             task = process_prompts_3.apply_async(args=[final_content, language])
+            print(f"[Celery] Task initiated for Option 3: {task.id}")
         elif selected_option == 'option4':
             # Trigger process_prompts3 for option 3 (Strategic Analysis for Cognitive Dynamics)
-            task = process_prompts4.apply_async(args=[final_content, language])
+            response_data = trigger_ppt_generation(final_content, language, user_id, invocation_id)
+            if 'error' in response_data:
+                return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse(response_data, status=status.HTTP_202_ACCEPTED)
         else:
             return JsonResponse({'error': 'Invalid option selected'}, status=status.HTTP_400_BAD_REQUEST)
 
         return JsonResponse({"task_id": task.id, "status": "Processing initiated"}, status=status.HTTP_202_ACCEPTED)
+    except Exception as e:
+        print(e)
+        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def trigger_ppt_generation(final_content, language, user_id, invocation_id):
+    try:
+        # Trigger the asynchronous task for PPT generation
+        task = process_prompts4.apply_async(args=[final_content, language, user_id, invocation_id])
+        print(f"[Celery] Task initiated for PPT generation: {task.id}")
+        return {'task_id': task.id, 'status': 'PPT generation initiated'}
+    except Exception as e:
+        logger.error(f"Error in trigger_ppt_generation: {e}")
+        return {'error': 'Failed to initiate PPT generation'}
+        
+@api_view(['POST'])
+def generate_ppt_for_option4(request):
+    """
+    Endpoint to trigger PPT generation specifically for 'option4'.
+    It initiates the task and returns the task ID for status tracking.
+    """
+    try:
+        data = json.loads(request.body)
+        final_content = data.get('final_content')
+        language = data.get('language')
+        user_id = data.get('user_id')
+        
+
+        response_data = trigger_ppt_generation(final_content, language, user_id)
+        if 'error' in response_data:
+            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(response_data, status=status.HTTP_202_ACCEPTED)
+    except Exception as e:
+        logger.error(f"Error in generate_ppt_for_option4: {e}")
+        return Response({'error': 'Failed to initiate PPT generation'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def get_ppt_for_option4(request, task_id):
+    """
+    Endpoint to retrieve the generated PPT file for 'option4' after the task is complete.
+    """
+    try:
+        result = AsyncResult(task_id)
+        
+        if result.status == 'SUCCESS':
+            result_data = result.result
+            pptx_base64 = result_data.get('pptx_base64', '')
+            #print(f"Retrieved pptx_base64 in result data: {pptx_base64}")
+            smartnote_title = result_data.get('smartnote_title', 'Default Title')
+            smartnote_description = result_data.get('smartnote_description', 'Default Description')
+            title = "title"
+            description = "description"
+
+           
+            return JsonResponse({
+                'status': 'SUCCESS',
+                'pptx_base64': pptx_base64,
+                'smartnote_title': smartnote_title,
+                'smartnote_description': smartnote_description
+            })
+                
+        elif result.status == 'FAILURE':
+            return JsonResponse({'status': 'FAILURE', 'error': 'Task failed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        else:  # For PENDING or any other status
+            return JsonResponse({'status': result.status})
+            
     except Exception as e:
         print(e)
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1185,113 +1141,244 @@ def get_task_status1(request, task_id):
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(http_method_names=['POST'])
+def generate_prompt(request):
+    try:
+        jdata = json.loads(request.body)
+        company_name = jdata['company_name']
+        role = "\n[Role]: " + jdata['role'] if jdata['role'] != "" else ""
+        output_type = "\n[Hanna always outputs the answers in]: " + jdata['output_type'] if jdata['output_type'] != "" else ""
+        main_purpose = "\n[Main Purpose]: " + jdata['main_purpose']
+        situation = "\nContext or situation in which Hanna Mind work: " + jdata['situation']
+        output_format = "\nMake sure for this prompt the IA is instructed to Answer in this format only and not other formats: " + jdata['output_format']
+        audience = "\n[People or context]: For which people the context is generated: " + jdata['audience']
+        specific_instruction = "\n[Specific instructions]: " + jdata['specific_instruction']
+        tone = "\n[Tone to be used]: (place it in a way that it is always followed): " + jdata['tone']
 
+        # system_prompt_generator
+        # chain = spgen | system_prompt_generator_llm
+
+        chain = LLMChain(llm=system_prompt_generator_llm, prompt=spgen)
+
+        res = chain.run(company_name=company_name,
+                        role=role,
+                        output_type=output_type,
+                        main_purpose=main_purpose,
+                        situation=situation,
+                        output_format=output_format,
+                        audience=audience,
+                        specific_instruction=specific_instruction,
+                        tone=tone)
+
+        return Response({'msg': res}, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error("CHAT SUMMARY VEC:")
+        logger.error(e)
+    return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+summary_chat_format = (
+    "{{ bos_token }}{% for message in messages %}"
+    "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
+    "{% endif %}{% if message['role'] == 'user' %}{{ 'USER: ' + message['text'] + '\nBOT: ' }}"
+    "{% elif message['role'] == 'bot' %}{{ message['text'] + '\n\n' }}"
+    "{% endif %}{% endfor %}"
+)
+
+summary_chat_template = Template(summary_chat_format)
 
 
 @api_view(http_method_names=['POST'])
 def chat_summary(request):
     try:
         jdata = json.loads(request.body)
-        ps = llm_hybrid.summarize_chat(jdata['chat_history'])
-        return Response({'msg': str(ps)}, status=status.HTTP_200_OK)
+        # language = jdata['language']
+        chat_history = jdata['chat_history']
+        ps = llm_hybrid.summarize_chat(chat_history)
+
+        data = {
+            "bos_token": "",
+            "eos_token": "",
+            "messages": [
+                {"role": msg['role'], "text": msg['text'] if 'text' in msg else ''} for msg in jdata['chat_history']
+            ]
+        }
+
+        chat_history_str = summary_chat_template.render(data)
+
+        # print(chat_history_str)
+
+        keyword_pattern = r"TITLE:\s*\[(.*?)\]\s*PROBLEM:\s*\[(.*?)\]\s*SOLUTION:\s*\[(.*?)\]"
+        keyword_match = re.search(keyword_pattern, ps, re.DOTALL)
+        # print("KS: ", keyword_match)
+        title = ''
+        problem = ''
+        solution = ''
+
+        if keyword_match:
+            title = keyword_match.group(1)
+            problem = keyword_match.group(2)
+            solution = keyword_match.group(3)
+
+        return Response({'title': title, 'problem': problem, 'solution': solution, 'ps': ps}, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error("CHAT SUMMARY VEC:")
         logger.error(e)
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-def create_solution(request) -> None:
 
+def format_solution(title: str, situation: str, solution: str, ranking: str, username: str, entity_name: str) -> str:
+    return f"""<SOLUTION_ENTRY>
+    [Title]: {title}
+    [Situation]: {situation}
+    [Solution]: {solution}
+    [Effectiveness]: Highly effective (3/{ranking})
+    [Author]: {username}
+    [Created By Initiative]: {entity_name}
+    </SOLUTION_ENTRY>""".strip()
+
+
+@api_view(http_method_names=['POST'])
+def count_file_tokens(request):
     try:
-        
+
+        # if slice_document.check_tokens() > 500000:
+
+
+        return Response({'msg': ''}, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error("CHAT SUMMARY VEC:")
+        logger.error(e)
+        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def create_solution(request):
+    try:
         company = json.loads(request.body)
         collection = "C" + str(company['collection'])
-        collection_name = str(company['collection_name']).lower()
+        collection_name = str(company['collection_name']).lower() # name of notebook
         type_ = str(company['type'])
-        title = company.get('Title') 
-        username = company.get('Username')  
-        author = company.get('Author') 
-        created_initiative = company.get('Created_initiative')  
-        situation = company.get('situation')
-        solution = company.get('solution')
-        ranking = company.get('ranking')
-        shared_initiatives = company.get('shared_initiatives', [])  
+        note_type = str(company['note_type'])
+        title = str(company['title'])
+        username = str(company['username'])
+        user_id = str(company['user_id']) # email
+        entity_name = str(company['entity_name']) # name
+        situation = str(company['situation'])
+        solution = str(company['solution'])
+        ranking = str(company['ranking'])
+        shared_initiatives = company['shared_initiatives'] # list of ids for initiatives
 
-        
+        uuid_ = str(uuid.uuid4())
+
         if not situation or not solution or not ranking:
             return Response({"error": "Missing required fields: situation, solution, ranking."}, status=400)
 
-        solution_id = str(uuid.uuid4())
-        initiatives_str = ', '.join(shared_initiatives)
-        solution_obj = {
-            "uuid": solution_id,
-            "entity": initiatives_str,  
-            "situation": situation,
-            "solution": solution,
-            "ranking": ranking,
-            "note_type": "solution",  
-            "collection": collection,
-            "collection_name": collection_name,
-            "type": type_,
-            "title": title,
-            "username": username,
-            "author": author,
-            "created_initiative": created_initiative
-        }
+        if type_ == "CMV":
+            fs = format_solution(title, situation, solution, ranking, username, entity_name)
 
-        llm_hybrid.weaviate_client.data_object.create(
-            data_object=solution_obj,
-            class_name=collection  
-        )
+            llm_hybrid.add_batch_uuid(batch=[fs],
+                                      user_id=user_id,
+                                      entity=collection,
+                                      uuid_=uuid_,
+                                      class_=collection,
+                                      class_name=collection_name,
+                                      note_type=note_type)
 
-        response_data = {
-            "solution_id": solution_id,
-            "situation": situation,
-            "solution": solution,
-            "ranking": ranking,
-            "shared_initiatives": shared_initiatives,  
-            "collection": collection,
-            "collection_name": collection_name,
-            "type": type_,
-            "title": title,
-            "username": username,
-            "author": author,
-            "created_initiative": created_initiative
-        }
+        elif type_ == "INV" and shared_initiatives != []:
+            for entity_id in shared_initiatives:
+                fs = format_solution(title, situation, solution, ranking, username, entity_name)
 
-        return Response(response_data, status=201)
+                llm_hybrid.add_batch_uuid(batch=[fs],
+                                          user_id=user_id,
+                                          entity=entity_id,
+                                          uuid_=uuid_,
+                                          class_=collection,
+                                          class_name=collection_name,
+                                          note_type=note_type)
+
+        return Response({'msg': str(uuid_)}, status=status.HTTP_200_OK)
 
     except Exception as e:
-        return Response({"error": str(e)}, status=400)
+        logger.error("CREATE SOLUTION:")
+        logger.error(e)
+        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(http_method_names=['POST'])
-def delete_solutions(request):
+def delete_solution(request):
     try:
         company = json.loads(request.body)
-        obj_id = company['id']
         collection = "C" + str(company['collection'])
+        uuid_ = str(company['uuid'])
 
         if llm_hybrid.collection_exists(collection) is False:
              return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if llm_hybrid.remove_uuid(uuid_, collection) is True:
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["id"],
-                "operator": "Like",
-                "valueText": obj_id  
-            }
-        )
-
-        return Response({'msg': 'Solution deleted successfully!'}, status=status.HTTP_200_OK)
+            return Response({'msg': 'Solution deleted successfully!'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Cannot remove uuid!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     except Exception as e:
-        print("Error in delete_solutions:", e)
+        logger.error("DELETE SOLUTION:")
+        logger.error(e)
         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(http_method_names=['POST'])
+def update_solution(request):
+    try:
+        company = json.loads(request.body)
+        collection = "C" + str(company['collection'])
+        collection_name = str(company['collection_name']).lower()  # name of notebook
+        type_ = str(company['type'])
+        note_type = str(company['note_type'])
+        title = str(company['title'])
+        username = str(company['username'])
+        user_id = str(company['user_id'])  # email
+        entity_name = str(company['entity_name'])  # name
+        situation = str(company['situation'])
+        solution = str(company['solution'])
+        ranking = str(company['ranking'])
+        shared_initiatives = company['shared_initiatives']  # list of ids for initiatives
+        uuid_ = str(company['uuid'])
 
+        if llm_hybrid.remove_uuid(uuid_, collection) is True:
+
+            if type_ == "CMV":
+                fs = format_solution(title, situation, solution, ranking, username, entity_name)
+
+                llm_hybrid.add_batch_uuid(batch=[fs],
+                                          user_id=user_id,
+                                          entity=collection,
+                                          uuid_=uuid_,
+                                          class_=collection,
+                                          class_name=collection_name,
+                                          note_type=note_type)
+
+            elif type_ == "INV" and shared_initiatives != []:
+                for entity_id in shared_initiatives:
+                    fs = format_solution(title, situation, solution, ranking, username, entity_name)
+
+                    llm_hybrid.add_batch_uuid(batch=[fs],
+                                              user_id=user_id,
+                                              entity=entity_id,
+                                              uuid_=uuid_,
+                                              class_=collection,
+                                              class_name=collection_name,
+                                              note_type=note_type)
+
+            return Response({'msg': str(uuid_)}, status=status.HTTP_200_OK)
+
+        else:
+            return Response({'error': 'No such uuid!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    except Exception as e:
+        logger.error("UPDATE SOLUTION:")
+        logger.error(e)
+        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(http_method_names=['POST'])
@@ -1537,14 +1624,7 @@ def update_chunk_text(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["uuid"],
-                "operator": "Equal",
-                "valueText": uuid_
-            },
-        )
+        llm_hybrid.remove_uuid(uuid_, collection)
 
         pre_filter = str(chunk).strip().replace("\n", "").lower()
 
@@ -1561,8 +1641,8 @@ def update_chunk_text(request):
 
         return Response({'msg': 'success'}, status=status.HTTP_200_OK)
     except Exception as e:
-        print("VIEW UPDATE CHUNK:")
-        print(e)
+        logger.error("VIEW UPDATE CHUNK:")
+        logger.error(e)
         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1580,25 +1660,17 @@ def update_chunk_file(request):
         meeting_date = str(request.POST.get('meeting_date'))
         time_zone = str(request.POST.get('time_zone'))
 
-
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
         uuid_file = "file-" + uid.split('-')[4] + uid.split('-')[4] + uid.split('-')[3] + uid.split('-')[2] + \
                     uid.split('-')[1] + uid.split('-')[0]
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["uuid"],
-                "operator": "Equal",
-                "valueText": uuid_file
-            },
-        )
+        llm_hybrid.remove_uuid(uuid_file, collection)
 
         data_file = request.FILES['file_upload']
-        print(f'File Upload! {data_file}')
-        print(request.POST)
+        logger.info(f'File Upload! {data_file}')
+        logger.info(request.POST)
 
         file_name = data_file.name
 
@@ -1608,7 +1680,7 @@ def update_chunk_file(request):
         destination.close()
 
         documents = slice_document.chunk_document(file_name)
-        print("FILE UUID: ", uuid_file)
+        logger.info(f"FILE UUID: {uuid_file}")
 
         # PV -> Private Vec
         # INV -> Init Vec
@@ -1657,17 +1729,10 @@ def update_chunk_all(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        uuid_file = "file-" + uuid.split('-')[4] + uuid.split('-')[4] + uuid.split('-')[3] + uuid.split('-')[2] + \
-                    uuid.split('-')[1] + uuid.split('-')[0]
+        # uuid_file = "file-" + uuid.split('-')[4] + uuid.split('-')[4] + uuid.split('-')[3] + uuid.split('-')[2] + \
+        #             uuid.split('-')[1] + uuid.split('-')[0]
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["uuid"],
-                "operator": "ContainsAny",
-                "valueTextArray": [uuid, uuid_file]
-            },
-        )
+        llm_hybrid.remove_uuid_all(uuid, collection)
 
         pre_filter = text.strip().replace("\n", "").lower()
 
@@ -1771,80 +1836,86 @@ def get_collection(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        data_object = (llm_hybrid.weaviate_client.query.get(collection, ['entity', 'uuid', 'content', 'user_id', 'collection_name', 'note_type', 'meeting_date', 'time_zone'])
-                       .with_additional(["id"])
-                       .do())
+        # data_object = (llm_hybrid.weaviate_client.query.get(collection, ['entity', 'uuid', 'content', 'user_id', 'collection_name', 'note_type', 'meeting_date', 'time_zone'])
+        #                .with_additional(["id"])
+        #                .do())
 
-        if 'data' in data_object:
-            res = data_object['data']['Get'][collection]
-        else:
-            res = []
+        # if 'data' in data_object:
+        #     res = data_object['data']['Get'][collection]
+        # else:
+        #     res = []
+
+        named_collection = llm_hybrid.weaviate_client.collections.get(collection)
+
+        objs = []
+
+        for item in named_collection.iterator():
+            objs.append(item.properties)
 
         # print(res)
 
-        del data_object
         del collection
         del company
 
-        return Response({'msg': res}, status=status.HTTP_200_OK)
+        return Response({'msg': objs}, status=status.HTTP_200_OK)
     except Exception as e:
         print("VIEW GET COLLECTION:")
         print(e)
         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(http_method_names=['GET'])
-def get_objects_entity(request):
-    try:
-        company = json.loads(request.body)
-        entity = str(company['entity'])
-        collection = "C" + str(company['collection'])
-
-        if llm_hybrid.collection_exists(collection) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # data_object = llm_hybrid.get_by_uuid('entity', entity, collection)
-        return Response({'msg': 'In progress!'}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW GET OBJECTS ENTITY:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(http_method_names=['GET'])
-def get_objects_uuid(request):
-    try:
-        company = json.loads(request.body)
-        uid = str(company['uuid'])
-        collection = "C" + str(company['collection'])
-
-        if llm_hybrid.collection_exists(collection) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        data_object = llm_hybrid.filter_by_uuid(uid, collection)
-        return Response({'msg': data_object}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW GET OBJECTS UUID:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# @api_view(http_method_names=['GET'])
+# def get_objects_entity(request):
+#     try:
+#         company = json.loads(request.body)
+#         entity = str(company['entity'])
+#         collection = "C" + str(company['collection'])
+#
+#         if llm_hybrid.collection_exists(collection) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         # data_object = llm_hybrid.get_by_uuid('entity', entity, collection)
+#         return Response({'msg': 'In progress!'}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW GET OBJECTS ENTITY:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(http_method_names=['GET'])
-def get_object(request):
-    try:
-        company = json.loads(request.body)
-        obj_id = company['id']
-        collection = "C" + str(company['collection'])
+# @api_view(http_method_names=['GET'])
+# def get_objects_uuid(request):
+#     try:
+#         company = json.loads(request.body)
+#         uid = str(company['uuid'])
+#         collection = "C" + str(company['collection'])
+#
+#         if llm_hybrid.collection_exists(collection) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         data_object = llm_hybrid.filter_by_uuid(uid, collection)
+#         return Response({'msg': data_object}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW GET OBJECTS UUID:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if llm_hybrid.collection_exists(collection) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        data_object = llm_hybrid.get_by_id(collection, obj_id)
-        return Response({'msg': data_object}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW GET OBJECT:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# @api_view(http_method_names=['GET'])
+# def get_object(request):
+#     try:
+#         company = json.loads(request.body)
+#         obj_id = company['id']
+#         collection = "C" + str(company['collection'])
+#
+#         if llm_hybrid.collection_exists(collection) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         data_object = llm_hybrid.get_by_id(collection, obj_id)
+#         return Response({'msg': data_object}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW GET OBJECT:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(http_method_names=['POST'])
@@ -1859,26 +1930,35 @@ def remove_user_objects(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        res = llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "operator": "And",
-                "operands": [
-                        {
-                            "path": ["entity"],
-                            "operator": "Equal",
-                            "valueText": combine_id,
-                        },
-                        {
-                            "path": ["user_id"],
-                            "operator": "Equal",
-                            "valueText": user_id,
-                        }
-                    ]
-        },
+        collections = llm_hybrid.weaviate_client.collections.get(collection)
+
+        collections.data.delete_many(
+            where=[
+                Filter.by_property("entity").equal(combine_id) &
+                Filter.by_property("user_id").equal(user_id)
+            ]
+            # dry_run=True,
+            # verbose=True
         )
 
-        # print(res)
+        # res = llm_hybrid.weaviate_client.batch.delete_objects(
+        #     class_name=collection,
+        #     where={
+        #         "operator": "And",
+        #         "operands": [
+        #                 {
+        #                     "path": ["entity"],
+        #                     "operator": "Equal",
+        #                     "valueText": combine_id,
+        #                 },
+        #                 {
+        #                     "path": ["user_id"],
+        #                     "operator": "Equal",
+        #                     "valueText": user_id,
+        #                 }
+        #             ]
+        # },
+        # )
 
         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
@@ -1887,30 +1967,30 @@ def remove_user_objects(request):
         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(http_method_names=['POST'])
-def remove_object(request):
-    try:
-        company = json.loads(request.body)
-        obj_id = company['id']
-        collection = "C" + str(company['collection'])
-
-        if llm_hybrid.collection_exists(collection) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["id"],
-                "operator": "Like",
-                "valueText": obj_id
-            },
-        )
-
-        return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW REMOVE OBJECT:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# @api_view(http_method_names=['POST'])
+# def remove_object(request):
+#     try:
+#         company = json.loads(request.body)
+#         obj_id = company['id']
+#         collection = "C" + str(company['collection'])
+#
+#         if llm_hybrid.collection_exists(collection) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         llm_hybrid.weaviate_client.batch.delete_objects(
+#             class_name=collection,
+#             where={
+#                 "path": ["id"],
+#                 "operator": "Like",
+#                 "valueText": obj_id
+#             },
+#         )
+#
+#         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW REMOVE OBJECT:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(http_method_names=['POST'])
@@ -1924,18 +2004,12 @@ def remove_objects_entity(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["entity"],
-                "operator": "ContainsAny",
-                "valueTextArray": [entity, combine_id]
-            },
-        )
-
-        return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+        if llm_hybrid.remove_entity_all(collection, entity, combine_id) is True:
+            return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'cannot remove object!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
-        print("VIEW REMOVE OBJECT ENTITY:")
+        print("VIEW REMOVE OBJECT ENTITY ALL:")
         print(e)
         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -1950,16 +2024,10 @@ def remove_objects_uuid(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["uuid"],
-                "operator": "Equal",
-                "valueText": uid
-            },
-        )
-
-        return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+        if llm_hybrid.remove_uuid(uid, collection) is True:
+            return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'cannot remove object!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
         print("VIEW REMOVE OBJECTS UUID:")
         print(e)
@@ -1978,16 +2046,11 @@ def remove_objects_uuid_file(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["uuid"],
-                "operator": "Equal",
-                "valueText": uuid_file
-            },
-        )
+        if llm_hybrid.remove_uuid(uuid_file, collection) is True:
+            return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'cannot remove object!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
         print("VIEW REMOVE OBJECTS UUID:")
         print(e)
@@ -2001,21 +2064,14 @@ def remove_objects_all(request):
         uid = str(company['uuid'])
         collection = "C" + str(company['collection'])
 
-        uuid_file = "file-" + uid.split('-')[4] + uid.split('-')[4] + uid.split('-')[3] + uid.split('-')[2] + uid.split('-')[1] + uid.split('-')[0]
-
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        llm_hybrid.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["uuid"],
-                "operator": "ContainsAny",
-                "valueTextArray": [uid, uuid_file]
-            },
-        )
+        if llm_hybrid.remove_uuid_all(uid, collection) is True:
+            return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'cannot remove objects!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({'msg': 'Vector Deletion Successful!'}, status=status.HTTP_200_OK)
     except Exception as e:
         print("VIEW REMOVE OBJECTS UUID:")
         print(e)
@@ -2032,15 +2088,11 @@ def remove_objects_uuids(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        for uuid in uids:
-            llm_hybrid.weaviate_client.batch.delete_objects(
-                class_name=collection,
-                where={
-                    "path": ["uuid"],
-                    "operator": "Equal", # ContainsAll
-                    "valueText": uuid # ['', '', '']
-                },
-            )
+        for _uuid in uids:
+            if llm_hybrid.remove_uuid(_uuid, collection) is True:
+                logger.info(f"Object removed {_uuid}")
+            else:
+                logger.error(f'Cannot remove {_uuid}')
 
         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
@@ -2058,7 +2110,7 @@ def remove_collection(request):
         if llm_hybrid.collection_exists(collection) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        llm_hybrid.weaviate_client.schema.delete_class(collection)
+        llm_hybrid.weaviate_client.collections.delete(collection)
         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
         print("VIEW REMOVE COLLECTION:")
@@ -2099,8 +2151,8 @@ def search_hybrid(request):
         else:
             keywords_list = []
 
-        print(key)
-        print("KEY MATCH: ", keyword_match)
+        # print(key)
+        # print("KEY MATCH: ", keyword_match)
         print("KEY LIST: ", keywords_list)
 
         combine_ids = "INP" + entity
@@ -2133,35 +2185,37 @@ def search_hybrid(request):
                 member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids,
                                                                user_id=user_id)
 
-                if 2 <= len(keywords_list) <= 3:
-
-                    for keyword in keywords_list:
-                        r1 = mv.search_master_vectors(query=keyword, class_="MV001")
-                        r2 = llm_hybrid.search_vectors_company(query=keyword, entity=collection,
-                                                                           class_=collection)
-                        r3 = llm_hybrid.search_vectors_initiative(query=keyword, entity=entity,
-                                                                                 class_=collection)
-                        r4 = llm_hybrid.search_vectors_user(query=keyword, class_=collection,
-                                                                       entity=combine_ids,
-                                                                       user_id=user_id)
-
-                        r3.extend(r4)
-
-                        msv.extend(r1)
-                        cv.extend(r2)
-                        miv.extend(r3)
+                # if 2 <= len(keywords_list) <= 3:
+                #
+                #     for keyword in keywords_list:
+                #         r1 = mv.search_master_vectors(query=keyword, class_="MV001")
+                #         r2 = llm_hybrid.search_vectors_company(query=keyword, entity=collection,
+                #                                                            class_=collection)
+                #         r3 = llm_hybrid.search_vectors_initiative(query=keyword, entity=entity,
+                #                                                                  class_=collection)
+                #         r4 = llm_hybrid.search_vectors_user(query=keyword, class_=collection,
+                #                                                        entity=combine_ids,
+                #                                                        user_id=user_id)
+                #
+                #         r3.extend(r4)
+                #
+                #         msv.extend(r1)
+                #         cv.extend(r2)
+                #         miv.extend(r3)
 
             if "Greeting" in cat:
                 mode = 0.4
 
             initiative_vector.extend(member_vector)
 
+            print("INIT: ", initiative_vector)
+
             master_vector.extend(msv)
             company_vector.extend(cv)
             initiative_vector.extend(miv)
 
-            print("MASTER VEC 1: ", msv)
-            print("MASTER VEC 2: ", master_vector)
+            # print("MASTER VEC 1: ", msv)
+            # print("MASTER VEC 2: ", master_vector)
 
             top_master_vec = mv.reranker(query=query, batch=master_vector, return_type=list)
             top_company_vec = llm_hybrid.reranker(query=query, batch=company_vector, class_=collection, return_type=list)
@@ -2173,16 +2227,75 @@ def search_hybrid(request):
             print("Searching Meeting Vectors!")
             mode = 0
 
-            user_meeting_vec = llm_hybrid.search_vectors_user_type(query, collection, combine_ids, user_id, "Meeting")
-            initiative_meeting_vec = llm_hybrid.search_vectors_company_type(query, collection, entity, "Meeting")
-            company_meeting_vec = llm_hybrid.search_vectors_company_type(query, collection, collection, "Meeting")
+            tmp = llm_hybrid.date_filter(query, "2024-11-30")
 
-            initiative_meeting_vec.extend(user_meeting_vec)
-            company_meeting_vec.extend(initiative_meeting_vec)
+            date_pattern = r"FILTER:\s*(\d{4}-\d{1,2}-\d{1,2})"
+            query_pattern = r"QUERY:\s*\[(.*?)\]"
 
-            matched_meetings = llm_hybrid.reranker(query, collection, company_meeting_vec)
+            # Find matches
+            date_match = re.search(date_pattern, tmp)
+            query_match = re.search(query_pattern, tmp)
 
-            retriever = f"{matched_meetings}"
+            # Extract values
+            if date_match:
+                date_value = date_match.group(1)
+            else:
+                date_value = ""
+
+            if query_match:
+                query_value = query_match.group(1)
+            else:
+                query_value = ""
+
+            logger.info(f"Date: {date_value}")
+            logger.info(f"Query: {query_value}")
+
+            if date_value != "" and query_value == "":
+                logger.info("RETRIEVED DATE...")
+                user_meeting_vec = llm_hybrid.search_vectors_user_type(date_value, collection, combine_ids, user_id,
+                                                                       "Meeting")
+
+                initiative_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, entity,
+                                                                                "Meeting")
+
+                company_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, collection,
+                                                                             "Meeting")
+
+                initiative_meeting_vec.extend(user_meeting_vec)
+                company_meeting_vec.extend(initiative_meeting_vec)
+
+                # initiative_meeting_vec.extend(user_meeting_vec)
+                # company_meeting_vec.extend(initiative_meeting_vec)
+                #
+                matched_meetings = llm_hybrid.reranker_meeting(query, collection, company_meeting_vec)
+                #
+                # retriever = f"{matched_meetings}"
+
+                retriever = "\n".join(company_meeting_vec) if len(company_meeting_vec) > 0 else ""
+
+            elif query_value != "" and date_value != "":
+                print("RETRIEVED QUERY...")
+                user_meeting_vec = llm_hybrid.search_vectors_user_type(date_value, collection, combine_ids, user_id,
+                                                                       "Meeting")
+
+                initiative_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, entity,
+                                                                                "Meeting")
+
+                company_meeting_vec = llm_hybrid.search_vectors_company_type(date_value, collection, collection,
+                                                                             "Meeting")
+
+                initiative_meeting_vec.extend(user_meeting_vec)
+                company_meeting_vec.extend(initiative_meeting_vec)
+
+                retriever = "\n".join(company_meeting_vec) if len(company_meeting_vec) > 0 else ""
+
+            #
+            # initiative_meeting_vec.extend(user_meeting_vec)
+            # company_meeting_vec.extend(initiative_meeting_vec)
+            #
+            # matched_meetings = llm_hybrid.reranker_meeting(query, collection, company_meeting_vec)
+            #
+            # retriever = f"{matched_meetings}"
 
         return Response({'msg': retriever}, status=status.HTTP_200_OK)
     except Exception as e:
@@ -2225,7 +2338,7 @@ def create_master_collection(request):
     try:
         company = json.loads(request.body)
 
-        if mv.weaviate_client.schema.exists(company['collection']) is True:
+        if mv.collection_exists(company['collection']) is True:
             return Response({'error': 'This collection already exists!'}, status=status.HTTP_400_BAD_REQUEST)
 
         class_obj = {
@@ -2273,7 +2386,7 @@ def create_master_collection(request):
             ],
         }
 
-        mv.weaviate_client.schema.create_class(class_obj)
+        mv.weaviate_client.collections.create_from_dict(class_obj)
         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
         print("VIEW:")
@@ -2286,118 +2399,126 @@ def get_master_collection(request):
     try:
         company = json.loads(request.body)
 
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
+        if mv.collection_exists(company['collection']) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        data_object = (mv.weaviate_client.query.get(company['collection'], ['uuid', 'filename', 'content', 'type'])
-                       .with_additional(["id"])
-                       .do())
-
-        res = data_object['data']['Get']
+        # data_object = (mv.weaviate_client.query.get(company['collection'], ['uuid', 'filename', 'content', 'type'])
+        #                .with_additional(["id"])
+        #                .do())
+        #
+        # res = data_object['data']['Get']
         # print(res)
-        return Response({'msg': res}, status=status.HTTP_200_OK)
+
+        named_collection = mv.weaviate_client.collections.get(company['collection'])
+
+        objs = []
+
+        for item in named_collection.iterator():
+            objs.append(item.properties)
+
+        return Response({'msg': objs}, status=status.HTTP_200_OK)
     except Exception as e:
         print("VIEW:")
         print(e)
         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(http_method_names=['GET'])
-def get_master_objects_filename(request):
-    try:
-        company = json.loads(request.body)
-        filename = company['filename']
-        collection = company['collection']
-
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        data_object = mv.filter_by('filename', filename, collection)
-        return Response({'msg': data_object}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(http_method_names=['GET'])
-def get_master_objects_type(request):
-    try:
-        company = json.loads(request.body)
-        type_ = company['type']
-        collection = company['collection']
-
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        data_object = mv.filter_by('type', type_, collection)
-        return Response({'msg': data_object}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# @api_view(http_method_names=['GET'])
+# def get_master_objects_filename(request):
+#     try:
+#         company = json.loads(request.body)
+#         filename = company['filename']
+#         collection = company['collection']
+#
+#         if mv.weaviate_client.schema.exists(company['collection']) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         data_object = mv.filter_by('filename', filename, collection)
+#         return Response({'msg': data_object}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(http_method_names=['GET'])
-def get_master_objects_uuid(request):
-    try:
-        company = json.loads(request.body)
-        uid = company['uuid']
-        collection = company['collection']
-
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        data_object = mv.filter_by('uuid', uid, collection)
-        return Response({'msg': data_object}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(http_method_names=['GET'])
-def get_master_object(request):
-    try:
-        company = json.loads(request.body)
-        obj_id = company['id']
-        collection = company['collection']
-
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        data_object = mv.get_by_id(collection, obj_id)
-        return Response({'msg': data_object}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# @api_view(http_method_names=['GET'])
+# def get_master_objects_type(request):
+#     try:
+#         company = json.loads(request.body)
+#         type_ = company['type']
+#         collection = company['collection']
+#
+#         if mv.collection_exists(company['collection']) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         data_object = mv.filter_by('type', type_, collection)
+#         return Response({'msg': data_object}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(http_method_names=['POST'])
-def remove_master_object(request):
-    try:
-        company = json.loads(request.body)
-        obj_id = company['id']
-        collection = company['collection']
+# @api_view(http_method_names=['GET'])
+# def get_master_objects_uuid(request):
+#     try:
+#         company = json.loads(request.body)
+#         uid = company['uuid']
+#         collection = company['collection']
+#
+#         if mv.weaviate_client.schema.exists(company['collection']) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         data_object = mv.filter_by('uuid', uid, collection)
+#         return Response({'msg': data_object}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        mv.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["id"],
-                "operator": "Like",
-                "valueText": obj_id
-            },
-        )
+# @api_view(http_method_names=['GET'])
+# def get_master_object(request):
+#     try:
+#         company = json.loads(request.body)
+#         obj_id = company['id']
+#         collection = company['collection']
+#
+#         if mv.collection_exists(company['collection']) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         data_object = mv.get_by_id(collection, obj_id)
+#         return Response({'msg': data_object}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW:")
-        print(e)
-        return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# @api_view(http_method_names=['POST'])
+# def remove_master_object(request):
+#     try:
+#         company = json.loads(request.body)
+#         obj_id = company['id']
+#         collection = company['collection']
+#
+#         if mv.weaviate_client.schema.exists(company['collection']) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         mv.weaviate_client.batch.delete_objects(
+#             class_name=collection,
+#             where={
+#                 "path": ["id"],
+#                 "operator": "Like",
+#                 "valueText": obj_id
+#             },
+#         )
+#
+#         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW:")
+#         print(e)
+#         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(http_method_names=['POST'])
@@ -2406,10 +2527,10 @@ def remove_master_collection(request):
         company = json.loads(request.body)
         collection = company['collection']
 
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
+        if mv.collection_exists(company['collection']) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        mv.weaviate_client.schema.delete_class(collection)
+        mv.weaviate_client.collections.delete(collection)
         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
         print("VIEW:")
@@ -2424,17 +2545,10 @@ def remove_master_objects_uuid(request):
         uid = company['uuid']
         collection = company['collection']
 
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
+        if mv.collection_exists(company['collection']) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        mv.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["uuid"],
-                "operator": "Like",
-                "valueText": uid
-            },
-        )
+        mv.remove_uuid(uid, collection)
 
         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
@@ -2450,17 +2564,10 @@ def remove_master_objects_file(request):
         filename = company['filename']
         collection = company['collection']
 
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
+        if mv.collection_exists(company['collection']) is False:
             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        mv.weaviate_client.batch.delete_objects(
-            class_name=collection,
-            where={
-                "path": ["filename"],
-                "operator": "Like",
-                "valueText": filename
-            },
-        )
+        mv.remove_file(filename, collection)
 
         return Response({'msg': 'Success!'}, status=status.HTTP_200_OK)
     except Exception as e:
@@ -2469,23 +2576,23 @@ def remove_master_objects_file(request):
         return Response({'error': 'something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(http_method_names=['POST'])
-def add_master_vectors(request):
-    try:
-        company = json.loads(request.body)
-
-        if mv.weaviate_client.schema.exists(company['collection']) is False:
-            return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        documents = slice_document.chunk_corpus(company['text'])
-
-        uid = mv.add_batch(documents, company['filename'], company['type'], company['collection'])
-
-        return Response({'msg': str(uid)}, status=status.HTTP_200_OK)
-    except Exception as e:
-        print("VIEW:")
-        print(e)
-        return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# @api_view(http_method_names=['POST'])
+# def add_master_vectors(request):
+#     try:
+#         company = json.loads(request.body)
+#
+#         if mv.weaviate_client.schema.exists(company['collection']) is False:
+#             return Response({'error': 'This collection does not exist!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         documents = slice_document.chunk_corpus(company['text'])
+#
+#         uid = mv.add_batch(documents, company['filename'], company['type'], company['collection'])
+#
+#         return Response({'msg': str(uid)}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         print("VIEW:")
+#         print(e)
+#         return Response({'error': 'Something went wrong!'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(http_method_names=['POST'])
@@ -2513,7 +2620,7 @@ def upload_master_file(request):
 # ----------- WARNING -----------
 @api_view(http_method_names=['POST'])
 def destroy_all(request):
-    llm_hybrid.weaviate_client.schema.delete_all()
+    llm_hybrid.weaviate_client.collections.delete_all()
     return Response({'msg': 'Destroyed!!!'}, status=status.HTTP_200_OK)
 
 
