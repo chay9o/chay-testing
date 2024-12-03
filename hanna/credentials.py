@@ -24,7 +24,7 @@ class OIDCAuthManager:
             self.token_url,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             data={
-                "grant_type": "password",
+                "grant_type": "client_credentials",
                 "client_id": self.client_id,
                 "client_secret": self.client_secret,
             },
@@ -37,24 +37,6 @@ class OIDCAuthManager:
             print("Access token fetched successfully.")
         else:
             raise Exception(f"Failed to fetch tokens: {response.json()}")
-
-    def refresh_access_token(self):
-        response = requests.post(
-            self.token_url,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            data={
-                "grant_type": "refresh_token",
-                "client_id": self.client_id,
-                "refresh_token": self.refresh_token,
-            },
-        )
-        if response.status_code == 200:
-            tokens = response.json()
-            self.access_token = tokens["access_token"]
-            self.token_expiry = time.time() + tokens["expires_in"] - 60  # Refresh 1 min before expiry
-            print("Access token refreshed successfully.")
-        else:
-            raise Exception(f"Failed to refresh token: {response.json()}")
 
     def get_access_token(self):
         if time.time() > self.token_expiry:
