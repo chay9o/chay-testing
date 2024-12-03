@@ -62,6 +62,8 @@ class ClientCredentials:
             # Connect to Weaviate using the JWT token
             self.weaviate_client = weaviate.connect_to_custom(
                 http_host="w4.strategicfuture.ai",
+                http_port="8082",
+                http_secure="True",
                 grpc_host="w4.strategicfuture.ai",
                 grpc_port=50051,
                 grpc_secure=False,
