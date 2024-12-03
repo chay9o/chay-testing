@@ -12,13 +12,11 @@ warnings.simplefilter('ignore')
 load_dotenv()
 
 class OIDCAuthManager:
-    def __init__(self, client_id, username, password, token_url):
+    def __init__(self, client_id, client_secret, token_url):
         self.client_id = client_id
-        self.username = username
-        self.password = password
+        self.client_secret = client_secret
         self.token_url = token_url
         self.access_token = None
-        self.refresh_token = None
         self.token_expiry = 0
 
     def fetch_tokens(self):
@@ -28,8 +26,7 @@ class OIDCAuthManager:
             data={
                 "grant_type": "password",
                 "client_id": self.client_id,
-                "username": self.username,
-                "password": self.password,
+                "client_secret": self.client_secret,
             },
         )
         if response.status_code == 200:
@@ -76,8 +73,7 @@ class ClientCredentials:
             # OIDC Authentication Manager
             self.oidc_manager = OIDCAuthManager(
                 client_id="C42VtjQDJG1FXx8CpnwnIhYA8h2bGZcL",  # Replace with your actual client ID
-                username="chay.kusumanchi@strategicfuture.ai",
-                password="Chaitanya@2244",  # Replace with secure storage for sensitive data
+                client_secret="U3vInO_R1zKTHXIS59LQ0nwogoqBWFTlHOXPJ-hTSTUKi2fQvu-To2TZBcUFhaqs", 
                 token_url="https://dev-tqyuws3babyfc0v5.us.auth0.com/oauth/token",  # Updated token URL
             )
             self.oidc_manager.fetch_tokens()
