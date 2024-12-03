@@ -84,10 +84,10 @@ class ClientCredentials:
 
             # Weaviate Client
             self.weaviate_client = weaviate.connect_to_custom(
-                http_host="your-domain-here",  # Replace with your actual domain
+                http_host="w4.strategicfuture.ai",  # Replace with your actual domain
                 http_port="8080",  # HTTP port
                 http_secure=True,  # Use HTTPS for secure connection
-                grpc_host="your-domain-here",  # Replace with your actual domain
+                grpc_host="w4.strategicfuture.ai",  # Replace with your actual domain
                 grpc_port=50051,  # GRPC port
                 grpc_secure=False,  # Set True if GRPC uses HTTPS
                 headers={
