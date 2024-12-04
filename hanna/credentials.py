@@ -1,9 +1,6 @@
 import weaviate
-import cohere
 import warnings
 from requests.auth import HTTPBasicAuth
-from weaviate.classes.init import Auth
-from django.conf import settings
 import base64
 
 warnings.filterwarnings("ignore")
@@ -43,15 +40,18 @@ class ClientCredentials:
 
             # Generate Authorization header
             authorization_header = auth_manager.get_authorization_header()
-            self.cohere_client = cohere.Client(settings.COHERE_API_KEY)
 
             # Connect to Weaviate
-            self.weaviate_client = weaviate.connect_to_weaviate_cloud(
-                cluster_url="https://fxyipvexrfmhljjhohkuhw.c0.us-west3.gcp.weaviate.cloud",
-                auth_credentials=Auth.api_key("2qQA9k9vsrjugU1zH2mJ4aMpxJC6ujKSobRK"),
+            self.weaviate_client = weaviate.connect_to_custom(
+                http_host="w4.strategicfuture.ai",  # Replace with your actual domain
+                http_port="8082",  # HTTP port
+                http_secure=True,  # Use HTTPS for secure connection
+                grpc_host="w4.strategicfuture.ai",  # Replace with your actual domain
+                grpc_port=50051,  # GRPC port
+                grpc_secure=False,  # Set True if GRPC uses HTTPS
                 headers={
-                    "X-Cohere-Api-Key": settings.COHERE_API_KEY
-                }
+                    "Authorization": authorization_header  # Use Basic Auth
+                },
             )
 
             # Test connection
