@@ -161,8 +161,6 @@ Classify the following user query, {user_prompt}"""
         - Use TypeScript for the React component.
         - Style using Tailwind CSS classes, avoiding arbitrary values (e.g., `h-[600px]`) and ensuring a consistent color palette.
         - Ensure proper spacing using Tailwind margin and padding classes.
-        - If the request involves dashboards, graphs, or charts, use the `recharts` library appropriately (e.g., `import { LineChart, XAxis, ... } from "recharts"`).
-        - Use `<div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />` as a placeholder for images.
         - Return only the complete React code starting with imports. Do not include any comments or explanations.
         [/INST]
         """
