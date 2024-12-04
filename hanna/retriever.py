@@ -148,6 +148,7 @@ Classify the following user query, {user_prompt}"""
 
         if cat == "CODE-INTERPRETER":
             self.__add_code_interpreter_prompt()
+            print(f"QUESTION CATEGORY codein: {cat}")
 
         return cat
 
