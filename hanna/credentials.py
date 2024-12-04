@@ -1,4 +1,5 @@
 import weaviate
+import cohere
 import warnings
 from requests.auth import HTTPBasicAuth
 from weaviate.classes.init import Auth
