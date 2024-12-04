@@ -1,6 +1,7 @@
 import weaviate
 import warnings
 from requests.auth import HTTPBasicAuth
+from weaviate.classes.init import Auth
 import base64
 
 warnings.filterwarnings("ignore")
