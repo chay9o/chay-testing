@@ -67,12 +67,15 @@ class LLMHybridRetriever(ClientCredentials):
 - Individuals
 - Unrelated
 - Meeting
-- Obscene or Inappropriate. <<SYS>>[/INST]
+- Obscene or Inappropriate.
+- CODE-INTERPRETER
+- NO-INTERPRETER <<SYS>>[/INST]
 
 [INST] if Classifier Bot's confidence is above 0.95 out of 1 then return the classified category else return Ambiguous. [/INST]
 [INST] Classifier Bot does not return any sources or links. Classifier Bot does not avoids these types of action. [/INST]
 [INST] Classifier Bot always classifies queries that contain framework word or definitions as Definitional Questions. If user asks something related to framework, Classifier bot classifies it as Definitional Questions [/INST]
-
+[INST] If the user requests to create UI/UX elements (screen/feature/layout/wireframe), return CODE-INTERPRETER. 
+Otherwise, return NO-INTERPRETER. [/INST]
 
 <s>[INST] ¿Quién es Nils Loor? ¿Sabes algo sobre él? [/INST] Individuals </s>
 <s>[INST] continue that! [/INST] Ambiguous </s>
@@ -143,7 +146,26 @@ Classify the following user query, {user_prompt}"""
         if self.verbose is True:
             print(f"QUESTION CATEGORY: {cat}")
 
+        if cat == "CODE-INTERPRETER":
+            self.__add_code_interpreter_prompt()
+
         return cat
+
+    def __add_code_interpreter_prompt(self):
+        code_interpreter_system_prompt = """
+        [INST] You are an expert frontend React engineer and a skilled UI/UX designer. Follow these instructions carefully:
+        - Create a React component based on the user's request.
+        - Ensure it is fully self-contained, functional, and exported as a default export.
+        - Use state or other React features like `useState` or `useEffect` as needed and import them directly.
+        - Use TypeScript for the React component.
+        - Style using Tailwind CSS classes, avoiding arbitrary values (e.g., `h-[600px]`) and ensuring a consistent color palette.
+        - Ensure proper spacing using Tailwind margin and padding classes.
+        - If the request involves dashboards, graphs, or charts, use the `recharts` library appropriately (e.g., `import { LineChart, XAxis, ... } from "recharts"`).
+        - Use `<div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />` as a placeholder for images.
+        - Return only the complete React code starting with imports. Do not include any comments or explanations.
+        [/INST]
+        """
+        self.__prompt_class.template += code_interpreter_system_prompt
 
     def date_filter(self, query: str, current_date: str):
         df = self.__chain_meeting.run(query=query, current_date=current_date)
