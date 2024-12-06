@@ -154,14 +154,7 @@ Classify the following user query, {user_prompt}"""
 
     def __add_code_interpreter_prompt(self):
         code_interpreter_system_prompt = """
-        [INST] You are an expert frontend React engineer and a skilled UI/UX designer. Follow these instructions carefully:
-        - Create a React component based on the user's request.
-        - Ensure it is fully self-contained, functional, and exported as a default export.
-        - Use state or other React features like `useState` or `useEffect` as needed and import them directly.
-        - Use TypeScript for the React component.
-        - Style using Tailwind CSS classes, avoiding arbitrary values (e.g., `h-[600px]`) and ensuring a consistent color palette.
-        - Ensure proper spacing using Tailwind margin and padding classes.
-        - Return only the complete React code starting with imports. Do not include any comments or explanations.
+        [INST] The code should be always in react. Dont import external modules or libraries. Always mention the import statement form second line. Export statement should be mentioned last before line only.
         [/INST]
         """
         self.__prompt_class.template += code_interpreter_system_prompt
