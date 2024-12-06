@@ -154,7 +154,9 @@ Classify the following user query, {user_prompt}"""
 
     def __add_code_interpreter_prompt(self):
         code_interpreter_system_prompt = """
-        [INST] The code should be always in react. Dont import external modules or libraries. Always mention the import statement form second line. Export statement should be mentioned last before line only.
+        [INST] The code should be always in react code. Dont import external modules or libraries.
+        [/INST]
+        [INST] Always mention the import statement form second line. Export statement should be mentioned last before line only.
         [/INST]
         """
         self.__prompt_class.template += code_interpreter_system_prompt
