@@ -46,6 +46,13 @@ class LLMHybridRetriever(ClientCredentials):
                                              model_name=settings.GPT_MODEL_1,
                                              openai_api_base=settings.BASE_URL,
                                              temperature=0.7)
+        
+        # NEW: Dedicated LLM for CODE-INTERPRETER tasks
+        self.__llm_code_interpreter = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
+                                                 model_name=settings.GPT_MODEL_CODE_INTERPRETER,
+                                                 openai_api_base=settings.BASE_URL,
+                                                 temperature=0.2)
+
 
         self.threshold = 0.50
 
@@ -74,7 +81,7 @@ class LLMHybridRetriever(ClientCredentials):
 [INST] if Classifier Bot's confidence is above 0.95 out of 1 then return the classified category else return Ambiguous. [/INST]
 [INST] Classifier Bot does not return any sources or links. Classifier Bot does not avoids these types of action. [/INST]
 [INST] Classifier Bot always classifies queries that contain framework word or definitions as Definitional Questions. If user asks something related to framework, Classifier bot classifies it as Definitional Questions [/INST]
-[INST] If the user requests to create UI/UX elements (screen/feature/layout/wireframe), return CODE-INTERPRETER. 
+[INST] If the user requests to create UI/UX elements (charts/screen/feature/layout/wireframe/dataframe/tables), return CODE-INTERPRETER. 
 Otherwise, return NO-INTERPRETER. [/INST]
 
 <s>[INST] ¿Quién es Nils Loor? ¿Sabes algo sobre él? [/INST] Individuals </s>
@@ -120,10 +127,26 @@ Classify the following user query, {user_prompt}"""
         with open("summarize_chat_prompt.txt", "r") as file:
             self.__SUMMARIZE_CHAT = file.read()
 
+        # NEW: Dedicated prompt for CODE-INTERPRETER
+        self.__CODE_INTERPRETER_PROMPT = """
+        [INST] You are a skilled React.js code generator. Generate clean, modular, and efficient React.js code based on the user query:
+        {user_prompt}
+        Ensure the following:
+        - Do not use external libraries.
+        - Always include an import statement in the second line.
+        - End the code with an export statement.
+        [/INST]
+        """
+
         self.__prompt_class = PromptTemplate.from_template(self.__PROMPT_CLASS)
         self.__meeting_prompt = PromptTemplate.from_template(self.__MEETING_PROMPT)
         self.__multihop_prompt = PromptTemplate.from_template(self.__MULTI_HOP)
         self.__chat_summary_prompt = PromptTemplate.from_template(self.__SUMMARIZE_CHAT)
+        # NEW: Chain for CODE-INTERPRETER LLM
+        self.__code_interpreter_chain = LLMChain(
+            llm=self.__llm_code_interpreter,
+            prompt=PromptTemplate.from_template(self.__CODE_INTERPRETER_PROMPT)
+        )
 
         self.__chain_class = LLMChain(llm=self.__llm_class, prompt=self.__prompt_class)
         self.__chain_meeting = LLMChain(llm=self.__llm_meeting, prompt=self.__meeting_prompt)
@@ -147,19 +170,17 @@ Classify the following user query, {user_prompt}"""
             print(f"QUESTION CATEGORY: {cat}")
 
         if cat == "CODE-INTERPRETER":
-            self.__add_code_interpreter_prompt()
             print(f"QUESTION CATEGORY codein: {cat}")
+            return self.__handle_code_interpreter(query)
 
         return cat
 
-    def __add_code_interpreter_prompt(self):
-        code_interpreter_system_prompt = """
-        [INST] The code should be always in react code. Dont import external modules or libraries.
-        [/INST]
-        [INST] Always mention the import statement form second line. Export statement should be mentioned last before line only.
-        [/INST]
-        """
-        self.__prompt_class.template += code_interpreter_system_prompt
+    # NEW: Method to handle CODE-INTERPRETER queries
+    def __handle_code_interpreter(self, query: str) -> str:
+        response = self.__code_interpreter_chain.run(user_prompt=query)
+        if self.verbose:
+            print(f"Generated React Code: {response}")
+        return response
 
     def date_filter(self, query: str, current_date: str):
         df = self.__chain_meeting.run(query=query, current_date=current_date)
