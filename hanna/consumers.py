@@ -906,6 +906,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             combine_ids = "INP" + entity
 
+            # Dynamic LLM switching
+            if "CODE-INTERPRETER" in cat:
+                log_info_async("Switching to CODE-INTERPRETER model...")
+                self.llm = ChatOpenAI(
+                    openai_api_key=settings.OPENAI_API_KEY,
+                    model_name=settings.GPT_MODEL_CODE,
+                    openai_api_base=settings.BASE_URL,
+                    streaming=True,
+                    max_tokens=1000,
+                    callbacks=[SimpleCallback(self.que)]
+                )
+
             if "Meeting" not in cat:
 
                 if "Specific Domain Knowledge" in cat or \
