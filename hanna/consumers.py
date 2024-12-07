@@ -817,6 +817,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, code):
         logger.info("Disconnected from chat consumer!")
 
+    async def switch_to_model(self, model_name):
+        """Dynamically switch the LLM model."""
+        if self.current_model_name != model_name:
+            logger.info(f"Switching model from {self.current_model_name} to {model_name}...")
+            self.current_model_name = model_name
+            self.llm = self.create_llm(model_name)
+
     async def receive(self, text_data=None, bytes_data=None):
         retriever = ""
         image_format = ""
