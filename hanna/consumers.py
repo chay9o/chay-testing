@@ -687,19 +687,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         """
 
-    async def switch_to_code_interpreter(self):
-        # Switch to CODE-INTERPRETER model dynamically
-        if self.current_model_name != settings.GPT_MODEL_CODE:
-            logger.info("Switching to CODE-INTERPRETER model...")
-            self.current_model_name = settings.GPT_MODEL_CODE
-            self.llm = ChatOpenAI(
-                openai_api_key=settings.OPENAI_API_KEY,
-                model_name=self.current_model_name,
-                openai_api_base=settings.BASE_URL,
-                streaming=True,
-                max_tokens=1000,
-                callbacks=[SimpleCallback(self.que)]
-            )
 
     async def reset_to_default_model(self):
         # Reset to the default model (GPT_MODEL_2)
@@ -867,6 +854,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             command_stop = data.get('command_stop', False)
             hanna_mind = data.get('hanna_mind', self.default_mind)
             images = data.get('image', [])
+            category = llm_hybrid.trigger_vectors(query=query)
+            logger.info(f"QUESTION CATEGORY: {category}")
+
+            if "CODE-INTERPRETER" in category:
+                await self.switch_to_model(settings.GPT_MODEL_CODE)
+            else:
+                await self.switch_to_model(settings.GPT_MODEL_2)
+
+            # Dynamically set the config with the active model
+            config = {'llm_temprature': mode, 'model_name': self.current_model_name}
+            
 
             config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
 
