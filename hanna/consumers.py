@@ -616,9 +616,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.que = asyncio.Queue()
+        self.current_model_name = settings.GPT_MODEL_2
         self.llm = ChatOpenAI(
             openai_api_key=settings.OPENAI_API_KEY,
-            model_name=settings.GPT_MODEL_2,
+            model_name=self.current_model_name,
             openai_api_base=settings.BASE_URL,
             streaming=True,
             max_tokens=1000,
@@ -686,6 +687,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         """
 
+    async def switch_to_code_interpreter(self):
+        # Switch to CODE-INTERPRETER model dynamically
+        if self.current_model_name != settings.GPT_MODEL_CODE:
+            logger.info("Switching to CODE-INTERPRETER model...")
+            self.current_model_name = settings.GPT_MODEL_CODE
+            self.llm = ChatOpenAI(
+                openai_api_key=settings.OPENAI_API_KEY,
+                model_name=self.current_model_name,
+                openai_api_base=settings.BASE_URL,
+                streaming=True,
+                max_tokens=1000,
+                callbacks=[SimpleCallback(self.que)]
+            )
+
+    async def reset_to_default_model(self):
+        # Reset to the default model (GPT_MODEL_2)
+        if self.current_model_name != settings.GPT_MODEL_2:
+            logger.info("Resetting to default model (GPT_MODEL_2)...")
+            self.current_model_name = settings.GPT_MODEL_2
+            self.llm = ChatOpenAI(
+                openai_api_key=settings.OPENAI_API_KEY,
+                model_name=self.current_model_name,
+                openai_api_base=settings.BASE_URL,
+                streaming=True,
+                max_tokens=1000,
+                callbacks=[SimpleCallback(self.que)]
+            )
+
     def generate_message_structure(self, formated_prompt: str, images: list) -> list:
         tmp = [{"type": "text", "text": formated_prompt}]
 
@@ -732,15 +761,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                config: dict):
 
                                    
-        if matching_model == "CODE-INTERPRETER":
-            self.llm = ChatOpenAI(
-                openai_api_key=settings.OPENAI_API_KEY,
-                model_name=settings.GPT_MODEL_CODE,
-                openai_api_base=settings.BASE_URL,
-                streaming=True,
-                max_tokens=1000,
-                callbacks=[SimpleCallback(self.que)]
-            )
         chain = LLMChain(llm=self.llm.with_config(configurable=config), prompt=self.prompt)
         await chain.arun(matching_model=matching_model,
                          images=images,
