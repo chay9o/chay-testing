@@ -117,6 +117,8 @@ GPT_MODEL_2 = "meta-llama/Meta-Llama-3.1-70B-Instruct"
 
 GPT_MODEL_3 = "meta-llama/Meta-Llama-3.1-405B-Instruct"
 
+GPT_MODEL_CODE_INTERPRETER = "Qwen/Qwen2.5-Coder-32B-Instruct"
+
 BASE_URL = "https://api.deepinfra.com/v1/openai"
 
 
