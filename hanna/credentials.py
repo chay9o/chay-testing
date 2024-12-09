@@ -1,63 +1,34 @@
+import cohere
 import weaviate
-import warnings
-from requests.auth import HTTPBasicAuth
+from weaviate.classes.init import Auth
+from django.conf import settings
+from dotenv import load_dotenv
 import base64
+import warnings
+warnings.filterwarnings('ignore')
+warnings.simplefilter('ignore')
 
-warnings.filterwarnings("ignore")
-
-
-class BasicAuthManager:
-    def __init__(self, username, password):
-        """
-        Initialize Basic Authentication details.
-        :param username: Username for authentication.
-        :param password: Password for authentication.
-        """
-        self.username = username
-        self.password = password
-
-    def get_authorization_header(self):
-        """
-        Generate the Authorization header for Basic Authentication.
-        :return: Authorization header value as a string.
-        """
-        auth_string = f"{self.username}:{self.password}"
-        auth_encoded = base64.b64encode(auth_string.encode()).decode()
-        return f"Basic {auth_encoded}"
+load_dotenv()
 
 
 class ClientCredentials:
+
     def __init__(self):
-        """
-        Initialize the client and connect to Weaviate using Basic Authentication.
-        """
-        try:
-            # Basic Authentication Configuration
-            auth_manager = BasicAuthManager(
-                username="weaviate1",  # Replace with your username
-                password="AdminMobika11$$W"  # Replace with your password
-            )
+        self.cohere_client = cohere.Client(settings.COHERE_API_KEY)
+        # self.__auth_config = weaviate.auth.AuthApiKey(api_key=settings.WEAVIATE_API_KEY)
+        # self.weaviate_client = weaviate.Client(
+        #     url=settings.WEAVIATE_URL,
+        #     additional_headers={"X-Cohere-Api-Key": settings.COHERE_API_KEY},
+        #     auth_client_secret=self.__auth_config
+        # )
 
-            # Generate Authorization header
-            authorization_header = auth_manager.get_authorization_header()
+        self.__auth_config = Auth.api_key(settings.WEAVIATE_API_KEY)
+        self.weaviate_client = weaviate.connect_to_wcs(
+            skip_init_checks=True,
+            cluster_url=settings.WEAVIATE_URL,
+            auth_credentials=self.__auth_config,
+            headers={
+                "X-Cohere-Api-Key": settings.COHERE_API_KEY
+            }
+        )
 
-            # Connect to Weaviate
-            self.weaviate_client = weaviate.connect_to_custom(
-                http_host="w4.strategicfuture.ai",  # Replace with your actual domain
-                http_port="8082",  # HTTP port
-                http_secure=True,  # Use HTTPS for secure connection
-                grpc_host="w4.strategicfuture.ai",  # Replace with your actual domain
-                grpc_port=50051,  # GRPC port
-                grpc_secure=False,  # Set True if GRPC uses HTTPS
-                headers={
-                    "Authorization": authorization_header  # Use Basic Auth
-                },
-            )
-
-            # Test connection
-            if self.weaviate_client.is_ready():
-                print("Weaviate connection established successfully.")
-            else:
-                print("Weaviate is not ready.")
-        except Exception as e:
-            print(f"Error connecting to Weaviate: {e}")
