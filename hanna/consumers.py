@@ -616,7 +616,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.que = asyncio.Queue()
-        self.current_model_name = settings.GPT_MODEL_2
+        self.current_model_name = settings.GPT_MODEL_CODE_INTERPRETER
         self.llm = ChatOpenAI(
             openai_api_key=settings.OPENAI_API_KEY,
             model_name=self.current_model_name,
@@ -865,7 +865,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.info(f"QUESTION CATEGORY: {category}")
 
             if "CODE-INTERPRETER" in category:
-                await self.switch_to_model(settings.GPT_MODEL_CODE)
+                await self.switch_to_model(settings.GPT_MODEL_CODE_INTERPRETER)
             else:
                 await self.switch_to_model(settings.GPT_MODEL_2)
 
