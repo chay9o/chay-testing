@@ -688,19 +688,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """
 
 
-    async def reset_to_default_model(self):
-        # Reset to the default model (GPT_MODEL_2)
-        if self.current_model_name != settings.GPT_MODEL_2:
-            logger.info("Resetting to default model (GPT_MODEL_2)...")
-            self.current_model_name = settings.GPT_MODEL_2
-            self.llm = ChatOpenAI(
-                openai_api_key=settings.OPENAI_API_KEY,
-                model_name=self.current_model_name,
-                openai_api_base=settings.BASE_URL,
-                streaming=True,
-                max_tokens=1000,
-                callbacks=[SimpleCallback(self.que)]
-            )
+   
 
     def generate_message_structure(self, formated_prompt: str, images: list) -> list:
         tmp = [{"type": "text", "text": formated_prompt}]
@@ -817,12 +805,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, code):
         logger.info("Disconnected from chat consumer!")
 
-    async def switch_to_model(self, model_name):
-        """Dynamically switch the LLM model."""
-        if self.current_model_name != model_name:
-            logger.info(f"Switching model from {self.current_model_name} to {model_name}...")
-            self.current_model_name = model_name
-            self.llm = self.create_llm(model_name)
 
     async def receive(self, text_data=None, bytes_data=None):
         retriever = ""
@@ -864,10 +846,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             category = llm_hybrid.trigger_vectors(query=query)
             logger.info(f"QUESTION CATEGORY: {category}")
 
-            if "CODE-INTERPRETER" in category:
-                await self.switch_to_model(settings.GPT_MODEL_CODE_INTERPRETER)
-            else:
-                await self.switch_to_model(settings.GPT_MODEL_2)
 
             # Dynamically set the config with the active model
             config = {'llm_temprature': mode, 'model_name': self.current_model_name}
