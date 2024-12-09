@@ -873,7 +873,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             config = {'llm_temprature': mode, 'model_name': self.current_model_name}
             
 
-            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
+            #config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
 
             logger.info(f"IMG LEN: {len(images)}")
 
