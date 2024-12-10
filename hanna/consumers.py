@@ -92,12 +92,13 @@ llm = ChatOpenAI(
 llm_hybrid = LLMHybridRetriever(verbose=True)
 mv = MasterVectors()
 slice_document = ChunkText()
+
 chat_template = (
     "{{ bos_token }}{% for message in messages %}"
     "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
     "{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['text'] + ' [/INST]' }}"
     "{% elif message['role'] == 'bot' %}{{ message['text'] + eos_token}}"
-    "{% endif %}{% endfor %}"
+    "{% endif %}{%endfor%}"
 )
 
 template = Template(chat_template)
@@ -476,7 +477,7 @@ class SummaryGenerator(AsyncWebsocketConsumer):
         self.que = asyncio.Queue()
         self.llm = ChatOpenAI(
             openai_api_key=settings.OPENAI_API_KEY,
-            model_name=settings.GPT_MODEL_1,
+            model_name=settings.GPT_MODEL_4,
             openai_api_base=settings.BASE_URL,
             streaming=True,
             max_tokens=4000,
@@ -616,13 +617,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.que = asyncio.Queue()
-        self.current_model_name = settings.GPT_MODEL_CODE_INTERPRETER
         self.llm = ChatOpenAI(
             openai_api_key=settings.OPENAI_API_KEY,
-            model_name=self.current_model_name,
+            model_name=settings.GPT_MODEL_2,
             openai_api_base=settings.BASE_URL,
             streaming=True,
-            max_tokens=1000,
+            max_tokens=2048,
             callbacks=[SimpleCallback(self.que)]
         ).configurable_fields(
             temperature=ConfigurableField(
@@ -649,46 +649,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
         This is only applicable if the user asks about situations in companies in which the well-being of the workforce could be negatively affected:
          1. If workforce wellbeing is at risk from actions such as redundancies or high stress, give advice that balances value to the customer, the business and the wellbeing of the workforce.
         2. When discussing redundancies or similar measures, always suggest alternative solutions to retain employees and reduce stress with better business outcomes."""
-        self.vision_chat = """You are the best AI in the world in charge of creating an extensive explanation of an image for a blind person. Create always a very comprehensive explanation including every single text in the image.
 
-        Follow this format:
+        self.vision_chat = """ You are the best AI in the world in charge of creating an extensive explanation of an image for another AI. Create always a very comprehensive explanation including every single text in the image.
 
-        1. [Add the image type. Classify it as one of these: Infographic, Photograph, Illustration, Chart/Graph, Screenshot, or Diagram.]
+Follow this format:
 
-        2. [Language of the image if applies: if there are texts, add which language they are written.]
-        Dimensions and Quality: [Size, resolution, quality level]
+1. [Add the image type. Classify it as one of these: Infographic, Photograph, Illustration, Chart/Graph, Screenshot, or Diagram.]
 
-        3. [A comprehensive description describing each object of the image. If it contains data, add it in a format that contains all the values in a format that a blind person can understand. Add the definitions only in the language of the image if any. Use Title:, Subtitle:, Text:, etc. Help for the blind: add the colors of each object or text in hexadecimal, mention at the end ob each object or text in brackets.]
+2. [Language of the image if applies: if there are texts, add which language they are written.]
+Dimensions and Quality: [Size, resolution, quality level]
 
-        4. [Explanation of how the image is structured exactly and the objects, colors, exact location on the image of them, etc). 
-        This will be used by a blid person you you need to specify the exact text or object where it is located in a section called structure. Be very detailed so the blind person will understand it. Add in the structure in brackets the colour  of each element detected, specify if it is spectrum.]
+3. [A comprehensive description describing each object of the image. If it contains data, add it in a format that contains all the values in a format that an AI can understand. Add the definitions only in the language of the image if any. Use Title:, Subtitle:, Text:, etc. Help for the AI: add the colors of each object or text in hexadecimal, mention at the end ob each object or text in brackets.]
 
+4. [Explanation of how the image is structured exactly and the objects, colors, exact location on the image of them, etc). 
+This will be used by another AI so you need to specify the exact text or object where it is located in a section called structure. Be very detailed so the AI will understand it. Add in the structure in brackets the colour  of each element detected, specify if it is spectrum.]
 
-        5. [Add also a section called locations: for any spacial references or location of the objects or text in the output and where each text is located.  And if located near a text, also specify which text.]
+5. [Add also a section called locations: for any spacial references or location of the objects or text in the output and where each text is located.  And if located near a text, also specify which text.]
 
-        6. [Add a section Other texts, where you place all the texts missing from above if any.]
+6. [Add a section Other texts, where you place all the texts missing from above if any.]
 
-        7. Locations:
-        [Specify the location of the objects or texts.]
+7. Locations:
+[Specify the location of the objects or texts.]
 
-        8. Graphics or icons:
-        [Specify if there are graphics, where, icons and location, and colours.
-        Specify the count of graphics and location, and which objects.
-        If there are icons, describe the icons.]
+8. Graphics or icons:
+[Specify if there are graphics, where, icons and location, and colours.
+Specify the count of graphics and location, and which objects.
+If there are icons, describe the icons.]
 
-        9. TECHNICAL ELEMENTS:
-        Special Features: [QR codes, interactive elements, etc.]
-        Branding Elements: [Logos, watermarks, etc.]
-        Source Attribution: [If present]
+9. TECHNICAL ELEMENTS:
+Special Features: [QR codes, interactive elements, etc.]
+Branding Elements: [Logos, watermarks, etc.]
+Source Attribution: [If present]
 
-        10. Meaning: Explain what you think the image represents.
+IMPORTANT: If the image is full of text or a letter or similar, you must work as an OCR and output just be every single word and phrase in the image, make all details so the screenshot can be understood."""
 
-        IMPORTANT: If the image is full of text or a letter or similar, you must work as an OCR and output just be every single text and phrase in the image, make all details so the screenshot can be understood.
-
-        """
-
-
-   
 
     def generate_message_structure(self, formated_prompt: str, images: list) -> list:
         tmp = [{"type": "text", "text": formated_prompt}]
@@ -713,6 +707,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             openai_api_key=settings.OPENAI_API_KEY,
             model_name=settings.GPT_MODEL_VISION,
             openai_api_base=settings.BASE_URL,
+            # streaming=True,
             max_tokens=1000
         )
 
@@ -723,7 +718,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def process_question(self,
                                matching_model: str,
-                               images: list,
+                               images: str,
                                question: str,
                                username: str,
                                hanna_mind: str,
@@ -735,7 +730,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                initiative_prompt: str,
                                config: dict):
 
-                                   
         chain = LLMChain(llm=self.llm.with_config(configurable=config), prompt=self.prompt)
         await chain.arun(matching_model=matching_model,
                          images=images,
@@ -749,7 +743,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                          company_prompt=f"[INST] {company_prompt} [/INST]" if company_prompt.strip() != "" else "",
                          initiative_prompt=f"[INST] {initiative_prompt} [/INST]" if initiative_prompt.strip() != "" else "")
 
-    async def generate_response(self, is_trained_data_used: bool):
+    async def generate_response(self, is_trained_data_used: bool, image_description: list):
         txt = ""
         while True:
             next_token = await self.que.get()  # Blocks until an input is available
@@ -759,7 +753,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "is_trained_data_used": 1 if is_trained_data_used else 0
                 }))
 
-                await self.send(text_data=json.dumps({"message": "job done", "image_description": []}))
+                await self.send(text_data=json.dumps({"message": "job done", "image_description": image_description}))
                 break
             txt += next_token
             await self.send(text_data=json.dumps({"message": next_token}))
@@ -779,7 +773,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     company_prompt,
                     initiative_prompt,
                     config,
-                    is_trained_data_used):
+                    is_trained_data_used,
+                    image_description):
 
         task_1 = asyncio.create_task(self.process_question(matching_model,
                                                            images,
@@ -794,7 +789,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                                            initiative_prompt,
                                                            config))
 
-        task_2 = asyncio.create_task(self.generate_response(is_trained_data_used=is_trained_data_used))
+        task_2 = asyncio.create_task(self.generate_response(is_trained_data_used=is_trained_data_used, image_description=image_description))
 
         await task_1
         await task_2
@@ -805,11 +800,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, code):
         logger.info("Disconnected from chat consumer!")
 
-
     async def receive(self, text_data=None, bytes_data=None):
         retriever = ""
         image_format = ""
         fprompt = ""
+        img_desc = []
         is_trained_data_used = False
 
         master_vector = []
@@ -842,16 +837,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             initiative_prompt = data.get('initiativePrompt', '')
             command_stop = data.get('command_stop', False)
             hanna_mind = data.get('hanna_mind', self.default_mind)
-            images = data.get('image', [])
-            category = llm_hybrid.trigger_vectors(query=query)
-            logger.info(f"QUESTION CATEGORY: {category}")
+            images = data.get('image', []) # base64 images
+            image_info = data.get('image_info', []) # file names
 
+            log_info_async(f"data: {collection}, {query}, {entity}, {user_id}, {mode}, {user}, {user}, {image_info}")
 
-            # Dynamically set the config with the active model
-            config = {'llm_temprature': mode, 'model_name': self.current_model_name}
-            
-
-            #config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
+            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
 
             logger.info(f"IMG LEN: {len(images)}")
 
@@ -859,14 +850,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 chat_history_str = ""
             else:
                 template = Template(chat_template)
+
+                tmp = []
+
+                for msg in chat_history:
+                    img = ""
+
+                    if msg['role'] == 'user' and 'image' in msg:
+                        img = "\n".join([image['info'] for image in msg['image']])
+
+                        # print("IMG INFO: ", img)
+
+                    tmp.append({"role": msg['role'], "text": img + "\n" + msg['text'], "name": user})
+
                 data = {
-                    "bos_token": "<s>",
-                    "eos_token": "</s>",
-                    "messages": [
-                        {"role": msg['role'], "text": msg['text']} for msg in chat_history
-                    ]
+                    "bos_token": "",
+                    "eos_token": "",
+                    "messages": tmp
                 }
                 chat_history_str = template.render(data)
+
+                # print(chat_history_str)
 
             # for user_data in chat_history:
             #     if user_data['role'] == "user":
@@ -886,16 +890,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                 res = await asyncio.gather(*tasks)
 
-                image_format = "\n\n".join([f"[IMG]{img}[/IMG]" for img in res])
+                # print(res)
 
-                print(image_format)
+                tmp_list = [f"<VISUAL INPUT> image number {name['count']} \nThis is image {name['count']}\nFilename:{name['name']} \n{img}</VISUAL INPUT>" for img, name in zip(res, image_info)]
+
+                # print(tmp_list)
+
+                image_format = "\n\n".join(tmp_list)
+
+                img_desc = list(tmp_list)
+
+                # print(image_format)
 
                 # config['model_name'] = settings.GPT_MODEL_VISION
 
-            logger.info(f"MODEL NAME: {config['model_name']}")
-            logger.info(f"CH: {chat_history}")
-
-            log_info_async(f"data: {collection}")
+            # logger.info(f"MODEL NAME: {config['model_name']}")
+            # logger.info(f"CH: {chat_history}")
 
             if not llm_hybrid.collection_exists(collection):
                 await self.send(text_data=json.dumps({'error': 'This collection does not exist!'}))
@@ -918,8 +928,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 keywords_list = []
 
             combine_ids = "INP" + entity
-
-            
 
             if "Meeting" not in cat:
 
@@ -1090,7 +1098,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                              company_prompt,
                              initiative_prompt,
                              config,
-                             is_trained_data_used
+                             is_trained_data_used,
+                             img_desc
             )
         except Exception as e:
             await self.send(text_data=json.dumps({'error': 'Something went wrong!'}))
