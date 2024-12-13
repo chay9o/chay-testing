@@ -842,7 +842,7 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
 
             log_info_async(f"data: {collection}, {query}, {entity}, {user_id}, {mode}, {user}, {user}, {image_info}")
 
-            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
+            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_CODE_INTERPRETER}
 
             logger.info(f"IMG LEN: {len(images)}")
 
@@ -928,6 +928,16 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                 keywords_list = []
 
             combine_ids = "INP" + entity
+            if "code-interpreter" in cat:
+                # Example: Custom configuration for code-interpreter
+                config = {
+                    'llm_temperature': mode,
+                    'model_name': settings.GPT_MODEL_CODE_INTERPRETER  # Add appropriate model for code interpreter
+                }
+            
+                # Handle any custom logic or retriever for the code interpreter
+                retriever = f"Code Interpreter activated with query: {query}"
+                is_trained_data_used = True
 
             if "Meeting" not in cat:
 
