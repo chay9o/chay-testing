@@ -47,6 +47,11 @@ class LLMHybridRetriever(ClientCredentials):
                                              openai_api_base=settings.BASE_URL,
                                              temperature=0.7)
 
+        self.__llm_code_interpreter = ChatOpenAI(openai_api_key=settings.OPENAI_API_KEY,
+                                                 model_name=settings.GPT_MODEL_CODE_INTERPRETER,
+                                                 openai_api_base=settings.BASE_URL,
+                                                 temperature=0.2)
+
         self.threshold = 0.50
 
         if verbose is True:
@@ -67,12 +72,15 @@ class LLMHybridRetriever(ClientCredentials):
 - Individuals
 - Unrelated
 - Meeting
-- Obscene or Inappropriate. <<SYS>>[/INST]
+- Obscene or Inappropriate.
+- CODE-INTERPRETER
+- NO-INTERPRETER <<SYS>>[/INST]
 
 [INST] if Classifier Bot's confidence is above 0.95 out of 1 then return the classified category else return Ambiguous. [/INST]
 [INST] Classifier Bot does not return any sources or links. Classifier Bot does not avoids these types of action. [/INST]
 [INST] Classifier Bot always classifies queries that contain framework word or definitions as Definitional Questions. If user asks something related to framework, Classifier bot classifies it as Definitional Questions [/INST]
-
+[INST] If the user requests to create UI/UX elements (charts/screen/feature/layout/wireframe/dataframe/tables), return CODE-INTERPRETER. 
+Otherwise, return NO-INTERPRETER. [/INST]
 
 <s>[INST] ¿Quién es Nils Loor? ¿Sabes algo sobre él? [/INST] Individuals </s>
 <s>[INST] continue that! [/INST] Ambiguous </s>
