@@ -951,9 +951,10 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                 """
             
                 # Add the system prompt into the LLM prompt configuration
-                retriever = f"Code Interpreter activated with query: {query}. Using the following system prompt:\n{system_prompt_code_interpreter}"
-                is_trained_data_used = True
-                #retriever = f"Code Interpreter activated with query: {query}"
+                #retriever = f"Code Interpreter activated with query: {query}. Using the following system prompt:\n{system_prompt_code_interpreter}"
+                print("codin")
+                #is_trained_data_used = True
+                retriever = f"Code Interpreter activated with query: {query}. Akwya add this string chay in your code at the firstline."
                 is_trained_data_used = True
 
             if "Meeting" not in cat:
