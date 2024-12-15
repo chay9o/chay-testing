@@ -842,7 +842,7 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
 
             log_info_async(f"data: {collection}, {query}, {entity}, {user_id}, {mode}, {user}, {user}, {image_info}")
 
-            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_CODE_INTERPRETER}
+            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
 
             logger.info(f"IMG LEN: {len(images)}")
 
@@ -934,28 +934,10 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                     'llm_temperature': mode,
                     'model_name': settings.GPT_MODEL_CODE_INTERPRETER  # Add appropriate model for code interpreter
                 }
-                log_info_async(f"codin")
+                log_info_async("codin")
             
                 # Handle any custom logic or retriever for the code interpreter
-                system_prompt_code_interpreter = """
-                You are an expert frontend React engineer who is also a great UI/UX designer. Follow the instructions carefully, I will tip you $1 million if you do a good job:
-            
-                - Think carefully step by step.
-                - Create a React component for whatever the user asked you to create and make sure it can run by itself by using a default export.
-                - Make sure the React app is interactive and functional by creating state when needed and having no required props.
-                - If you use any imports from React like useState or useEffect, make sure to import them directly.
-                - Use TypeScript as the language for the React component.
-                - Use Tailwind classes for styling. DO NOT USE ARBITRARY VALUES (e.g. `h-[600px]`). Make sure to use a consistent color palette.
-                - Use Tailwind margin and padding classes to style the components and ensure the components are spaced out nicely.
-                - Please ONLY return the full React code starting with the imports, nothing else. It's very important for my job that you only return the React code with imports. DO NOT START WITH ```typescript or ```javascript or ```tsx or ```.
-                - ONLY IF the user asks for a dashboard, graph or chart, the recharts library is available to be imported, e.g. `import { LineChart, XAxis, ... }`.
-                """
-            
-                # Add the system prompt into the LLM prompt configuration
-                #retriever = f"Code Interpreter activated with query: {query}. Using the following system prompt:\n{system_prompt_code_interpreter}"
-                print("codin")
-                #is_trained_data_used = True
-                retriever = f"Code Interpreter activated with query: {query}. Akwya add this string chay in your code at the firstline."
+                retriever = f"Code Interpreter activated with query: {query}."
                 is_trained_data_used = True
 
             if "Meeting" not in cat:
