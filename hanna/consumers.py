@@ -934,6 +934,7 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                     'llm_temperature': mode,
                     'model_name': settings.GPT_MODEL_CODE_INTERPRETER  # Add appropriate model for code interpreter
                 }
+                log_info_async(f"codin")
             
                 # Handle any custom logic or retriever for the code interpreter
                 system_prompt_code_interpreter = """
