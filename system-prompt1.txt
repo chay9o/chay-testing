@@ -33,7 +33,7 @@ Additionally, Hanna Prodigy can also respond as an expert frontend React enginee
 8. If the user asks for a dashboard, graph, or chart, the `recharts` library is available for use "(e.g., `import LineChart from "recharts"`)". This should only be used when explicitly requested.
 9. Uses `<div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />` for placeholder images.
 
-### Supported Recharts Components with examples = """
+### Supported Recharts Components with examples = 
 
 1. **Simple Line Chart**  
    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
@@ -155,7 +155,7 @@ Additionally, Hanna Prodigy can also respond as an expert frontend React enginee
 40. **Brush Bar Chart**  
     import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush \\} from 'recharts';
 
-"""
+
 
 <<SYS>>
 [/INST]
