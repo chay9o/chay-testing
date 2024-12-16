@@ -21,7 +21,6 @@ import asyncio
 from langchain.callbacks.base import BaseCallbackHandler
 import re
 
-
 # Set up logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -70,10 +69,14 @@ with open("img-prompt.txt", "r") as file:
 with open("summary_prompt.txt", "r") as file:
     SUMMARY_PROMPT = file.read()
 
+with open("board_prompt.txt", "r") as file:
+    BOARD_PROMPT = file.read()
+
 prompt = PromptTemplate.from_template(SYSPROMPT)
 chat_note_prompt = PromptTemplate.from_template(CHATNOTE_PROMPT)
 live_data_prompt = PromptTemplate.from_template(LIVE_DATA_PROMPT)
 summary_prompt = PromptTemplate.from_template(SUMMARY_PROMPT)
+board_prompt = PromptTemplate.from_template(BOARD_PROMPT)
 
 llm = ChatOpenAI(
     openai_api_key=settings.OPENAI_API_KEY,
@@ -88,6 +91,8 @@ llm = ChatOpenAI(
         description="The temperature of the LLM",
     )
 )
+
+# llm.with_config({''})
 
 llm_hybrid = LLMHybridRetriever(verbose=True)
 mv = MasterVectors()
@@ -343,6 +348,163 @@ class ChatNoteConsumer(AsyncWebsocketConsumer):
             return
 
 
+class BoardConsumer(AsyncWebsocketConsumer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.que = asyncio.Queue()
+        self.llm = ChatOpenAI(
+            openai_api_key=settings.TOGETHER_API_KEY,
+            model_name="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            openai_api_base="https://api.together.xyz/v1",
+            streaming=True,
+            max_tokens=1000,
+            callbacks=[SimpleCallback(self.que)]
+        )
+        self.prompt = board_prompt
+
+    async def process_question(self,
+                               matching_model: str,
+                               question: str,
+                               username: str,
+                               language_to_use: str,
+                               current_date: str,
+                               time_zone: str,
+                               company_prompt: str,
+                               initiative_prompt: str,
+                               board: str):
+        chain = LLMChain(llm=self.llm, prompt=self.prompt)
+
+        await chain.arun(
+            current_date=current_date,
+            time_zone=time_zone,
+            company_prompt=f"[INST] {company_prompt} [/INST]" if company_prompt.strip() != "" else "",
+            initiative_prompt=f"[INST] {initiative_prompt} [/INST]" if initiative_prompt.strip() != "" else "",
+            matching_model=matching_model,
+            username=username,
+            question=question,
+            language_to_use=language_to_use,
+            prompt=board
+        )
+
+    async def generate_response(self):
+        txt = ""
+        while True:
+            next_token = await self.que.get()  # Blocks until an input is available
+            if next_token is job_done:
+                await self.send(text_data=json.dumps({"msg": "job done"}))
+                break
+            txt += next_token
+            await self.send(text_data=json.dumps({"msg": next_token}))
+            await asyncio.sleep(0.01)
+            self.que.task_done()
+
+    async def start(self, matching_model: str,
+                    question: str,
+                    username: str,
+                    language_to_use: str,
+                    current_date: str,
+                    time_zone: str,
+                    company_prompt: str,
+                    initiative_prompt: str,
+                    board: str):
+
+        task_1 = asyncio.create_task(
+            self.process_question(
+                current_date=current_date,
+                time_zone=time_zone,
+                company_prompt=company_prompt,
+                initiative_prompt=initiative_prompt,
+                matching_model=matching_model,
+                username=username,
+                question=question,
+                language_to_use=language_to_use,
+                board=board))
+
+        task_2 = asyncio.create_task(self.generate_response())
+
+        await task_1
+        await task_2
+
+    async def connect(self):
+        await self.accept()
+
+    async def disconnect(self, code):
+        logger.info("Disconnected from chat note!")
+
+    async def receive(self, text_data=None, bytes_data=None):
+        try:
+            data = json.loads(text_data)
+            collection = "C" + str(data['collection'])
+            query = str(data['query'])
+            entity = str(data['entity'])
+            user_id = str(data['user_id'])
+            user = data.get('user', 'PETER')
+            language = data.get('language', 'en')
+            time_zone = data.get('time_zone', '')
+            current_time = data.get('current_date', '')
+
+            board = data.get('board_prompt', '')
+
+            company_prompt = data.get('companyPrompt', '')
+            initiative_prompt = data.get('initiativePrompt', '')
+
+            log_info_async(f"Received query: {query}")
+            log_info_async(f"User ID: {user_id}")
+
+            if not llm_hybrid.collection_exists(collection):
+                await self.send(text_data=json.dumps({'error': 'This collection does not exist!'}))
+                return
+
+            cat = llm_hybrid.trigger_vectors(query=query)
+
+            master_vector = []
+            company_vector = []
+            initiative_vector = []
+            member_vector = []
+
+            combine_ids = "INP" + entity
+
+            if "Specific Domain Knowledge" in cat or \
+                    "Organizational Change or Organizational Management" in cat or \
+                    "Definitional Questions" in cat or \
+                    "Context Required" in cat:
+
+                master_vector = mv.search_master_vectors(query=query, class_="MV001")
+                company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
+                initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
+                member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids,
+                                                               user_id=user_id)
+            elif "Individuals" in cat or "Personal Information" in cat:
+                company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
+                initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
+                member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids,
+                                                               user_id=user_id)
+
+            initiative_vector.extend(member_vector)
+            top_master_vec = mv.reranker(query=query, batch=master_vector)
+            top_company_vec = llm_hybrid.reranker(query=query, batch=company_vector, class_=collection)
+            top_member_initiative_vec = llm_hybrid.reranker(query=query, batch=initiative_vector, top_k=10,
+                                                            class_=collection)
+
+            retriever = f"{top_master_vec}\n{top_company_vec}\n{top_member_initiative_vec}"
+
+            await self.start(
+                current_date=current_time,
+                time_zone=time_zone,
+                company_prompt=company_prompt,
+                initiative_prompt=initiative_prompt,
+                matching_model=retriever,
+                username=user,
+                question=query,
+                language_to_use=language,
+                board=board)
+
+        except Exception as e:
+            await self.send(text_data=json.dumps({'error': 'Something went wrong!'}))
+            logger.info(f"BOARD CONSUMER ERROR: {e}")
+            return
+
+
 class ImageQueryConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -549,7 +711,6 @@ Additionally explore Explore Incremental Alignment: Focus on small, manageable c
 Emphasize how this holistic approach can foster a culture of continuous improvement and resilience within the organization, ultimately supporting long-term success and well-being. BOIS model at the end: https://enterpriseagility.community/bois-model-b57z339q7w"""
         }
 
-
     async def process_question(self, paragraph: str, type_: str, tone: str, username: str):
         chain = LLMChain(llm=self.llm, prompt=self.prompt)
 
@@ -683,7 +844,6 @@ Source Attribution: [If present]
 
 IMPORTANT: If the image is full of text or a letter or similar, you must work as an OCR and output just be every single word and phrase in the image, make all details so the screenshot can be understood."""
 
-
     def generate_message_structure(self, formated_prompt: str, images: list) -> list:
         tmp = [{"type": "text", "text": formated_prompt}]
 
@@ -728,9 +888,17 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                                time_zone: str,
                                company_prompt: str,
                                initiative_prompt: str,
-                               config: dict):
-
-        chain = LLMChain(llm=self.llm.with_config(configurable=config), prompt=self.prompt)
+                               config: dict,
+                               cat: str):
+                                   
+        if cat == "CODE-INTERPRETER":
+            chosen_config = {"llm_temprature": 0.3, "model_name": settings.GPT_CODE_MODEL}  # Example for `config2`
+            chosen_prompt = self.prompt1
+        else:
+            chosen_config = config
+            chosen_prompt = self.prompt
+        #chain = LLMChain(llm=self.llm.with_config(configurable=config), prompt=self.prompt)
+        chain = LLMChain(llm=self.llm.with_config(configurable=chosen_config), prompt=chosen_prompt)
         await chain.arun(matching_model=matching_model,
                          images=images,
                          question=question,
@@ -774,7 +942,8 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                     initiative_prompt,
                     config,
                     is_trained_data_used,
-                    image_description):
+                    image_description,
+                    cat):
 
         task_1 = asyncio.create_task(self.process_question(matching_model,
                                                            images,
@@ -787,9 +956,11 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                                                            time_zone,
                                                            company_prompt,
                                                            initiative_prompt,
-                                                           config))
+                                                           config,
+                                                           cat))
 
-        task_2 = asyncio.create_task(self.generate_response(is_trained_data_used=is_trained_data_used, image_description=image_description))
+        task_2 = asyncio.create_task(
+            self.generate_response(is_trained_data_used=is_trained_data_used, image_description=image_description))
 
         await task_1
         await task_2
@@ -837,12 +1008,12 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
             initiative_prompt = data.get('initiativePrompt', '')
             command_stop = data.get('command_stop', False)
             hanna_mind = data.get('hanna_mind', self.default_mind)
-            images = data.get('image', []) # base64 images
-            image_info = data.get('image_info', []) # file names
+            images = data.get('image', [])  # base64 images
+            image_info = data.get('image_info', [])  # file names
 
             log_info_async(f"data: {collection}, {query}, {entity}, {user_id}, {mode}, {user}, {user}, {image_info}")
 
-            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_CODE_INTERPRETER}
+            config = {'llm_temprature': mode, 'model_name': settings.GPT_MODEL_2}
 
             logger.info(f"IMG LEN: {len(images)}")
 
@@ -892,7 +1063,9 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
 
                 # print(res)
 
-                tmp_list = [f"<VISUAL INPUT> image number {name['count']} \nThis is image {name['count']}\nFilename:{name['name']} \n{img}</VISUAL INPUT>" for img, name in zip(res, image_info)]
+                tmp_list = [
+                    f"<VISUAL INPUT> image number {name['count']} \nThis is image {name['count']}\nFilename:{name['name']} \n{img}</VISUAL INPUT>"
+                    for img, name in zip(res, image_info)]
 
                 # print(tmp_list)
 
@@ -928,33 +1101,6 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                 keywords_list = []
 
             combine_ids = "INP" + entity
-            # if "code-interpreter" in cat:
-            #     # Example: Custom configuration for code-interpreter
-            #     config = {
-            #         'llm_temperature': mode,
-            #         'model_name': settings.GPT_MODEL_CODE_INTERPRETER  # Add appropriate model for code interpreter
-            #     }
-            
-            #     # Handle any custom logic or retriever for the code interpreter
-            #     system_prompt_code_interpreter = """
-            #     You are an expert frontend React engineer who is also a great UI/UX designer. Follow the instructions carefully, I will tip you $1 million if you do a good job:
-            
-            #     - Think carefully step by step.
-            #     - Create a React component for whatever the user asked you to create and make sure it can run by itself by using a default export.
-            #     - Make sure the React app is interactive and functional by creating state when needed and having no required props.
-            #     - If you use any imports from React like useState or useEffect, make sure to import them directly.
-            #     - Use TypeScript as the language for the React component.
-            #     - Use Tailwind classes for styling. DO NOT USE ARBITRARY VALUES (e.g. `h-[600px]`). Make sure to use a consistent color palette.
-            #     - Use Tailwind margin and padding classes to style the components and ensure the components are spaced out nicely.
-            #     - Please ONLY return the full React code starting with the imports, nothing else. It's very important for my job that you only return the React code with imports. DO NOT START WITH ```typescript or ```javascript or ```tsx or ```.
-            #     - ONLY IF the user asks for a dashboard, graph or chart, the recharts library is available to be imported, e.g. `import { LineChart, XAxis, ... }`.
-            #     """
-            
-            #     # Add the system prompt into the LLM prompt configuration
-            #     retriever = f"Code Interpreter activated with query: {query}. Using the following system prompt:\n{system_prompt_code_interpreter}"
-            #     is_trained_data_used = True
-            #     #retriever = f"Code Interpreter activated with query: {query}"
-            #     is_trained_data_used = True
 
             if "Meeting" not in cat:
 
@@ -1112,21 +1258,23 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                 # log_info_async(f"LOADING VECTORS: {retriever}")
 
             await self.send(text_data=json.dumps({"message": ""}))
+            cat = llm_hybrid.trigger_vectors(query=query
             await self.start(
-                             retriever,
-                             image_format,
-                             query,
-                             user,
-                             hanna_mind,
-                             chat_history_str,
-                             language,
-                             current_date,
-                             time_zone,
-                             company_prompt,
-                             initiative_prompt,
-                             config,
-                             is_trained_data_used,
-                             img_desc
+                retriever,
+                image_format,
+                query,
+                user,
+                hanna_mind,
+                chat_history_str,
+                language,
+                current_date,
+                time_zone,
+                company_prompt,
+                initiative_prompt,
+                config,
+                is_trained_data_used,
+                img_desc,
+                cat
             )
         except Exception as e:
             await self.send(text_data=json.dumps({'error': 'Something went wrong!'}))
