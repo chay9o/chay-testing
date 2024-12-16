@@ -1258,7 +1258,7 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                 # log_info_async(f"LOADING VECTORS: {retriever}")
 
             await self.send(text_data=json.dumps({"message": ""}))
-            cat = llm_hybrid.trigger_vectors(query=query
+            cat = llm_hybrid.trigger_vectors(query=query)
             await self.start(
                 retriever,
                 image_format,
