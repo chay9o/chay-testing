@@ -21,6 +21,7 @@ import asyncio
 from langchain.callbacks.base import BaseCallbackHandler
 import re
 
+
 # Set up logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -69,14 +70,10 @@ with open("img-prompt.txt", "r") as file:
 with open("summary_prompt.txt", "r") as file:
     SUMMARY_PROMPT = file.read()
 
-with open("board_prompt.txt", "r") as file:
-    BOARD_PROMPT = file.read()
-
 prompt = PromptTemplate.from_template(SYSPROMPT)
 chat_note_prompt = PromptTemplate.from_template(CHATNOTE_PROMPT)
 live_data_prompt = PromptTemplate.from_template(LIVE_DATA_PROMPT)
 summary_prompt = PromptTemplate.from_template(SUMMARY_PROMPT)
-board_prompt = PromptTemplate.from_template(BOARD_PROMPT)
 
 llm = ChatOpenAI(
     openai_api_key=settings.OPENAI_API_KEY,
@@ -91,8 +88,6 @@ llm = ChatOpenAI(
         description="The temperature of the LLM",
     )
 )
-
-# llm.with_config({''})
 
 llm_hybrid = LLMHybridRetriever(verbose=True)
 mv = MasterVectors()
@@ -348,163 +343,6 @@ class ChatNoteConsumer(AsyncWebsocketConsumer):
             return
 
 
-class BoardConsumer(AsyncWebsocketConsumer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.que = asyncio.Queue()
-        self.llm = ChatOpenAI(
-            openai_api_key=settings.TOGETHER_API_KEY,
-            model_name="meta-llama/Llama-3.3-70B-Instruct-Turbo",
-            openai_api_base="https://api.together.xyz/v1",
-            streaming=True,
-            max_tokens=1000,
-            callbacks=[SimpleCallback(self.que)]
-        )
-        self.prompt = board_prompt
-
-    async def process_question(self,
-                               matching_model: str,
-                               question: str,
-                               username: str,
-                               language_to_use: str,
-                               current_date: str,
-                               time_zone: str,
-                               company_prompt: str,
-                               initiative_prompt: str,
-                               board: str):
-        chain = LLMChain(llm=self.llm, prompt=self.prompt)
-
-        await chain.arun(
-            current_date=current_date,
-            time_zone=time_zone,
-            company_prompt=f"[INST] {company_prompt} [/INST]" if company_prompt.strip() != "" else "",
-            initiative_prompt=f"[INST] {initiative_prompt} [/INST]" if initiative_prompt.strip() != "" else "",
-            matching_model=matching_model,
-            username=username,
-            question=question,
-            language_to_use=language_to_use,
-            prompt=board
-        )
-
-    async def generate_response(self):
-        txt = ""
-        while True:
-            next_token = await self.que.get()  # Blocks until an input is available
-            if next_token is job_done:
-                await self.send(text_data=json.dumps({"msg": "job done"}))
-                break
-            txt += next_token
-            await self.send(text_data=json.dumps({"msg": next_token}))
-            await asyncio.sleep(0.01)
-            self.que.task_done()
-
-    async def start(self, matching_model: str,
-                    question: str,
-                    username: str,
-                    language_to_use: str,
-                    current_date: str,
-                    time_zone: str,
-                    company_prompt: str,
-                    initiative_prompt: str,
-                    board: str):
-
-        task_1 = asyncio.create_task(
-            self.process_question(
-                current_date=current_date,
-                time_zone=time_zone,
-                company_prompt=company_prompt,
-                initiative_prompt=initiative_prompt,
-                matching_model=matching_model,
-                username=username,
-                question=question,
-                language_to_use=language_to_use,
-                board=board))
-
-        task_2 = asyncio.create_task(self.generate_response())
-
-        await task_1
-        await task_2
-
-    async def connect(self):
-        await self.accept()
-
-    async def disconnect(self, code):
-        logger.info("Disconnected from chat note!")
-
-    async def receive(self, text_data=None, bytes_data=None):
-        try:
-            data = json.loads(text_data)
-            collection = "C" + str(data['collection'])
-            query = str(data['query'])
-            entity = str(data['entity'])
-            user_id = str(data['user_id'])
-            user = data.get('user', 'PETER')
-            language = data.get('language', 'en')
-            time_zone = data.get('time_zone', '')
-            current_time = data.get('current_date', '')
-
-            board = data.get('board_prompt', '')
-
-            company_prompt = data.get('companyPrompt', '')
-            initiative_prompt = data.get('initiativePrompt', '')
-
-            log_info_async(f"Received query: {query}")
-            log_info_async(f"User ID: {user_id}")
-
-            if not llm_hybrid.collection_exists(collection):
-                await self.send(text_data=json.dumps({'error': 'This collection does not exist!'}))
-                return
-
-            cat = llm_hybrid.trigger_vectors(query=query)
-
-            master_vector = []
-            company_vector = []
-            initiative_vector = []
-            member_vector = []
-
-            combine_ids = "INP" + entity
-
-            if "Specific Domain Knowledge" in cat or \
-                    "Organizational Change or Organizational Management" in cat or \
-                    "Definitional Questions" in cat or \
-                    "Context Required" in cat:
-
-                master_vector = mv.search_master_vectors(query=query, class_="MV001")
-                company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
-                initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
-                member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids,
-                                                               user_id=user_id)
-            elif "Individuals" in cat or "Personal Information" in cat:
-                company_vector = llm_hybrid.search_vectors_company(query=query, entity=collection, class_=collection)
-                initiative_vector = llm_hybrid.search_vectors_initiative(query=query, entity=entity, class_=collection)
-                member_vector = llm_hybrid.search_vectors_user(query=query, class_=collection, entity=combine_ids,
-                                                               user_id=user_id)
-
-            initiative_vector.extend(member_vector)
-            top_master_vec = mv.reranker(query=query, batch=master_vector)
-            top_company_vec = llm_hybrid.reranker(query=query, batch=company_vector, class_=collection)
-            top_member_initiative_vec = llm_hybrid.reranker(query=query, batch=initiative_vector, top_k=10,
-                                                            class_=collection)
-
-            retriever = f"{top_master_vec}\n{top_company_vec}\n{top_member_initiative_vec}"
-
-            await self.start(
-                current_date=current_time,
-                time_zone=time_zone,
-                company_prompt=company_prompt,
-                initiative_prompt=initiative_prompt,
-                matching_model=retriever,
-                username=user,
-                question=query,
-                language_to_use=language,
-                board=board)
-
-        except Exception as e:
-            await self.send(text_data=json.dumps({'error': 'Something went wrong!'}))
-            logger.info(f"BOARD CONSUMER ERROR: {e}")
-            return
-
-
 class ImageQueryConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -710,6 +548,7 @@ Emphasize how these dimensions contribute to a culture of unlearning and adaptab
 Additionally explore Explore Incremental Alignment: Focus on small, manageable changes that can lead to significant improvements in behaviors and outcomes.
 Emphasize how this holistic approach can foster a culture of continuous improvement and resilience within the organization, ultimately supporting long-term success and well-being. BOIS model at the end: https://enterpriseagility.community/bois-model-b57z339q7w"""
         }
+
 
     async def process_question(self, paragraph: str, type_: str, tone: str, username: str):
         chain = LLMChain(llm=self.llm, prompt=self.prompt)
