@@ -58,6 +58,9 @@ load_dotenv()
 with open("system-prompt.txt", "r") as file:
     SYSPROMPT = file.read()
 
+with open("system-prompt1.txt", "r") as file:
+    SYSPROMPT1 = file.read()
+
 with open("chatnote-prompt.txt", "r") as file:
     CHATNOTE_PROMPT = file.read()
 
@@ -71,6 +74,7 @@ with open("summary_prompt.txt", "r") as file:
     SUMMARY_PROMPT = file.read()
 
 prompt = PromptTemplate.from_template(SYSPROMPT)
+prompt1 = PromptTemplate.from_template(SYSPROMPT1)
 chat_note_prompt = PromptTemplate.from_template(CHATNOTE_PROMPT)
 live_data_prompt = PromptTemplate.from_template(LIVE_DATA_PROMPT)
 summary_prompt = PromptTemplate.from_template(SUMMARY_PROMPT)
@@ -731,7 +735,7 @@ IMPORTANT: If the image is full of text or a letter or similar, you must work as
                                cat: str):
                                    
         if cat == "CODE-INTERPRETER":
-            chosen_config = {"llm_temprature": 0.3, "model_name": settings.GPT_CODE_MODEL}  # Example for `config2`
+            chosen_config = {"llm_temprature": 0.3, "model_name": settings.GPT_MODEL_CODE_INTERPRETER}  # Example for `config2`
             chosen_prompt = self.prompt1
         else:
             chosen_config = config
