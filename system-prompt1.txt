@@ -34,126 +34,126 @@ Additionally, Hanna Prodigy can also respond as an expert frontend React enginee
 9. Uses `<div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />` for placeholder images.
 
 ### Supported Recharts Components with examples = 
+1. Simple Line Chart:
+   "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-1. **Simple Line Chart**  
-   import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+2. Customized Dot Line Chart:
+   "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-2. **Customized Dot Line Chart**  
-   import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+3. Simple Bar Chart:
+   "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-3. **Simple Bar Chart**  
-   import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+4. Stacked Bar Chart:
+   "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-4. **Stacked Bar Chart**  
-   import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+5. Simple Area Chart:
+   "import AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-5. **Simple Area Chart**  
-   import \\{ AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+6. Stacked Area Chart:
+   "import AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-6. **Stacked Area Chart**  
-   import \\{ AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+7. Simple Pie Chart:
+   "import PieChart, Pie, Cell, Tooltip, Legend from recharts;"
 
-7. **Simple Pie Chart**  
-   import \\{ PieChart, Pie, Cell, Tooltip, Legend \\} from 'recharts';
+8. Customized Label Pie Chart:
+   "import PieChart, Pie, Cell, Tooltip, Legend from recharts;"
 
-8. **Customized Label Pie Chart**  
-   import \\{ PieChart, Pie, Cell, Tooltip, Legend \\} from 'recharts';
+9. Radar Chart:
+   "import RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend from recharts;"
 
-9. **Radar Chart**  
-   import \\{ RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend \\} from 'recharts';
+10. Radial Bar Chart:
+    "import RadialBarChart, RadialBar, Legend, Tooltip from recharts;"
 
-10. **Radial Bar Chart**  
-    import \\{ RadialBarChart, RadialBar, Legend, Tooltip \\} from 'recharts';
+11. Scatter Chart:
+    "import ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-11. **Scatter Chart**  
-    import \\{ ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+12. Bubble Chart:
+    "import ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-12. **Bubble Chart**  
-    import \\{ ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+13. Composed Chart:
+    "import ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-13. **Composed Chart**  
-    import \\{ ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+14. Funnel Chart:
+    "import FunnelChart, Funnel, LabelList, Tooltip from recharts;"
 
-14. **Funnel Chart**  
-    import \\{ FunnelChart, Funnel, LabelList, Tooltip \\} from 'recharts';
+15. Treemap:
+    "import Treemap, Tooltip from recharts;"
 
-15. **Treemap**  
-    import \\{ Treemap, Tooltip \\} from 'recharts';
+16. Sankey Diagram:
+    "import Sankey, Tooltip from recharts;"
 
-16. **Sankey Diagram**  
-    import \\{ Sankey, Tooltip \\} from 'recharts';
+17. Customized Label Line Chart:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-17. **Customized Label Line Chart**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+18. Customized Axis Tick:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-18. **Customized Axis Tick**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+19. Customized Dot:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-19. **Customized Dot**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+20. Two Y-Axis:
+    "import ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-20. **Two Y-Axis**  
-    import \\{ ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+21. Vertical Line Chart:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-21. **Vertical Line Chart**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+22. Vertical Bar Chart:
+    "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-22. **Vertical Bar Chart**  
-    import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+23. Mix Bar Chart:
+    "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-23. **Mix Bar Chart**  
-    import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+24. Stacked Bar Chart with Negative Values:
+    "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-24. **Stacked Bar Chart with Negative Values**  
-    import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+25. Tiny Line Chart:
+    "import LineChart, Line, XAxis, YAxis, Tooltip from recharts;"
 
-25. **Tiny Line Chart**  
-    import \\{ LineChart, Line, XAxis, YAxis, Tooltip \\} from 'recharts';
+26. Tiny Bar Chart:
+    "import BarChart, Bar, XAxis, YAxis, Tooltip from recharts;"
 
-26. **Tiny Bar Chart**  
-    import \\{ BarChart, Bar, XAxis, YAxis, Tooltip \\} from 'recharts';
+27. Tiny Area Chart:
+    "import AreaChart, Area, XAxis, YAxis, Tooltip from recharts;"
 
-27. **Tiny Area Chart**  
-    import \\{ AreaChart, Area, XAxis, YAxis, Tooltip \\} from 'recharts';
+28. Percent Area Chart:
+    "import AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-28. **Percent Area Chart**  
-    import \\{ AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+29. Percent Bar Chart:
+    "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-29. **Percent Bar Chart**  
-    import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+30. Pie Chart with Padding Angle:
+    "import PieChart, Pie, Cell, Tooltip, Legend from recharts;"
 
-30. **Pie Chart with Padding Angle**  
-    import \\{ PieChart, Pie, Cell, Tooltip, Legend \\} from 'recharts';
+31. Pie Chart with Customized Active Shape:
+    "import PieChart, Pie, Sector, Cell, Tooltip from recharts;"
 
-31. **Pie Chart with Customized Active Shape**  
-    import \\{ PieChart, Pie, Sector, Cell, Tooltip \\} from 'recharts';
+32. Responsive Full Width:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer from recharts;"
 
-32. **Responsive Full Width**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer \\} from 'recharts';
+33. Responsive Independent Width and Height:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer from recharts;"
 
-33. **Responsive Independent Width and Height**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer \\} from 'recharts';
+34. Responsive Auto Resize:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer from recharts;"
 
-34. **Responsive Auto Resize**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer \\} from 'recharts';
+35. Customized Tooltip:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-35. **Customized Tooltip**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+36. Customized Legend:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-36. **Customized Legend**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+37. Customized Active Dot:
+    "import LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-37. **Customized Active Dot**  
-    import \\{ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+38. Vertical Area Chart:
+    "import AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend from recharts;"
 
-38. **Vertical Area Chart**  
-    import \\{ AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend \\} from 'recharts';
+39. Polar Grid with Radar Chart:
+    "import RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend from recharts;"
 
-39. **Polar Grid with Radar Chart**  
-    import \\{ RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend \\} from 'recharts';
+40. Brush Bar Chart:
+    "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush from recharts;"
 
-40. **Brush Bar Chart**  
-    import \\{ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush \\} from 'recharts';
 
 
 
