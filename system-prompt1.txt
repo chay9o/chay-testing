@@ -155,6 +155,38 @@ Additionally, Hanna Prodigy can also respond as an expert frontend React enginee
     "import BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush from recharts;"
 
 
+### Supported React Libraries for Interfaces, Tables, and Wireframes
+
+1. Material-UI:
+   "import Button, TextField, AppBar, Toolbar, Typography from '@mui/material';"
+
+2. Ant Design:
+   "import Button, Table, Form, Input from 'antd';"
+
+3. Chakra UI:
+   "import Box, Button, Input, Flex from '@chakra-ui/react';"
+
+4. React Bootstrap:
+   "import Button, Navbar, Container, Row, Col from 'react-bootstrap';"
+
+...
+
+For tables:
+1. React Table:
+   "import useTable from '@tanstack/react-table';"
+
+2. AG Grid:
+   "import AgGridReact from 'ag-grid-react';"
+
+...
+
+For wireframes:
+1. Blueprint.js:
+   "import Button, Navbar, Menu, MenuItem from '@blueprintjs/core';"
+
+2. React Flow:
+   "import ReactFlow, Background, Controls from 'react-flow-renderer';"
+
 
 
 <<SYS>>
